@@ -1,0 +1,97 @@
+from typing import Optional
+
+from .apis.backend import BackendAPI
+from .constants import DataverseHost
+from .exceptions.client import ClientConnectionError
+from .schemas import Ontology, OntologyImageType, Project, Sensor
+
+
+class DataverseClient:
+    def __init__(
+        self,
+        host: DataverseHost,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+    ) -> None:
+        """
+        Instantiate a Dataverse client.
+
+        Parameters
+        ----------
+        host : DataverseHost
+        email : Optional[str], optional
+        password : Optional[str], optional
+        access_token : Optional[str], optional
+        refresh_token : Optional[str], optional
+
+        Raises
+        ------
+        ValueError
+        """
+        if host not in DataverseHost:
+            raise ValueError("Invalid dataverse host, if the host is available?")
+
+        self.host = host
+        self._api_client = None
+        self._init_api_client(
+            email=email,
+            password=password,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
+
+    def _init_api_client(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+    ) -> None:
+        try:
+            self._api_client = BackendAPI(
+                host=self.host,
+                email=email,
+                password=password,
+                access_token=access_token,
+                refresh_token=refresh_token,
+            )
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to initialize the api client: {e}")
+
+    def create_project(
+        self, name: str, ontology: Ontology, sensors: list[Sensor]
+    ) -> Project:
+        try:
+            project_data: dict = self._api_client.create_project(
+                name=name,
+                ontology_data={
+                    "name": ontology.name,
+                    "image_type": OntologyImageType._2D_BOUNDING_BOX,
+                    "ontology_classes_data": [],
+                },
+                sensor_data=[
+                    {"name": sensor.name, "type": sensor.type} for sensor in sensors
+                ],
+            )
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create the project: {e}")
+
+        ontology_data: dict = project_data["ontology"]
+        sensor_data: list[dict] = project_data["sensors"]
+
+        return Project(
+            id=project_data["id"],
+            name=project_data["name"],
+            ontology=Ontology(
+                id=ontology_data["id"],
+                name=ontology_data["name"],
+                image_type=ontology_data["image_type"],
+                pcd_type=ontology_data["pcd_type"],
+            ),
+            sensors=[
+                Sensor(id=sensor["id"], type=sensor["type"], name=sensor["name"])
+                for sensor in sensor_data
+            ],
+        )
