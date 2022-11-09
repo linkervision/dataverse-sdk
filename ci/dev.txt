@@ -1,0 +1,1 @@
+pre-commit==2.16.0  # https://github.com/pre-commit/pre-commit
