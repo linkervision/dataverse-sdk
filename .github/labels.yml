@@ -1,0 +1,24 @@
+XS:
+  name: size/xs
+  lines: 0
+  color: C2E0C6
+S:
+  name: size/s
+  lines: 10
+  color: BFDADC
+M:
+  name: size/m
+  lines: 100
+  color: FEF2C0
+L:
+  name: size/l
+  lines: 300
+  color: D93F0B
+XL:
+  name: size/xl
+  lines: 600
+  color: B60205
+XXL:
+  name: size/xxl
+  lines: 1000
+  color: B60205
