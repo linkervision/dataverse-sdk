@@ -1,6 +1,9 @@
 GIT = $(shell which git)
 PIP = $(shell which pip)
 
+#################################
+# package installation
+#################################
 .PHONY: install-dev
 install-dev: install-dev-pkgs install-git-hooks install-commit-message-template ## install dev tools
 
