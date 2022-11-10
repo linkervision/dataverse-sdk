@@ -81,17 +81,15 @@ class DataverseClient:
                 if not (cur_attrs := cls_.get("attribute_data")):
                     classes_data_list.append(cls_)
                     continue
-                new_attribute_list = []
+                new_attribute_list: list[Attribute] = []
                 for attr in cur_attrs:
                     attr.pop("id", None)
-                    new_opt_list = []
                     if attr["type"] != "option":
                         new_attribute_list.append(attr)
                         continue
-                    for opt_data in attr.get("option_data", []):
-                        opt_data.pop("id", None)
-                        new_opt_list.append(opt_data["value"])
-                    attr["option_data"] = new_opt_list
+                    attr["option_data"] = [
+                        opt_data["value"] for opt_data in attr.get("option_data", [])
+                    ]
                     new_attribute_list.append(attr)
                 cls_["attribute"] = new_attribute_list
                 classes_data_list.append(cls_)
@@ -112,17 +110,17 @@ class DataverseClient:
         ontology_data: dict = project_data["ontology"]
         sensor_data: list[dict] = project_data["sensors"]
 
-        resp_ontology_data: list[dict] = ontology_data["classes"]
+        ontology_data_classes: list[dict] = ontology_data["classes"]
         new_ontology_classes_data = []
-        for classes_data in resp_ontology_data:
+        for classes_data in ontology_data_classes:
 
             cls_attrs: list[dict] = classes_data.get("attributes", [])
             new_attribute_list: list[Attribute] = []
             for attr in cls_attrs:
-                attr_opts = attr.get("options", [])
-                new_opts: list[AttributeOption] = []
-                for opt in attr_opts:
-                    new_opts.append(AttributeOption(id=opt["id"], value=opt["value"]))
+                new_opts: list[AttributeOption] = [
+                    AttributeOption(id=opt["id"], value=opt["value"])
+                    for opt in attr.get("options", [])
+                ]
                 new_attribute_list.append(
                     Attribute(
                         id=attr["id"],
@@ -134,10 +132,10 @@ class DataverseClient:
 
             new_ontology_classes_data.append(
                 OntologyClass(
-                    name=classes_data.get("name"),
-                    id=classes_data.get("id"),
-                    rank=classes_data.get("rank"),
-                    color=classes_data.get("color"),
+                    name=classes_data["name"],
+                    id=classes_data["id"],
+                    rank=classes_data["rank"],
+                    color=classes_data["color"],
                     attribute_data=new_attribute_list,
                 )
             )
