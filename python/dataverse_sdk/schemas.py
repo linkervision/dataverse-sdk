@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, Union
 
 from pydantic import BaseModel, validator
-
+import re
 
 # ======================Attribute Related Start======================
 class AttributeType(str, Enum):
@@ -61,7 +61,8 @@ class OntologyClass(BaseModel):
 
     @validator("color", each_item=True)
     def color_validator(cls, value):
-        if not value.startswith("#") or len(value.lstrip("#")) != 6:
+        if not value.startswith("#") \
+            or not re.search("^[a-zA-Z0-9]+$",value.lstrip("#")):
             raise ValueError(
                 f"Color field needs starts with `#` and has 6 digits behind it, get : {value}"
             )
