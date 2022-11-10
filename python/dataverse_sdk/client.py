@@ -118,7 +118,6 @@ class DataverseClient:
 
             cls_attrs: list[dict] = classes_data.get("attributes", [])
             new_attribute_list: list[Attribute] = []
-            # dict_keys(['id', 'options', 'name', 'type', 'created_at', 'updated_at', 'ontology_class'])
             for attr in cls_attrs:
                 attr_opts = attr.get("options", [])
                 new_opts: list[AttributeOption] = []
