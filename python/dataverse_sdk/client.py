@@ -3,7 +3,14 @@ from typing import Optional
 from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
-from .schemas import Ontology, OntologyImageType, Project, Sensor
+from .schemas import (
+    Attribute,
+    AttributeOption,
+    Ontology,
+    OntologyClass,
+    Project,
+    Sensor,
+)
 
 
 class DataverseClient:
@@ -63,13 +70,37 @@ class DataverseClient:
     def create_project(
         self, name: str, ontology: Ontology, sensors: list[Sensor]
     ) -> Project:
+
+        ontology_dict: dict = ontology.dict(exclude_none=True)
+        classes_data_list: list[OntologyClass] = []
+
         try:
+            # remove `id` field in OntologyClass, Attribute, and AttributeOption
+            for cls_ in ontology_dict["ontology_classes_data"]:
+                cls_.pop("id", None)
+                if not (cur_attrs := cls_.get("attribute_data")):
+                    classes_data_list.append(cls_)
+                    continue
+                new_attribute_list = []
+                for attr in cur_attrs:
+                    attr.pop("id", None)
+                    new_opt_list = []
+                    if attr["type"] != "option":
+                        new_attribute_list.append(attr)
+                        continue
+                    for opt_data in attr.get("option_data", []):
+                        opt_data.pop("id", None)
+                        new_opt_list.append(opt_data["value"])
+                    attr["option_data"] = new_opt_list
+                    new_attribute_list.append(attr)
+                cls_["attribute"] = new_attribute_list
+                classes_data_list.append(cls_)
             project_data: dict = self._api_client.create_project(
                 name=name,
                 ontology_data={
-                    "name": ontology.name,
-                    "image_type": OntologyImageType._2D_BOUNDING_BOX,
-                    "ontology_classes_data": [],
+                    "name": ontology_dict["name"],
+                    "image_type": ontology_dict["image_type"],
+                    "ontology_classes_data": classes_data_list,
                 },
                 sensor_data=[
                     {"name": sensor.name, "type": sensor.type} for sensor in sensors
@@ -81,16 +112,48 @@ class DataverseClient:
         ontology_data: dict = project_data["ontology"]
         sensor_data: list[dict] = project_data["sensors"]
 
+        resp_ontology_data: list[dict] = ontology_data["classes"]
+        new_ontology_classes_data = []
+        for classes_data in resp_ontology_data:
+
+            cls_attrs: list[dict] = classes_data.get("attributes", [])
+            new_attribute_list: list[Attribute] = []
+            # dict_keys(['id', 'options', 'name', 'type', 'created_at', 'updated_at', 'ontology_class'])
+            for attr in cls_attrs:
+                attr_opts = attr.get("options", [])
+                new_opts: list[AttributeOption] = []
+                for opt in attr_opts:
+                    new_opts.append(AttributeOption(id=opt["id"], value=opt["value"]))
+                new_attribute_list.append(
+                    Attribute(
+                        id=attr["id"],
+                        name=attr["name"],
+                        type=attr["type"],
+                        option_data=new_opts if new_opts else None,
+                    )
+                )
+
+            new_ontology_classes_data.append(
+                OntologyClass(
+                    name=classes_data.get("name"),
+                    id=classes_data.get("id"),
+                    rank=classes_data.get("rank"),
+                    color=classes_data.get("color"),
+                    attribute_data=new_attribute_list,
+                )
+            )
+
         return Project(
             id=project_data["id"],
             name=project_data["name"],
-            ontology=Ontology(
+            ontology_data=Ontology(
                 id=ontology_data["id"],
                 name=ontology_data["name"],
                 image_type=ontology_data["image_type"],
                 pcd_type=ontology_data["pcd_type"],
+                ontology_classes_data=new_ontology_classes_data,
             ),
-            sensors=[
+            sensor_data=[
                 Sensor(id=sensor["id"], type=sensor["type"], name=sensor["name"])
                 for sensor in sensor_data
             ],
