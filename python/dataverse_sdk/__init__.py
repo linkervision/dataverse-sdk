@@ -1,6 +1,5 @@
 from .client import DataverseClient
 from .constants import DataverseHost
-from .schemas.base import AttributeType, OntologyImageType, OntologyPcdType, SensorType
 from .schemas.client import (
     Attribute,
     AttributeOption,
@@ -8,6 +7,12 @@ from .schemas.client import (
     OntologyClass,
     Project,
     Sensor,
+)
+from .schemas.common import (
+    AttributeType,
+    OntologyImageType,
+    OntologyPcdType,
+    SensorType,
 )
 
 __all__ = [
