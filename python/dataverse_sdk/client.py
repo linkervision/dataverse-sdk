@@ -3,14 +3,8 @@ from typing import Optional
 from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
-from .schemas import (
-    Attribute,
-    AttributeOption,
-    Ontology,
-    OntologyClass,
-    Project,
-    Sensor,
-)
+from .schemas.api import AttributeAPISchema, OntologyAPISchema, OntologyClassAPISchema
+from .schemas.client import Ontology, Project, Sensor
 
 
 class DataverseClient:
@@ -70,88 +64,66 @@ class DataverseClient:
     def create_project(
         self, name: str, ontology: Ontology, sensors: list[Sensor]
     ) -> Project:
+        """Creates project from client data
 
-        ontology_dict: dict = ontology.dict(exclude_none=True)
-        classes_data_list: list[OntologyClass] = []
+        Parameters
+        ----------
+        name : str
+            name of current project
+        ontology : Ontology
+            the Ontology BaseModel data from client
+        sensors : list[ClientSensor]
+            the list of Sensor BaseModel data from client
 
+        Returns
+        -------
+        Project
+            return Project BaseModel
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs
+        """
+
+        ontology_data: dict = ontology.dict(exclude_none=True)
+        classes_data_list: list[OntologyClassAPISchema] = []
+        project_data: Project = {}
         try:
-            # remove `id` field in OntologyClass, Attribute, and AttributeOption
-            for cls_ in ontology_dict["ontology_classes_data"]:
+            # remove `id` field in OntologyClass and Attribute
+            for cls_ in ontology_data["classes"]:
                 cls_.pop("id", None)
-                if not (cur_attrs := cls_.get("attribute_data")):
+                if not (cur_attrs := cls_.pop("attributes", None)):
                     classes_data_list.append(cls_)
                     continue
-                new_attribute_list: list[Attribute] = []
+                new_attribute_list: list[AttributeAPISchema] = []
                 for attr in cur_attrs:
                     attr.pop("id", None)
                     if attr["type"] != "option":
                         new_attribute_list.append(attr)
                         continue
                     attr["option_data"] = [
-                        opt_data["value"] for opt_data in attr.get("option_data", [])
+                        opt_data["value"] for opt_data in attr.pop("options", [])
                     ]
                     new_attribute_list.append(attr)
-                cls_["attribute"] = new_attribute_list
+                cls_["attribute_data"] = new_attribute_list
                 classes_data_list.append(cls_)
+
+            ontology_data = OntologyAPISchema(
+                **{
+                    "name": ontology_data["name"],
+                    "image_type": ontology_data["image_type"],
+                    "ontology_classes_data": classes_data_list,
+                }
+            ).dict(exclude_none=True)
+
             project_data: dict = self._api_client.create_project(
                 name=name,
-                ontology_data={
-                    "name": ontology_dict["name"],
-                    "image_type": ontology_dict["image_type"],
-                    "ontology_classes_data": classes_data_list,
-                },
+                ontology_data=ontology_data,
                 sensor_data=[
                     {"name": sensor.name, "type": sensor.type} for sensor in sensors
                 ],
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
-
-        ontology_data: dict = project_data["ontology"]
-        sensor_data: list[dict] = project_data["sensors"]
-
-        ontology_data_classes: list[dict] = ontology_data["classes"]
-        new_ontology_classes_data = []
-        for classes_data in ontology_data_classes:
-
-            cls_attrs: list[dict] = classes_data.get("attributes", [])
-            new_attribute_list: list[Attribute] = []
-            for attr in cls_attrs:
-                new_opts: list[AttributeOption] = [
-                    AttributeOption(id=opt["id"], value=opt["value"])
-                    for opt in attr.get("options", [])
-                ]
-                new_attribute_list.append(
-                    Attribute(
-                        id=attr["id"],
-                        name=attr["name"],
-                        type=attr["type"],
-                        option_data=new_opts if new_opts else None,
-                    )
-                )
-
-            new_ontology_classes_data.append(
-                OntologyClass(
-                    name=classes_data["name"],
-                    id=classes_data["id"],
-                    rank=classes_data["rank"],
-                    color=classes_data["color"],
-                    attribute_data=new_attribute_list,
-                )
-            )
-
-        return Project(
-            id=project_data["id"],
-            name=project_data["name"],
-            ontology_data=Ontology(
-                id=ontology_data["id"],
-                name=ontology_data["name"],
-                image_type=ontology_data["image_type"],
-                pcd_type=ontology_data["pcd_type"],
-                ontology_classes_data=new_ontology_classes_data,
-            ),
-            sensor_data=[
-                Sensor(id=sensor["id"], type=sensor["type"], name=sensor["name"])
-                for sensor in sensor_data
-            ],
-        )
+        return Project(**project_data)
