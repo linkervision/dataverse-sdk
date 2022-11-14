@@ -132,7 +132,9 @@ class BackendAPI:
             self.refresh_token = refresh_token
         self.headers["Authorization"] = f"Bearer {access_token}"
 
-    def create_project(self, name: str, ontology_data: dict, sensor_data: dict) -> dict:
+    def create_project(
+        self, name: str, ontology_data: dict, sensor_data: list[dict]
+    ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/projects/",
             method="post",
