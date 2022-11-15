@@ -101,9 +101,18 @@ class Project(BaseModel):
 class Dataset(BaseModel):
     id: Optional[int] = None
     name: str
+    data_source: str
+    annotation_format: str
+    sequential: bool
+    generate_metadata: bool
     description: Optional[str] = None
-    data_source: DataSource
     project: Optional[dict] = None
     type: str
+    file_count: Optional[int] = None
     image_count: Optional[int] = None
     pcd_count: Optional[int] = None
+    created_by: Optional[int] = None
+    client: Optional[object] = None
+    container_name: Optional[str] = None
+    storage_url: Optional[str] = None
+    status: str

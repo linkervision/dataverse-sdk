@@ -117,9 +117,9 @@ class DataverseClient:
     def get_project(self, project_id: int):
         """Get project detail by project-id
         Args:
-            project_id (int): _description_
+            project_id (int): project-id in db
         Raises:
-            ClientConnectionError: _description_
+            ClientConnectionError: raise error if there is any error occurs
         Returns:
             project:  Project
                 Project basemodel from host response for client usage
