@@ -4,7 +4,7 @@ from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
 from .schemas.api import AttributeAPISchema, OntologyAPISchema
-from .schemas.client import Ontology, Project, Sensor
+from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
 
 
 class DataverseClient:
@@ -112,4 +112,59 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
-        return Project(**project_data)
+        return Project(client=self, **project_data)
+
+    def get_project(self, project_id: int):
+        """Get project detail by project-id
+        Args:
+            project_id (int): _description_
+        Raises:
+            ClientConnectionError: _description_
+        Returns:
+            project:  Project
+                Project basemodel from host response for client usage
+        """
+        try:
+            project_data: dict = self._api_client.get_project(project_id=project_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the project: {e}")
+        return Project(client=self, **project_data)
+
+    def create_dataset(
+        self, name: str, source: DataSource, project: Project, dataset: dict
+    ) -> Dataset:
+        """Creates dataset
+        Parameters
+        ----------
+        name : str
+            name of dataset
+        source : DataSource
+            the DataSource basemodel of the given dataset
+        project_info: Project
+            Project basemodel from host response for client usage
+        dataset: dict
+            Dataset infomation from config or user setting
+        Returns
+        -------
+        project : Project
+            Project basemodel from host response for client usage
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs
+        """
+        if source in [DataSource.Azure, DataSource.AWS]:
+            try:
+                dataset_data: dict = self._api_client.create_dataset(
+                    name=name,
+                    source=source,
+                    project=project.dict(),
+                    dataset=dataset,
+                )
+            except Exception as e:
+                raise ClientConnectionError(f"Failed to create the dataset: {e}")
+        # TODO: add local upload here
+        else:
+            raise NotImplementedError
+
+        return Dataset(client=self, **dataset_data)

@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from typing import Optional, Union
 
 from pydantic import BaseModel, validator
@@ -68,6 +69,13 @@ class Ontology(BaseModel):
         use_enum_values = True
 
 
+class DataSource(str, Enum):
+
+    Azure = "azure"
+    AWS = "aws"
+    LOCAL = "local"
+
+
 class Project(BaseModel):
     id: Optional[int] = None
     name: str
@@ -75,3 +83,27 @@ class Project(BaseModel):
     ego_car: Optional[str] = None
     ontology: Ontology
     sensors: list[Sensor]
+    client: Optional[object] = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def create_dataset(self, name: str, source: DataSource, dataset: dict):
+        if self.client is not None:
+            dataset_output = self.client.create_dataset(
+                name=name, source=source, project=self, dataset=dataset
+            )
+            return dataset_output
+        else:
+            raise NotImplementedError("ClientServer is not defined")
+
+
+class Dataset(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    data_source: DataSource
+    project: Optional[dict] = None
+    type: str
+    image_count: Optional[int] = None
+    pcd_count: Optional[int] = None
