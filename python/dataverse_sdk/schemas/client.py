@@ -76,6 +76,21 @@ class DataSource(str, Enum):
     LOCAL = "local"
 
 
+class DataConfig(BaseModel):
+    storage_url: str
+    container_name: Optional[str]
+    sas_token: Optional[str]
+    data_folder: str
+    sequential: bool
+    generate_metadata: bool
+    description: Optional[str]
+    type: str
+    annotation_format: str
+
+    class Config:
+        extra = "allow"
+
+
 class Project(BaseModel):
     id: Optional[int] = None
     name: str
@@ -88,7 +103,7 @@ class Project(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def create_dataset(self, name: str, source: DataSource, dataset: dict):
+    def create_dataset(self, name: str, source: DataSource, dataset: DataConfig):
         if self.client is not None:
             dataset_output = self.client.create_dataset(
                 name=name, source=source, project=self, dataset=dataset
@@ -103,8 +118,8 @@ class Dataset(BaseModel):
     name: str
     data_source: str
     annotation_format: str
-    sequential: bool
-    generate_metadata: bool
+    sequential: Optional[bool]
+    generate_metadata: Optional[bool]
     description: Optional[str] = None
     project: Optional[dict] = None
     type: str

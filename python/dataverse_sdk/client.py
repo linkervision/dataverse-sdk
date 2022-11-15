@@ -4,7 +4,7 @@ from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
 from .schemas.api import AttributeAPISchema, OntologyAPISchema
-from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
+from .schemas.client import DataConfig, Dataset, DataSource, Ontology, Project, Sensor
 
 
 class DataverseClient:
@@ -131,7 +131,7 @@ class DataverseClient:
         return Project(client=self, **project_data)
 
     def create_dataset(
-        self, name: str, source: DataSource, project: Project, dataset: dict
+        self, name: str, source: DataSource, project: Project, dataset: DataConfig
     ) -> Dataset:
         """Creates dataset
         Parameters
@@ -159,7 +159,7 @@ class DataverseClient:
                     name=name,
                     source=source,
                     project=project.dict(),
-                    dataset=dataset,
+                    dataset=dataset.dict(),
                 )
             except Exception as e:
                 raise ClientConnectionError(f"Failed to create the dataset: {e}")
