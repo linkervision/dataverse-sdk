@@ -151,20 +151,21 @@ class DataverseClient:
         Raises
         ------
         ClientConnectionError
-            raise exception if there is any error occurs
+            raise exception if there is any error occurs when creating dataset
+        NotImplementedError
+            raise error if datasource is not supported
         """
-        if source in [DataSource.Azure, DataSource.AWS]:
-            try:
-                dataset_data: dict = self._api_client.create_dataset(
-                    name=name,
-                    source=source,
-                    project=project.dict(),
-                    dataset=dataset.dict(),
-                )
-            except Exception as e:
-                raise ClientConnectionError(f"Failed to create the dataset: {e}")
-        # TODO: add local upload here
-        else:
+        if source not in {DataSource.Azure, DataSource.AWS}:
             raise NotImplementedError
+        # TODO: add local upload here
+        try:
+            dataset_data: dict = self._api_client.create_dataset(
+                name=name,
+                source=source,
+                project=project.dict(),
+                dataset=dataset.dict(),
+            )
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create the dataset: {e}")
 
         return Dataset(client=self, **dataset_data)

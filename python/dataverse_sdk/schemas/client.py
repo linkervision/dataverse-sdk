@@ -4,7 +4,15 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
-from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
+from .common import (
+    AnnotationFormat,
+    AttributeType,
+    DatasetStatus,
+    DatasetType,
+    OntologyImageType,
+    OntologyPcdType,
+    SensorType,
+)
 
 
 class AttributeOption(BaseModel):
@@ -73,7 +81,7 @@ class DataSource(str, Enum):
 
     Azure = "azure"
     AWS = "aws"
-    LOCAL = "local"
+    SDK = "sdk"
 
 
 class DataConfig(BaseModel):
@@ -104,25 +112,27 @@ class Project(BaseModel):
         super().__init__(**kwargs)
 
     def create_dataset(self, name: str, source: DataSource, dataset: DataConfig):
-        if self.client is not None:
-            dataset_output = self.client.create_dataset(
-                name=name, source=source, project=self, dataset=dataset
-            )
-            return dataset_output
-        else:
+
+        if not self.client:
             raise NotImplementedError("ClientServer is not defined")
+
+        dataset_output = self.client.create_dataset(
+            name=name, source=source, project=self, dataset=dataset
+        )
+        return dataset_output
 
 
 class Dataset(BaseModel):
     id: Optional[int] = None
+    project: Project
     name: str
-    data_source: str
-    annotation_format: str
-    sequential: Optional[bool]
-    generate_metadata: Optional[bool]
+    type: DatasetType
+    data_source: DataSource
+    annotation_format: AnnotationFormat
+    status: DatasetStatus
+    sequential: bool = False
+    generate_metadata: bool = False
     description: Optional[str] = None
-    project: Optional[dict] = None
-    type: str
     file_count: Optional[int] = None
     image_count: Optional[int] = None
     pcd_count: Optional[int] = None
@@ -130,4 +140,3 @@ class Dataset(BaseModel):
     client: Optional[object] = None
     container_name: Optional[str] = None
     storage_url: Optional[str] = None
-    status: str
