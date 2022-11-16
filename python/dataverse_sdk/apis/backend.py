@@ -158,7 +158,20 @@ class BackendAPI:
         return resp.json()
 
     def create_dataset(
-        self, name: str, source: str, project: dict, dataset: dict
+        self,
+        name: str,
+        data_source: str,
+        project_id: int,
+        sensor_ids: list[int],
+        type: str,
+        annotation_format: str,
+        storage_url: str,
+        data_folder: str,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
@@ -166,18 +179,18 @@ class BackendAPI:
             headers=self.headers,
             data={
                 "name": name,
-                "project_id": project["id"],
-                "sensor_ids": [sensor["id"] for sensor in project["sensors"]],
-                "data_source": source,
-                "storage_url": dataset["storage_url"],
-                "container_name": dataset["container_name"],
-                "data_folder": dataset["data_folder"],
-                "sas_token": dataset["sas_token"],
-                "type": dataset["type"],
-                "sequential": dataset["sequential"],
-                "annotation_format": dataset["annotation_format"],
-                "generate_metadata": dataset["generate_metadata"],
-                "description": dataset["description"],
+                "project_id": project_id,
+                "sensor_ids": sensor_ids,
+                "data_source": data_source,
+                "storage_url": storage_url,
+                "container_name": container_name,
+                "data_folder": data_folder,
+                "sas_token": sas_token,
+                "type": type,
+                "sequential": sequential,
+                "annotation_format": annotation_format,
+                "generate_metadata": generate_metadata,
+                "description": description,
             },
         )
         return resp.json()

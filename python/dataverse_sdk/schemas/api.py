@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
+from .client import AnnotationFormat, DatasetType, DataSource
 from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
 
 
@@ -75,3 +76,19 @@ class ProjectAPISchema(BaseModel):
     ego_car: Optional[str] = None
     ontology_data: OntologyAPISchema
     sensor_data: list[SensorAPISchema]
+
+
+class DatasetAPISchema(BaseModel):
+    name: str
+    project_id: int
+    sensor_ids: list[int]
+    data_source: DataSource
+    type: DatasetType
+    annotation_format: AnnotationFormat
+    storage_url: str
+    data_folder: str
+    container_name: Optional[str] = None
+    sas_token: Optional[str] = None
+    sequential: bool = False
+    generate_metadata: bool = False
+    description: Optional[str] = None

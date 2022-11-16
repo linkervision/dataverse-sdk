@@ -3,8 +3,9 @@ from typing import Optional
 from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
-from .schemas.api import AttributeAPISchema, OntologyAPISchema
-from .schemas.client import DataConfig, Dataset, DataSource, Ontology, Project, Sensor
+from .schemas.api import AttributeAPISchema, DatasetAPISchema, OntologyAPISchema
+from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
+from .schemas.common import AnnotationFormat, DatasetType
 
 
 class DataverseClient:
@@ -131,7 +132,20 @@ class DataverseClient:
         return Project(client=self, **project_data)
 
     def create_dataset(
-        self, name: str, source: DataSource, project: Project, dataset: DataConfig
+        self,
+        name: str,
+        data_source: DataSource,
+        project: Project,
+        sensors: list[Sensor],
+        type: DatasetType,
+        annotation_format: AnnotationFormat,
+        storage_url: str,
+        data_folder: str,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        description: Optional[str] = None,
     ) -> Dataset:
         """Creates dataset
         Parameters
@@ -155,17 +169,32 @@ class DataverseClient:
         NotImplementedError
             raise error if datasource is not supported
         """
-        if source not in {DataSource.Azure, DataSource.AWS}:
+        sensor_ids = [sensor.id for sensor in sensors]
+        project_id = project.id
+        datasetapi_data = DatasetAPISchema(
+            name=name,
+            project_id=project_id,
+            sensor_ids=sensor_ids,
+            data_source=data_source,
+            type=type,
+            annotation_format=annotation_format,
+            storage_url=storage_url,
+            container_name=container_name,
+            data_folder=data_folder,
+            sas_token=sas_token,
+            sequential=sequential,
+            generate_metadata=generate_metadata,
+            description=description,
+        ).dict(exclude_none=True)
+
+        if data_source not in {DataSource.Azure, DataSource.AWS}:
             raise NotImplementedError
         # TODO: add local upload here
         try:
-            dataset_data: dict = self._api_client.create_dataset(
-                name=name,
-                source=source,
-                project=project.dict(),
-                dataset=dataset.dict(),
-            )
+            dataset_data: dict = self._api_client.create_dataset(**datasetapi_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the dataset: {e}")
+        dataset_data.pop("project")
+        dataset_data.pop("sensors")
 
-        return Dataset(client=self, **dataset_data)
+        return Dataset(client=self, project=project, sensors=sensors, **dataset_data)

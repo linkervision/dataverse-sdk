@@ -111,13 +111,39 @@ class Project(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def create_dataset(self, name: str, source: DataSource, dataset: DataConfig):
+    def create_dataset(
+        self,
+        name: str,
+        data_source: DataSource,
+        sensors: list[Sensor],
+        type: DatasetType,
+        annotation_format: AnnotationFormat,
+        storage_url: str,
+        data_folder: str,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        description: Optional[str] = None,
+    ):
 
         if not self.client:
             raise NotImplementedError("ClientServer is not defined")
 
         dataset_output = self.client.create_dataset(
-            name=name, source=source, project=self, dataset=dataset
+            name=name,
+            data_source=data_source,
+            project=self,
+            sensors=sensors,
+            type=type,
+            annotation_format=annotation_format,
+            storage_url=storage_url,
+            container_name=container_name,
+            data_folder=data_folder,
+            sas_token=sas_token,
+            sequential=sequential,
+            generate_metadata=generate_metadata,
+            description=description,
         )
         return dataset_output
 
@@ -125,6 +151,7 @@ class Project(BaseModel):
 class Dataset(BaseModel):
     id: Optional[int] = None
     project: Project
+    sensors: list[Sensor]
     name: str
     type: DatasetType
     data_source: DataSource
@@ -140,3 +167,6 @@ class Dataset(BaseModel):
     client: Optional[object] = None
     container_name: Optional[str] = None
     storage_url: Optional[str] = None
+
+    class Config:
+        extra = "allow"
