@@ -123,28 +123,46 @@ class Project(BaseModel):
         generate_metadata: bool = False,
         description: Optional[str] = None,
     ):
-        """Create Dataset from project
+        """Create Dataset From project itself
 
-        Args:
-            name (str): name of dataset
-            data_source (DataSource): the DataSource basemodel of the given dataset
-            sensors (list[Sensor]): list of Sensor basemodel
-            type (DatasetType): datasettype (annotation or raw)
-            annotation_format (AnnotationFormat): annotation format
-            storage_url (str): dataset storage url
-            data_folder (str): dataset storage folder
-            container_name (Optional[str], optional): container name for Azure, Defaults to None.
-            sas_token (Optional[str], optional): sas token for Azure, Defaults to None.
-            sequential (bool, optional): sequential or not. Defaults to False.
-            generate_metadata (bool, optional): generate metadata or not. Defaults to False.
-            description (Optional[str], optional): description of dataset. Defaults to None.
+        Parameters
+        ----------
+        name : str
+            name of dataset
+        data_source : DataSource
+            the DataSource basemodel of the given dataset
+        sensors : list[Sensor]
+            list of Sensor basemodel
+        type : DatasetType
+            datasettype (annotation or raw)
+        annotation_format : AnnotationFormat
+            format type of annotation
+        storage_url : str
+            storage url for cloud
+        data_folder : str
+            data folder of the storage
+        container_name : Optional[str], optional
+            container name for Azure, by default None
+        sas_token : Optional[str], optional
+            SAStoken for Azure, by default None
+        sequential : bool, optional
+            sequential or not., by default False
+        generate_metadata : bool, optional
+            generate meta data or not, by default False
+        description : Optional[str], optional
+            description of the dataset, by default None
 
-        Raises:
-            ClientConnectionError: raise error if client is not exist
+        Returns
+        -------
+        Dataset
+            Dataset Basemodel
 
-        Returns:
-            Dataset: Dataset Basemodel
+        Raises
+        ------
+        ClientConnectionError
+            raise error if client is not exist
         """
+
         try:
             import config
 

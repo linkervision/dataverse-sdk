@@ -136,14 +136,23 @@ class DataverseClient:
 
     def get_project(self, project_id: int):
         """Get project detail by project-id
-        Args:
-            project_id (int): project-id in db
-        Raises:
-            ClientConnectionError: raise error if there is any error occurs
-        Returns:
-            project:  Project
-                Project basemodel from host response for client usage
+
+        Parameters
+        ----------
+        project_id : int
+            project-id in db
+
+        Returns
+        -------
+        Project
+            Project basemodel from host response for client usage
+
+        Raises
+        ------
+        ClientConnectionError
+            raise error if there is any error occurs
         """
+
         try:
             project_data: dict = self._api_client.get_project(project_id=project_id)
         except Exception as e:
@@ -166,29 +175,48 @@ class DataverseClient:
         generate_metadata: bool = False,
         description: Optional[str] = None,
     ) -> Dataset:
-        """Creates dataset
+        """Create Dataset
 
-        Args:
-            name (str): name of dataset
-            data_source (DataSource): the DataSource basemodel of the given dataset
-            project (Project): Project basemodel from host response for client usage
-            sensors (list[Sensor]): list of Sensor basemodel
-            type (DatasetType): datasettype (annotation or raw)
-            annotation_format (AnnotationFormat): annotation format
-            storage_url (str): dataset storage url
-            data_folder (str): dataset storage folder
-            container_name (Optional[str], optional): container name for Azure, Defaults to None.
-            sas_token (Optional[str], optional): sas token for Azure, Defaults to None.
-            sequential (bool, optional): sequential or not. Defaults to False.
-            generate_metadata (bool, optional): generate metadata or not. Defaults to False.
-            description (Optional[str], optional): description of dataset. Defaults to None.
+        Parameters
+        ----------
+        name : str
+            name of dataset
+        data_source : DataSource
+            the DataSource basemodel of the given dataset
+        project : Project
+            Project basemodel
+        sensors : list[Sensor]
+            list of Sensor basemodel
+        type : DatasetType
+            datasettype (annotation or raw)
+        annotation_format : AnnotationFormat
+            format type of annotation
+        storage_url : str
+            storage url for cloud
+        data_folder : str
+            data folder of the storage
+        container_name : Optional[str], optional
+            container name for Azure, by default None
+        sas_token : Optional[str], optional
+            SAStoken for Azure, by default None
+        sequential : bool, optional
+            sequential or not., by default False
+        generate_metadata : bool, optional
+            generate meta data or not, by default False
+        description : Optional[str], optional
+            description of the dataset, by default None
 
-        Raises:
-            NotImplementedError: raise error if datasource is not supported
-            ClientConnectionError: raise exception if there is any error occurs when creating dataset
+        Returns
+        -------
+        Dataset
+            Dataset Basemodel
 
-        Returns:
-            Dataset: Dataset Basemodel
+        Raises
+        ------
+        NotImplementedError
+            raise error if datasource is not supported
+        ClientConnectionError
+             raise exception if there is any error occurs when creating dataset
         """
 
         sensor_ids = [sensor.id for sensor in sensors]
