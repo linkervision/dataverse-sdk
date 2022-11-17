@@ -123,6 +123,28 @@ class Project(BaseModel):
         generate_metadata: bool = False,
         description: Optional[str] = None,
     ):
+        """Create Dataset from project
+
+        Args:
+            name (str): name of dataset
+            data_source (DataSource): the DataSource basemodel of the given dataset
+            sensors (list[Sensor]): list of Sensor basemodel
+            type (DatasetType): datasettype (annotation or raw)
+            annotation_format (AnnotationFormat): annotation format
+            storage_url (str): dataset storage url
+            data_folder (str): dataset storage folder
+            container_name (Optional[str], optional): container name for Azure, Defaults to None.
+            sas_token (Optional[str], optional): sas token for Azure, Defaults to None.
+            sequential (bool, optional): sequential or not. Defaults to False.
+            generate_metadata (bool, optional): generate metadata or not. Defaults to False.
+            description (Optional[str], optional): description of dataset. Defaults to None.
+
+        Raises:
+            ClientConnectionError: raise error if client is not exist
+
+        Returns:
+            Dataset: Dataset Basemodel
+        """
         try:
             import config
 

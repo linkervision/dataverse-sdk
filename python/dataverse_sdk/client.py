@@ -123,8 +123,9 @@ class DataverseClient:
         ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
         sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
         # TODO: projectAPIschema
+        apiclient = self.get_current_client()
         try:
-            project_data: dict = self._api_client.create_project(
+            project_data: dict = apiclient.create_project(
                 name=name,
                 ontology_data=ontology_data,
                 sensor_data=sensor_data,
@@ -166,27 +167,30 @@ class DataverseClient:
         description: Optional[str] = None,
     ) -> Dataset:
         """Creates dataset
-        Parameters
-        ----------
-        name : str
-            name of dataset
-        source : DataSource
-            the DataSource basemodel of the given dataset
-        project_info: Project
-            Project basemodel from host response for client usage
-        dataset: dict
-            Dataset infomation from config or user setting
-        Returns
-        -------
-        project : Project
-            Project basemodel from host response for client usage
-        Raises
-        ------
-        ClientConnectionError
-            raise exception if there is any error occurs when creating dataset
-        NotImplementedError
-            raise error if datasource is not supported
+
+        Args:
+            name (str): name of dataset
+            data_source (DataSource): the DataSource basemodel of the given dataset
+            project (Project): Project basemodel from host response for client usage
+            sensors (list[Sensor]): list of Sensor basemodel
+            type (DatasetType): datasettype (annotation or raw)
+            annotation_format (AnnotationFormat): annotation format
+            storage_url (str): dataset storage url
+            data_folder (str): dataset storage folder
+            container_name (Optional[str], optional): container name for Azure, Defaults to None.
+            sas_token (Optional[str], optional): sas token for Azure, Defaults to None.
+            sequential (bool, optional): sequential or not. Defaults to False.
+            generate_metadata (bool, optional): generate metadata or not. Defaults to False.
+            description (Optional[str], optional): description of dataset. Defaults to None.
+
+        Raises:
+            NotImplementedError: raise error if datasource is not supported
+            ClientConnectionError: raise exception if there is any error occurs when creating dataset
+
+        Returns:
+            Dataset: Dataset Basemodel
         """
+
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         datasetapi_data = DatasetAPISchema(
