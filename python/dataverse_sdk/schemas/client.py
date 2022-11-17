@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
+from ..exceptions.client import ClientConnectionError
 from .common import (
     AnnotationFormat,
     AttributeType,
@@ -106,10 +107,6 @@ class Project(BaseModel):
     ego_car: Optional[str] = None
     ontology: Ontology
     sensors: list[Sensor]
-    client: Optional[object] = None
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     def create_dataset(
         self,
@@ -126,11 +123,13 @@ class Project(BaseModel):
         generate_metadata: bool = False,
         description: Optional[str] = None,
     ):
+        try:
+            import config
 
-        if not self.client:
-            raise NotImplementedError("ClientServer is not defined")
-
-        dataset_output = self.client.create_dataset(
+            client = config._client
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get client info: {e}")
+        dataset_output = client.create_dataset(
             name=name,
             data_source=data_source,
             project=self,
@@ -164,7 +163,6 @@ class Dataset(BaseModel):
     image_count: Optional[int] = None
     pcd_count: Optional[int] = None
     created_by: Optional[int] = None
-    client: Optional[object] = None
     container_name: Optional[str] = None
     storage_url: Optional[str] = None
 

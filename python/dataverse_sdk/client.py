@@ -9,6 +9,9 @@ from .schemas.common import AnnotationFormat, DatasetType
 
 
 class DataverseClient:
+
+    __client = None
+
     def __init__(
         self,
         host: DataverseHost,
@@ -40,6 +43,13 @@ class DataverseClient:
             access_token=access_token,
             refresh_token=refresh_token,
         )
+        if DataverseClient.__client is not None:
+            raise Exception("This class is a singleton class !")
+        else:
+            DataverseClient.__client = self._api_client
+            import config
+
+            config._client = self
 
     def _init_api_client(
         self,
@@ -59,6 +69,13 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
+
+    @staticmethod
+    def get_current_client():
+        if DataverseClient.__client is None:
+            raise ClientConnectionError("Failed to get client info!")
+        else:
+            return DataverseClient.__client
 
     def create_project(
         self, name: str, ontology: Ontology, sensors: list[Sensor]
@@ -105,6 +122,7 @@ class DataverseClient:
         raw_ontology_data["ontology_classes_data"] = classes_data_list
         ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
         sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
+        # TODO: projectAPIschema
         try:
             project_data: dict = self._api_client.create_project(
                 name=name,
@@ -113,7 +131,7 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
-        return Project(client=self, **project_data)
+        return Project(**project_data)
 
     def get_project(self, project_id: int):
         """Get project detail by project-id
@@ -129,7 +147,7 @@ class DataverseClient:
             project_data: dict = self._api_client.get_project(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
-        return Project(client=self, **project_data)
+        return Project(**project_data)
 
     def create_dataset(
         self,
@@ -190,11 +208,12 @@ class DataverseClient:
         if data_source not in {DataSource.Azure, DataSource.AWS}:
             raise NotImplementedError
         # TODO: add local upload here
+        apiclient = self.get_current_client()
         try:
-            dataset_data: dict = self._api_client.create_dataset(**datasetapi_data)
+            dataset_data: dict = apiclient.create_dataset(**datasetapi_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the dataset: {e}")
         dataset_data.pop("project")
         dataset_data.pop("sensors")
 
-        return Dataset(client=self, project=project, sensors=sensors, **dataset_data)
+        return Dataset(project=project, sensors=sensors, **dataset_data)
