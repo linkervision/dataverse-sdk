@@ -1,9 +1,19 @@
 import re
+from enum import Enum
 from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
-from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
+from ..exceptions.client import ClientConnectionError
+from .common import (
+    AnnotationFormat,
+    AttributeType,
+    DatasetStatus,
+    DatasetType,
+    OntologyImageType,
+    OntologyPcdType,
+    SensorType,
+)
 
 
 class AttributeOption(BaseModel):
@@ -68,6 +78,28 @@ class Ontology(BaseModel):
         use_enum_values = True
 
 
+class DataSource(str, Enum):
+
+    Azure = "azure"
+    AWS = "aws"
+    SDK = "sdk"
+
+
+class DataConfig(BaseModel):
+    storage_url: str
+    container_name: Optional[str]
+    sas_token: Optional[str]
+    data_folder: str
+    sequential: bool
+    generate_metadata: bool
+    description: Optional[str]
+    type: str
+    annotation_format: str
+
+    class Config:
+        extra = "allow"
+
+
 class Project(BaseModel):
     id: Optional[int] = None
     name: str
@@ -75,3 +107,104 @@ class Project(BaseModel):
     ego_car: Optional[str] = None
     ontology: Ontology
     sensors: list[Sensor]
+
+    def create_dataset(
+        self,
+        name: str,
+        data_source: DataSource,
+        sensors: list[Sensor],
+        type: DatasetType,
+        annotation_format: AnnotationFormat,
+        storage_url: str,
+        data_folder: str,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        description: Optional[str] = None,
+    ):
+        """Create Dataset From project itself
+
+        Parameters
+        ----------
+        name : str
+            name of dataset
+        data_source : DataSource
+            the DataSource basemodel of the given dataset
+        sensors : list[Sensor]
+            list of Sensor basemodel
+        type : DatasetType
+            datasettype (annotation or raw)
+        annotation_format : AnnotationFormat
+            format type of annotation
+        storage_url : str
+            storage url for cloud
+        data_folder : str
+            data folder of the storage
+        container_name : Optional[str], optional
+            container name for Azure, by default None
+        sas_token : Optional[str], optional
+            SAStoken for Azure, by default None
+        sequential : bool, optional
+            sequential or not., by default False
+        generate_metadata : bool, optional
+            generate meta data or not, by default False
+        description : Optional[str], optional
+            description of the dataset, by default None
+
+        Returns
+        -------
+        Dataset
+            Dataset Basemodel
+
+        Raises
+        ------
+        ClientConnectionError
+            raise error if client is not exist
+        """
+
+        try:
+            import config
+
+            client = config._client
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get client info: {e}")
+        dataset_output = client.create_dataset(
+            name=name,
+            data_source=data_source,
+            project=self,
+            sensors=sensors,
+            type=type,
+            annotation_format=annotation_format,
+            storage_url=storage_url,
+            container_name=container_name,
+            data_folder=data_folder,
+            sas_token=sas_token,
+            sequential=sequential,
+            generate_metadata=generate_metadata,
+            description=description,
+        )
+        return dataset_output
+
+
+class Dataset(BaseModel):
+    id: Optional[int] = None
+    project: Project
+    sensors: list[Sensor]
+    name: str
+    type: DatasetType
+    data_source: DataSource
+    annotation_format: AnnotationFormat
+    status: DatasetStatus
+    sequential: bool = False
+    generate_metadata: bool = False
+    description: Optional[str] = None
+    file_count: Optional[int] = None
+    image_count: Optional[int] = None
+    pcd_count: Optional[int] = None
+    created_by: Optional[int] = None
+    container_name: Optional[str] = None
+    storage_url: Optional[str] = None
+
+    class Config:
+        extra = "allow"

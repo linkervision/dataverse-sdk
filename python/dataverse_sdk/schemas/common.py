@@ -24,3 +24,18 @@ class OntologyPcdType(str, Enum):
 class SensorType(str, Enum):
     CAMERA = "camera"
     LIDAR = "lidar"
+
+
+class AnnotationFormat(str, Enum):
+    VISION_AI = "vision_ai"
+
+
+class DatasetType(str, Enum):
+    ANNOTATED_DATA = "annotated_data"
+    RAW_DATA = "raw_data"
+
+
+class DatasetStatus(str, Enum):
+    PROCESSING = "processing"
+    FAIL = "fail"
+    READY = "ready"

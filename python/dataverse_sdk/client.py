@@ -3,11 +3,15 @@ from typing import Optional
 from .apis.backend import BackendAPI
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
-from .schemas.api import AttributeAPISchema, OntologyAPISchema
-from .schemas.client import Ontology, Project, Sensor
+from .schemas.api import AttributeAPISchema, DatasetAPISchema, OntologyAPISchema
+from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
+from .schemas.common import AnnotationFormat, DatasetType
 
 
 class DataverseClient:
+
+    __client = None
+
     def __init__(
         self,
         host: DataverseHost,
@@ -39,6 +43,13 @@ class DataverseClient:
             access_token=access_token,
             refresh_token=refresh_token,
         )
+        if DataverseClient.__client is not None:
+            raise Exception("This class is a singleton class !")
+        else:
+            DataverseClient.__client = self._api_client
+            import config
+
+            config._client = self
 
     def _init_api_client(
         self,
@@ -58,6 +69,13 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
+
+    @staticmethod
+    def get_current_client():
+        if DataverseClient.__client is None:
+            raise ClientConnectionError("Failed to get client info!")
+        else:
+            return DataverseClient.__client
 
     def create_project(
         self, name: str, ontology: Ontology, sensors: list[Sensor]
@@ -104,8 +122,10 @@ class DataverseClient:
         raw_ontology_data["ontology_classes_data"] = classes_data_list
         ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
         sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
+        # TODO: projectAPIschema
+        apiclient = self.get_current_client()
         try:
-            project_data: dict = self._api_client.create_project(
+            project_data: dict = apiclient.create_project(
                 name=name,
                 ontology_data=ontology_data,
                 sensor_data=sensor_data,
@@ -113,3 +133,119 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project(**project_data)
+
+    def get_project(self, project_id: int):
+        """Get project detail by project-id
+
+        Parameters
+        ----------
+        project_id : int
+            project-id in db
+
+        Returns
+        -------
+        Project
+            Project basemodel from host response for client usage
+
+        Raises
+        ------
+        ClientConnectionError
+            raise error if there is any error occurs
+        """
+
+        try:
+            project_data: dict = self._api_client.get_project(project_id=project_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the project: {e}")
+        return Project(**project_data)
+
+    def create_dataset(
+        self,
+        name: str,
+        data_source: DataSource,
+        project: Project,
+        sensors: list[Sensor],
+        type: DatasetType,
+        annotation_format: AnnotationFormat,
+        storage_url: str,
+        data_folder: str,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        description: Optional[str] = None,
+    ) -> Dataset:
+        """Create Dataset
+
+        Parameters
+        ----------
+        name : str
+            name of dataset
+        data_source : DataSource
+            the DataSource basemodel of the given dataset
+        project : Project
+            Project basemodel
+        sensors : list[Sensor]
+            list of Sensor basemodel
+        type : DatasetType
+            datasettype (annotation or raw)
+        annotation_format : AnnotationFormat
+            format type of annotation
+        storage_url : str
+            storage url for cloud
+        data_folder : str
+            data folder of the storage
+        container_name : Optional[str], optional
+            container name for Azure, by default None
+        sas_token : Optional[str], optional
+            SAStoken for Azure, by default None
+        sequential : bool, optional
+            sequential or not., by default False
+        generate_metadata : bool, optional
+            generate meta data or not, by default False
+        description : Optional[str], optional
+            description of the dataset, by default None
+
+        Returns
+        -------
+        Dataset
+            Dataset Basemodel
+
+        Raises
+        ------
+        NotImplementedError
+            raise error if datasource is not supported
+        ClientConnectionError
+             raise exception if there is any error occurs when creating dataset
+        """
+
+        sensor_ids = [sensor.id for sensor in sensors]
+        project_id = project.id
+        datasetapi_data = DatasetAPISchema(
+            name=name,
+            project_id=project_id,
+            sensor_ids=sensor_ids,
+            data_source=data_source,
+            type=type,
+            annotation_format=annotation_format,
+            storage_url=storage_url,
+            container_name=container_name,
+            data_folder=data_folder,
+            sas_token=sas_token,
+            sequential=sequential,
+            generate_metadata=generate_metadata,
+            description=description,
+        ).dict(exclude_none=True)
+
+        if data_source not in {DataSource.Azure, DataSource.AWS}:
+            raise NotImplementedError
+        # TODO: add local upload here
+        apiclient = self.get_current_client()
+        try:
+            dataset_data: dict = apiclient.create_dataset(**datasetapi_data)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create the dataset: {e}")
+        dataset_data.pop("project")
+        dataset_data.pop("sensors")
+
+        return Dataset(project=project, sensors=sensors, **dataset_data)

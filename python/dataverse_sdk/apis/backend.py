@@ -147,3 +147,50 @@ class BackendAPI:
         )
 
         return resp.json()
+
+    def get_project(self, project_id) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/{project_id}",
+            method="get",
+            headers=self.headers,
+            data={"id": project_id},
+        )
+        return resp.json()
+
+    def create_dataset(
+        self,
+        name: str,
+        data_source: str,
+        project_id: int,
+        sensor_ids: list[int],
+        type: str,
+        annotation_format: str,
+        storage_url: str,
+        data_folder: str,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/",
+            method="post",
+            headers=self.headers,
+            data={
+                "name": name,
+                "project_id": project_id,
+                "sensor_ids": sensor_ids,
+                "data_source": data_source,
+                "storage_url": storage_url,
+                "container_name": container_name,
+                "data_folder": data_folder,
+                "sas_token": sas_token,
+                "type": type,
+                "sequential": sequential,
+                "annotation_format": annotation_format,
+                "generate_metadata": generate_metadata,
+                "description": description,
+            },
+        )
+        return resp.json()
