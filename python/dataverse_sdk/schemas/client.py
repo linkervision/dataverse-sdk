@@ -121,7 +121,7 @@ class Project(BaseModel):
         sas_token: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        description: Optional[str] = None,
+        **kwargs
     ):
         """Create Dataset From project itself
 
@@ -182,7 +182,7 @@ class Project(BaseModel):
             sas_token=sas_token,
             sequential=sequential,
             generate_metadata=generate_metadata,
-            description=description,
+            **kwargs
         )
         return dataset_output
 

@@ -92,3 +92,9 @@ class DatasetAPISchema(BaseModel):
     sequential: bool = False
     generate_metadata: bool = False
     description: Optional[str] = None
+    calibration_folder: Optional[str] = None
+    annotation_file: Optional[str] = None
+    annotation_folder: Optional[str] = None
+    lidar_folder: Optional[str] = None
+    render_pcd: Optional[str] = None
+    extra_annotations: Optional[str] = None
