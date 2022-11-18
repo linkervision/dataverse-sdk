@@ -169,6 +169,7 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
+        render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
@@ -190,7 +191,8 @@ class BackendAPI:
                 "sequential": sequential,
                 "annotation_format": annotation_format,
                 "generate_metadata": generate_metadata,
-                "description": description,
+                "render_pcd": render_pcd,
+                "description": description if description else "",
             },
         )
         return resp.json()
