@@ -1,8 +1,8 @@
 from os import listdir
 from os.path import isfile, join
 
-    
-def get_file_recursive(path) -> list[str]:
+
+def get_filepaths(path: str) -> list[str]:
     dirs: list[str] = listdir(path)
     all_files = []
     for _dir in dirs:
@@ -10,5 +10,5 @@ def get_file_recursive(path) -> list[str]:
         if isfile(new_path):
             all_files.append(new_path)
         else:
-            all_files.extend(get_file_recursive(new_path))
+            all_files.extend(get_filepaths(new_path))
     return all_files
