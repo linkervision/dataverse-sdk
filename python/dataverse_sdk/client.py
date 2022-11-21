@@ -345,9 +345,6 @@ class DataverseClient:
                 file_dict=dict(),
             )
         except Exception as e:
-            api.update_dataset(
-                dataset_id=dataset_data["id"], memo=str(e), status="fail"
-            )
             raise ClientConnectionError(f"failed to upload files: {e}")
 
         return Dataset(project=project, sensors=sensors, **dataset_data)
