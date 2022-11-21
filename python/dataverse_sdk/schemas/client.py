@@ -154,6 +154,7 @@ class Project(BaseModel):
         generate_metadata: bool = False,
         render_pcd: bool = False,
         description: Optional[str] = None,
+        **kwargs,
     ):
         """Create Dataset From project itself
 
@@ -213,6 +214,7 @@ class Project(BaseModel):
             generate_metadata=generate_metadata,
             render_pcd=render_pcd,
             description=description,
+            **kwargs,
         )
         return dataset_output
 
