@@ -196,6 +196,7 @@ class BackendAPI:
         )
         return resp.json()
 
+    # TODO: add dataset response schema
     def get_dataset(self, dataset_id: int):
         resp = self.send_request(
             url=f"{self.host}/api/datasets/{dataset_id}/",
