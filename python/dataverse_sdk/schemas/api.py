@@ -91,6 +91,7 @@ class DatasetAPISchema(BaseModel):
     sas_token: Optional[str] = None
     sequential: bool = False
     generate_metadata: bool = False
+    render_pcd: bool = False
     description: Optional[str] = None
     calibration_folder: Optional[str] = None
     annotation_file: Optional[str] = None

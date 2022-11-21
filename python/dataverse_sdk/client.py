@@ -1,18 +1,23 @@
 from typing import Optional
 
+from pydantic import ValidationError
+
 from .apis.backend import BackendAPI
+from .connections import add_connection, get_connection
 from .constants import DataverseHost
-from .exceptions.client import ClientConnectionError, InvalidParameters
-from .schemas.api import AttributeAPISchema, DatasetAPISchema, OntologyAPISchema
+from .exceptions.client import ClientConnectionError
+from .schemas.api import (
+    AttributeAPISchema,
+    DatasetAPISchema,
+    OntologyAPISchema,
+    ProjectAPISchema,
+)
 from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
 from .schemas.common import AnnotationFormat, DatasetType
 from os.path import isfile
 from .utils.utils import get_file_recursive
 
 class DataverseClient:
-
-    __client = None
-
     def __init__(
         self,
         host: DataverseHost,
@@ -20,6 +25,7 @@ class DataverseClient:
         password: Optional[str] = None,
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
+        alias: str = "default",
     ) -> None:
         """
         Instantiate a Dataverse client.
@@ -44,13 +50,7 @@ class DataverseClient:
             access_token=access_token,
             refresh_token=refresh_token,
         )
-        if DataverseClient.__client is not None:
-            raise Exception("This class is a singleton class !")
-        else:
-            DataverseClient.__client = self._api_client
-            import config
-
-            config._client = self
+        add_connection(alias=alias, conn=self)
 
     def _init_api_client(
         self,
@@ -72,14 +72,19 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
 
     @staticmethod
-    def get_current_client():
-        if DataverseClient.__client is None:
-            raise ClientConnectionError("Failed to get client info!")
-        else:
-            return DataverseClient.__client
+    def get_client(alias: str = "default") -> "DataverseClient":
+        try:
+            return get_connection(alias)
+        except KeyError:
+            raise
 
+    @staticmethod
     def create_project(
-        self, name: str, ontology: Ontology, sensors: list[Sensor]
+        name: str,
+        ontology: Ontology,
+        sensors: list[Sensor],
+        description: Optional[str] = None,
+        client: Optional["DataverseClient"] = None,
     ) -> Project:
         """Creates project from client data
         Parameters
@@ -90,6 +95,9 @@ class DataverseClient:
             the Ontology basemodel data of current project
         sensors : list[Sensor]
             the list of Sensor basemodel data of current project
+        client : Optional[DataverseClient]
+            the client to be used to create the project, will use the default client if it's None
+
         Returns
         -------
         project : Project
@@ -97,14 +105,23 @@ class DataverseClient:
 
         Raises
         ------
+        ValidationError
+            raise exception if there is any error occurs when composing the request body.
         ClientConnectionError
-            raise exception if there is any error occurs
+            raise exception if there is any error occurs when calling backend APIs.
         """
+        if client is None:
+            client = DataverseClient.get_client()
+
         raw_ontology_data: dict = ontology.dict(exclude_none=True)
         classes_data_list: list[dict] = []
+        rank = 1
         # remove `id` field in OntologyClass and Attribute
         for cls_ in raw_ontology_data.pop("classes", []):
             cls_.pop("id", None)
+            if rank not in cls_:
+                cls_["rank"] = rank
+                rank += 1
             if not (cur_attrs := cls_.pop("attributes", None)):
                 classes_data_list.append(cls_)
                 continue
@@ -123,17 +140,24 @@ class DataverseClient:
         raw_ontology_data["ontology_classes_data"] = classes_data_list
         ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
         sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
-        # TODO: projectAPIschema
-        api = self.get_current_client()
+
         try:
-            project_data: dict = api.create_project(
+            raw_project_data = ProjectAPISchema(
                 name=name,
                 ontology_data=ontology_data,
                 sensor_data=sensor_data,
+                description=description,
+            ).dict(exclude_none=True)
+        except ValidationError as e:
+            raise ValidationError(
+                f"Something wrong when composing the final project data: {e}"
             )
+
+        try:
+            project_data: dict = client._api_client.create_project(**raw_project_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
-        return Project(**project_data)
+        return Project.create(project_data)
 
     def get_project(self, project_id: int):
         """Get project detail by project-id
@@ -151,17 +175,17 @@ class DataverseClient:
         Raises
         ------
         ClientConnectionError
-            raise error if there is any error occurs
+            raise exception if there is any error occurs when calling backend APIs.
         """
 
         try:
             project_data: dict = self._api_client.get_project(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
-        return Project(**project_data)
+        return Project.create(project_data)
 
+    @staticmethod
     def create_dataset(
-        self,
         name: str,
         data_source: DataSource,
         project: Project,
@@ -174,7 +198,10 @@ class DataverseClient:
         sas_token: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        **kwargs,
+        render_pcd: bool = False,
+        description: Optional[str] = None,
+        client: Optional["DataverseClient"] = None,
+        **kwargs
     ) -> Dataset:
         """Create Dataset
 
@@ -206,6 +233,10 @@ class DataverseClient:
             generate meta data or not, by default False
         description : Optional[str], optional
             description of the dataset, by default None
+        render_pcd : bool, optional
+            render pcd preview image or not, be default False
+        client : Optional[DataverseClient]
+            the client to be used to create the dataset, will use the default client if it's None
 
         Returns
         -------
@@ -214,16 +245,22 @@ class DataverseClient:
 
         Raises
         ------
-        NotImplementedError
-            raise error if datasource is not supported
+        ValueError
+        ValidationError
+            raise exception if there is any error occurs when composing request body.
         ClientConnectionError
-             raise exception if there is any error occurs when creating dataset
+            raise exception if there is any error occurs when calling backend APIs.
         """
+        if data_source not in DataSource:
+            raise ValueError(f"Data source ({data_source}) is not supported currently.")
+
+        if client is None:
+            client = DataverseClient.get_client()
 
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:
-            dataset: dict = DatasetAPISchema(
+            raw_dataset_data: dict = DatasetAPISchema(
                 name=name,
                 project_id=project_id,
                 sensor_ids=sensor_ids,
@@ -236,26 +273,34 @@ class DataverseClient:
                 sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
+                render_pcd=render_pcd,
+                description=description
                 **kwargs
             ).dict(exclude_none=True)
-        except Exception as e:
-            raise InvalidParameters(f"Invalid parameters: {e}")
+        except ValidationError as e:
+            raise ValidationError(
+                f"Something wrong when composing the final dataset data: {e}"
+            )
 
-        api = self.get_current_client()
-        resp = self.__create_dataset(dataset, api)
+        api = client._api_client
+
+        try:
+            dataset_data = api.create_dataset(**raw_dataset_data)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create the dataset: {e}")
         if data_source in {DataSource.Azure, DataSource.AWS}:
-            resp.pop("project")
-            resp.pop("sensors")
-            return Dataset(project=project, sensors=sensors, **resp)
+            dataset_data.pop("project")
+            dataset_data.pop("sensors")
+            return Dataset(project=project, sensors=sensors, **dataset_data)
 
         ## start uploading from local
         folder_paths: list[Optional[str]] = [
-            dataset.get("data_folder"),
-            dataset.get("annotation_folder"),
-            dataset.get("calibration_folder"),
-            dataset.get("lidar_folder")
+            dataset_data.get("data_folder"),
+            dataset_data.get("annotation_folder"),
+            dataset_data.get("calibration_folder"),
+            dataset_data.get("lidar_folder")
         ]
-        annotation_file = dataset.get("annotation_file")
+        annotation_file = dataset_data.get("annotation_file")
 
         # find folders recursively
         all_filepaths: list[str] = []
@@ -273,7 +318,7 @@ class DataverseClient:
         # TODO: find a better way to get client_container_name
         # instead of request backend again
         # this client_container_name is generated by backend, its not truly from client
-        container_name: dict = api.get_dataset(resp["id"])["client_container_name"]
+        container_name: dict = api.get_dataset(dataset_data["id"])["client_container_name"]
 
         try:
             batch_size = 5
@@ -283,7 +328,7 @@ class DataverseClient:
                             }
 
                 api.upload_files(
-                    dataset_id=resp["id"],
+                    dataset_id=dataset_data["id"],
                     container_name=container_name,
                     file_dict=file_dict,
                     is_finished=False
@@ -291,19 +336,11 @@ class DataverseClient:
 
             ## request finished status to backend
             api.upload_files(
-                dataset_id=resp["id"],
+                dataset_id=dataset_data["id"],
                 container_name=container_name,
                 is_finished=True,
                 file_dict=dict()
             )
         except Exception as e:
-            api.update_dataset(dataset_id=resp["id"], status="fail")
+            api.update_dataset(dataset_id=dataset_data["id"], status="fail")
             raise ClientConnectionError(f"failed to upload files: {e}")
-
-
-    def __create_dataset(self, dataset: dict, api) -> dict:
-        try:
-            dataset_data: dict = api.create_dataset(**dataset)
-        except Exception as e:
-            raise ClientConnectionError(f"Failed to create the dataset: {e}")
-        return dataset_data

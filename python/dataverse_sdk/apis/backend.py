@@ -158,13 +158,41 @@ class BackendAPI:
 
     def create_dataset(
         self,
-        **kwargs
+        name: str,
+        data_source: str,
+        project_id: int,
+        sensor_ids: list[int],
+        type: str,
+        annotation_format: str,
+        storage_url: str,
+        data_folder: str,
+        sequential: bool = False,
+        generate_metadata: bool = False,
+        render_pcd: bool = False,
+        container_name: Optional[str] = None,
+        sas_token: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
             method="post",
             headers=self.headers,
-            data=kwargs,
+            data={
+                "name": name,
+                "project_id": project_id,
+                "sensor_ids": sensor_ids,
+                "data_source": data_source,
+                "storage_url": storage_url,
+                "container_name": container_name,
+                "data_folder": data_folder,
+                "sas_token": sas_token,
+                "type": type,
+                "sequential": sequential,
+                "annotation_format": annotation_format,
+                "generate_metadata": generate_metadata,
+                "render_pcd": render_pcd,
+                "description": description if description else "",
+            },
         )
         return resp.json()
 

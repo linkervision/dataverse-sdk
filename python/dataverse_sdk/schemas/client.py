@@ -1,15 +1,14 @@
 import re
-from enum import Enum
 from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
-from ..exceptions.client import ClientConnectionError
 from .common import (
     AnnotationFormat,
     AttributeType,
     DatasetStatus,
     DatasetType,
+    DataSource,
     OntologyImageType,
     OntologyPcdType,
     SensorType,
@@ -48,12 +47,16 @@ class Sensor(BaseModel):
     class Config:
         use_enum_values = True
 
+    @classmethod
+    def create(cls, sensor_data: dict) -> "Sensor":
+        return cls(**sensor_data)
+
 
 class OntologyClass(BaseModel):
     id: Optional[int] = None
     name: str
     color: str
-    rank: int
+    rank: Optional[int] = None
     attributes: Optional[list[Attribute]] = None
 
     @validator("color", each_item=True)
@@ -77,12 +80,25 @@ class Ontology(BaseModel):
     class Config:
         use_enum_values = True
 
-
-class DataSource(str, Enum):
-
-    Azure = "azure"
-    AWS = "aws"
-    SDK = "sdk"
+    @classmethod
+    def create(cls, ontology_data: dict) -> "Ontology":
+        classes = [
+            OntologyClass(
+                id=cls_["id"],
+                name=cls_["name"],
+                color=cls_["color"],
+                rank=cls_["rank"],
+                # TODO: attributes
+            )
+            for cls_ in ontology_data["classes"]
+        ]
+        return cls(
+            id=ontology_data["id"],
+            name=ontology_data["name"],
+            image_type=ontology_data["image_type"],
+            pcd_type=ontology_data["pcd_type"],
+            classes=classes,
+        )
 
 
 class DataConfig(BaseModel):
@@ -108,6 +124,21 @@ class Project(BaseModel):
     ontology: Ontology
     sensors: list[Sensor]
 
+    @classmethod
+    def create(cls, project_data: dict) -> "Project":
+        ontology = Ontology.create(project_data["ontology"])
+        sensors = [
+            Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
+        ]
+        return cls(
+            id=project_data["id"],
+            name=project_data["name"],
+            description=project_data["description"],
+            ego_car=project_data["ego_car"],
+            ontology=ontology,
+            sensors=sensors,
+        )
+
     def create_dataset(
         self,
         name: str,
@@ -121,7 +152,8 @@ class Project(BaseModel):
         sas_token: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        **kwargs
+        render_pcd: bool = False,
+        description: Optional[str] = None,
     ):
         """Create Dataset From project itself
 
@@ -149,6 +181,8 @@ class Project(BaseModel):
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
+        render_pcd : bool, optional
+            render pcd preview image or not, be default False
         description : Optional[str], optional
             description of the dataset, by default None
 
@@ -162,14 +196,9 @@ class Project(BaseModel):
         ClientConnectionError
             raise error if client is not exist
         """
+        from ..client import DataverseClient
 
-        try:
-            import config
-
-            client = config._client
-        except Exception as e:
-            raise ClientConnectionError(f"Failed to get client info: {e}")
-        dataset_output = client.create_dataset(
+        dataset_output = DataverseClient.create_dataset(
             name=name,
             data_source=data_source,
             project=self,
@@ -182,7 +211,8 @@ class Project(BaseModel):
             sas_token=sas_token,
             sequential=sequential,
             generate_metadata=generate_metadata,
-            **kwargs
+            render_pcd=render_pcd,
+            description=description,
         )
         return dataset_output
 
