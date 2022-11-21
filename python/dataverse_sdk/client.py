@@ -274,7 +274,7 @@ class DataverseClient:
                 sequential=sequential,
                 generate_metadata=generate_metadata,
                 render_pcd=render_pcd,
-                description=description
+                description=description,
                 **kwargs
             ).dict(exclude_none=True)
         except ValidationError as e:
@@ -288,19 +288,21 @@ class DataverseClient:
             dataset_data = api.create_dataset(**raw_dataset_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the dataset: {e}")
+
+        dataset_data.pop("project")
+        dataset_data.pop("sensors")
+
         if data_source in {DataSource.Azure, DataSource.AWS}:
-            dataset_data.pop("project")
-            dataset_data.pop("sensors")
             return Dataset(project=project, sensors=sensors, **dataset_data)
 
         ## start uploading from local
         folder_paths: list[Optional[str]] = [
-            dataset_data.get("data_folder"),
-            dataset_data.get("annotation_folder"),
-            dataset_data.get("calibration_folder"),
-            dataset_data.get("lidar_folder")
+            raw_dataset_data.get("data_folder"),
+            raw_dataset_data.get("annotation_folder"),
+            raw_dataset_data.get("calibration_folder"),
+            raw_dataset_data.get("lidar_folder")
         ]
-        annotation_file = dataset_data.get("annotation_file")
+        annotation_file = raw_dataset_data.get("annotation_file")
 
         # find folders recursively
         all_filepaths: list[str] = []
@@ -344,3 +346,5 @@ class DataverseClient:
         except Exception as e:
             api.update_dataset(dataset_id=dataset_data["id"], status="fail")
             raise ClientConnectionError(f"failed to upload files: {e}")
+
+        return Dataset(project=project, sensors=sensors, **dataset_data)
