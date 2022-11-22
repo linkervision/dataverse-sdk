@@ -1,3 +1,4 @@
+from os.path import isfile
 from typing import Optional
 
 from pydantic import ValidationError
@@ -14,6 +15,7 @@ from .schemas.api import (
 )
 from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
 from .schemas.common import AnnotationFormat, DatasetType
+from .utils.utils import get_filepaths
 
 
 class DataverseClient:
@@ -200,6 +202,7 @@ class DataverseClient:
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
+        **kwargs,
     ) -> Dataset:
         """Create Dataset
 
@@ -258,7 +261,7 @@ class DataverseClient:
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:
-            raw_dataset_data = DatasetAPISchema(
+            raw_dataset_data: dict = DatasetAPISchema(
                 name=name,
                 project_id=project_id,
                 sensor_ids=sensor_ids,
@@ -273,19 +276,75 @@ class DataverseClient:
                 generate_metadata=generate_metadata,
                 render_pcd=render_pcd,
                 description=description,
+                **kwargs,
             ).dict(exclude_none=True)
         except ValidationError as e:
             raise ValidationError(
                 f"Something wrong when composing the final dataset data: {e}"
             )
-        # TODO: add local upload here
+
+        api = client._api_client
 
         try:
-            dataset_data: dict = client._api_client.create_dataset(**raw_dataset_data)
+            dataset_data = api.create_dataset(**raw_dataset_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the dataset: {e}")
 
         dataset_data.pop("project")
         dataset_data.pop("sensors")
+
+        if data_source in {DataSource.Azure, DataSource.AWS}:
+            return Dataset(project=project, sensors=sensors, **dataset_data)
+
+        # start uploading from local
+        folder_paths: list[Optional[str]] = [
+            raw_dataset_data.get("data_folder"),
+            raw_dataset_data.get("annotation_folder"),
+            raw_dataset_data.get("calibration_folder"),
+            raw_dataset_data.get("lidar_folder"),
+        ]
+        annotation_file = raw_dataset_data.get("annotation_file")
+
+        all_filepaths: list[str] = []
+        for path in folder_paths:
+            if path is not None:
+                all_filepaths.extend(get_filepaths(path))
+
+        if annotation_file is not None:
+            if not isfile(annotation_file):
+                raise ValueError("annotation_file expects a file destination")
+
+            all_filepaths.append(annotation_file)
+
+        # TODO: find a better way to get client_container_name
+        # instead of request backend again (generated while create dataset)
+        container_name: dict = api.get_dataset(dataset_data["id"])[
+            "client_container_name"
+        ]
+
+        try:
+            batch_size = 5
+            for i in range(0, len(all_filepaths), batch_size):
+                file_dict: dict[str, bytes] = {
+                    fpath: open(fpath, "rb").read()
+                    for fpath in all_filepaths[i : i + batch_size]
+                }
+
+                api.upload_files(
+                    dataset_id=dataset_data["id"],
+                    container_name=container_name,
+                    file_dict=file_dict,
+                    is_finished=False,
+                )
+
+            # request finished status to backend
+            api.upload_files(
+                dataset_id=dataset_data["id"],
+                container_name=container_name,
+                is_finished=True,
+                file_dict=dict(),
+            )
+        except Exception as e:
+            raise ClientConnectionError(f"failed to upload files: {e}")
 
         return Dataset(project=project, sensors=sensors, **dataset_data)

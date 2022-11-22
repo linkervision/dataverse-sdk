@@ -30,6 +30,10 @@ class SensorType(str, Enum, metaclass=BaseEnumMeta):
 
 class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     VISION_AI = "vision_ai"
+    COCO = "coco"
+    BDDP = "bddp"
+    IMAGE = "image"
+    KITTI = "kitti"
 
 
 class DatasetType(str, Enum, metaclass=BaseEnumMeta):

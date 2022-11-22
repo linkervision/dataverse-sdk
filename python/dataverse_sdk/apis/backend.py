@@ -53,7 +53,10 @@ class BackendAPI:
             logger.error(msg)
             raise Exception(msg)
 
-        if isinstance(data, dict):
+        if (
+            isinstance(data, dict)
+            and kwargs.get("headers", {}).get("Content-Type") == "application/json"
+        ):
             data = json.dumps(data)
 
         parent_func = inspect.stack()[2][3]
@@ -153,7 +156,6 @@ class BackendAPI:
             url=f"{self.host}/api/projects/{project_id}",
             method="get",
             headers=self.headers,
-            data={"id": project_id},
         )
         return resp.json()
 
@@ -196,3 +198,51 @@ class BackendAPI:
             },
         )
         return resp.json()
+
+    # TODO: add dataset response schema
+    def get_dataset(self, dataset_id: int):
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/{dataset_id}/",
+            method="get",
+            headers=self.headers,
+        )
+
+        return resp.json()
+
+    def upload_files(
+        self,
+        dataset_id: int,
+        container_name: str,
+        is_finished: bool,
+        file_dict: dict[str, bytes],
+    ):
+
+        file_dict["json"] = (
+            None,
+            json.dumps(
+                {
+                    "dataset_id": dataset_id,
+                    "container_name": container_name,
+                    "is_finished": is_finished,
+                }
+            ),
+            "application/json",
+        )
+
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/upload-files/",
+            method="post",
+            headers={"Authorization": self.headers["Authorization"]},
+            files=file_dict,
+        )
+        return resp
+
+    def update_dataset(self, dataset_id: int, **kwargs):
+
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/{dataset_id}/",
+            method="patch",
+            headers=self.headers,
+            data=kwargs,
+        )
+        return resp
