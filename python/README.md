@@ -49,11 +49,11 @@ This section should include everything a developer needs to do to install and cr
 
 ### Install the package
 
-First, provide instruction for obtaining and installing the package or library. This section might include only a single line of code, like `pip install package-name`, but should enable a developer to successfully install the package from NuGet, pip, npm, Maven, or even cloning a GitHub repository.
+```
+pip install dataverse-sdk
+```
 
-Include a **Prerequisites** line after the install command that details any requirements that must be satisfied before a developer can [authenticate](#authenticate-the-client) and test all of the snippets in the [Examples](#examples) section. For example, for Cosmos DB:
-
-**Prerequisites**: You must have an [Azure subscription](https://azure.microsoft.com/free/), [Cosmos DB account](https://docs.microsoft.com/azure/cosmos-db/account-overview) (SQL API), and [Python 3.6+](https://www.python.org/downloads/) to use this package.
+**Prerequisites**: You must have an Dataverse Platform Account and [Python 3.9+](https://www.python.org/downloads/) to use this package.
 
 ### Authenticate the client
 
@@ -73,33 +73,77 @@ If possible, use the same example snippets that your in-code documentation uses.
 
 Each example in the *Examples* section starts with an H3 that describes the example. At the top of this section, just under the *Examples* H2, add a bulleted list linking to each example H3. Each example should deep-link to the types and/or members used in the example.
 
-* [Create the thing](#create-the-thing)
-* [Get the thing](#get-the-thing)
-* [List the things](#list-the-things)
+* [Get Connection](#get-connection)
+* [Create Project](#create-project)
+* [Get Project](#get-project)
+* [Create Dataset](#create-dataset)
 
-### Create the thing
+### Get Connection 
 
-Use the [create_thing](not-valid-link) method to create a Thing reference; this method does not make a network call. To persist the Thing in the service, call [Thing.save](not-valid-link).
+Use the [DataverseClient](not-valid-link) class to connect to the Dataverse site
 
 ```Python
-thing = client.create_thing(id, name)
-thing.save()
+from dataverse_sdk import *
+client = DataverseClient(
+    host=DataverseHost.STAGING, email="XXX", password="***"
+)
 ```
 
-### Get the thing
+### Create Project
 
-The [get_thing](not-valid-link) method retrieves a Thing from the service. The `id` parameter is the unique ID of the Thing, not its "name" property.
+The [create_project](not-valid-link) method will create project on the connected site with the defined ontology and sensors.
 
 ```Python
-thing = client.get_thing(id)
+ontology = Ontology(
+    name="test ot",
+    image_type=OntologyImageType._2D_BOUNDING_BOX,
+    classes=[
+        OntologyClass(name="Pedestrian", rank=1, color="#234567"),
+        OntologyClass(name="Truck", rank=2, color="#345678"),
+        OntologyClass(name="Car", rank=3, color="#456789"),
+        OntologyClass(name="Cyclist", rank=4, color="#567890"),
+        OntologyClass(name="DontCare", rank=5, color="#6789AB"),
+        OntologyClass(name="Misc", rank=6, color="#789AB1"),
+        OntologyClass(name="Van", rank=7, color="#89AB12"),
+        OntologyClass(name="Tram", rank=8, color="#9AB123"),
+        OntologyClass(name="Person_sitting", rank=9, color="#AB1234"),
+    ],
+)
+sensors = [
+    Sensor(name="camera 1", type=SensorType.CAMERA),
+    Sensor(name="lidar 1", type=SensorType.LIDAR),
+]
+project = client.create_project(name="test project", ontology=ontology, sensors=sensors)
 ```
 
-### List the things
+### Get Project
 
-Use [list_things](not-valid-link) to get one or more Thing objects from the service. If there are no Things available, a `404` exception is thrown (see [Troubleshooting](#troubleshooting) for details on handling exceptions).
+The [get_proejct](not-valid-link) method retrieves the project from the site. The `id` parameter is the unique interger ID of the project, not its "name" property.
 
 ```Python
-things = client.list_things()
+project = client.get_project(id)
+```
+
+### Create Dataset
+
+Use [create_dataset](not-valid-link) to create dataset from 
+
+```Python
+dataset_data = {
+    "data_source": DataSource.Azure,
+    "storage_url": "storage/url",
+    "container_name": "azure container name",
+    "data_folder": "datafolder/to/vai_anno",
+    "sas_token": "azure sas token",
+    "name": "Dataset 1",
+    "type": DatasetType.ANNOTATED_DATA,
+    "generate_metadata": False,
+    "render_pcd": False,
+    "annotation_format": AnnotationFormat.VISION_AI,
+    "sequential": False,
+    "sensors": project.sensors,
+}
+dataset = project.create_dataset(**dataset_data)
 ```
 
 ## Troubleshooting
