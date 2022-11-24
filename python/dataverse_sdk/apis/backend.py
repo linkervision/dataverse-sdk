@@ -175,6 +175,7 @@ class BackendAPI:
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
+        extra_annotations: Optional[list[str]] = None,
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
@@ -195,6 +196,7 @@ class BackendAPI:
                 "generate_metadata": generate_metadata,
                 "render_pcd": render_pcd,
                 "description": description if description else "",
+                "extra_annotations": extra_annotations if extra_annotations else [],
             },
         )
         return resp.json()
