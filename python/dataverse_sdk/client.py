@@ -185,6 +185,31 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
 
+    def get_dataset(self, dataset_id: int):
+        """Get dataset detail and status by id
+
+        Parameters
+        ----------
+        dataset_id : int
+            dataset-id in db
+
+        Returns
+        -------
+        Dataset
+            dataset basemodel from host response for client usage
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
+
+        try:
+            dataset_data: dict = self._api_client.get_dataset(dataset_id=dataset_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataset: {e}")
+        return Dataset.create(dataset_data)
+
     @staticmethod
     def create_dataset(
         name: str,

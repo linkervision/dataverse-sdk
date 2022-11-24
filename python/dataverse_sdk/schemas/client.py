@@ -240,3 +240,23 @@ class Dataset(BaseModel):
 
     class Config:
         extra = "allow"
+
+    @classmethod
+    def create(cls, dataset_data: dict) -> "Dataset":
+        sensor_list = [Sensor(**sensor) for sensor in dataset_data["sensors"]]
+        return cls(
+            id=dataset_data["id"],
+            name=dataset_data["name"],
+            project=Project(sensors=sensor_list, **dataset_data["project"]),
+            sensors=sensor_list,
+            data_source=dataset_data["data_source"],
+            annotation_format=dataset_data["annotation_format"],
+            description=dataset_data["description"],
+            status=dataset_data["status"],
+            sequential=dataset_data["sequential"],
+            generate_metadata=dataset_data["generate_metadata"],
+            type=dataset_data["type"],
+            file_count=dataset_data["file_count"],
+            image_count=dataset_data["image_count"],
+            pcd_count=dataset_data["pcd_count"],
+        )
