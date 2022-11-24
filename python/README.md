@@ -4,6 +4,7 @@ Use Dataverse-SDK for Python to help you to interact with the Dataverse platform
   - Create Project with your input ontology and sensors
   - Get Project by project-id
   - Create Dataset from your AWS/Azure storage or local
+  - Get Dataset by dataset-id
 
 [Package (PyPi)](https://test.pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkernetworks/dataverse-sdk)
 
@@ -42,6 +43,7 @@ The following sections provide examples for the most common DataVerse tasksm inc
 * [Create Project](#create-project)
 * [Get Project](#get-project)
 * [Create Dataset](#create-dataset)
+* [Get Dataset](#get-dataset)
 
 
 ### Create Project
@@ -81,7 +83,7 @@ project = client.get_project(id)
 
 ### Create Dataset
 
-Use `create_dataset` to create dataset from cloud storage
+* Use `create_dataset` to create dataset from **cloud storage**
 
 ```Python
 dataset_data = {
@@ -100,6 +102,36 @@ dataset_data = {
 }
 dataset = project.create_dataset(**dataset_data)
 ```
+
+* Use `create_dataset` to create dataset from **your local directory**
+
+```Python
+dataset_data = {
+    "data_source": DataSource.SDK,
+    "storage_url" : "",
+    "container_name": "",
+    "sas_token":"",
+    "data_folder": "/path/to/your_localdir",
+    "name": "Dataset Local Upload",
+    "type": DatasetType.ANNOTATED_DATA,
+    "generate_metadata": False,
+    "render_pcd": False,
+    "annotation_format": AnnotationFormat.VISION_AI,
+    "sequential": False,
+    "sensors": project.sensors,
+    "extra_annotations" :['model_name']  #optional
+}
+dataset = project.create_dataset(**dataset_data)
+```
+
+## Get Dataset
+
+The `get_dataset` method retrieves the dataset info from the connected site. The `id` parameter is the unique interger ID of the dataset, not its "name" property.
+
+```Python
+dataset = client.get_dataset(id)
+```
+
 
 ## Troubleshooting
 
