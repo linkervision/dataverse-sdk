@@ -243,12 +243,11 @@ class Dataset(BaseModel):
 
     @classmethod
     def create(cls, dataset_data: dict) -> "Dataset":
-        sensor_list = [Sensor(**sensor) for sensor in dataset_data["sensors"]]
         return cls(
             id=dataset_data["id"],
             name=dataset_data["name"],
-            project=Project(sensors=sensor_list, **dataset_data["project"]),
-            sensors=sensor_list,
+            project=dataset_data["project"],
+            sensors=dataset_data["sensors"],
             data_source=dataset_data["data_source"],
             annotation_format=dataset_data["annotation_format"],
             description=dataset_data["description"],
