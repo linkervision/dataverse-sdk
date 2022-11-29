@@ -214,7 +214,7 @@ class DataverseClient:
             Sensor.create(sensor_data) for sensor_data in dataset_data["sensors"]
         ]
         dataset_data.update({"project": project, "sensors": sensors})
-        return Dataset.create(dataset_data)
+        return Dataset(**dataset_data)
 
     # TODO: required arguments for different DataSource
     @staticmethod
@@ -332,7 +332,7 @@ class DataverseClient:
         )
 
         if data_source in {DataSource.Azure, DataSource.AWS}:
-            return Dataset.create(dataset_data)
+            return Dataset(**dataset_data)
 
         # start uploading from local
         folder_paths: list[Optional[str]] = [
@@ -385,4 +385,4 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"failed to upload files: {e}")
 
-        return Dataset.create(dataset_data)
+        return Dataset(**dataset_data)
