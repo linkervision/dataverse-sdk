@@ -185,6 +185,38 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
 
+    def get_dataset(self, dataset_id: int):
+        """Get dataset detail and status by id
+
+        Parameters
+        ----------
+        dataset_id : int
+            dataset-id in db
+
+        Returns
+        -------
+        Dataset
+            dataset basemodel from host response for client usage
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
+
+        try:
+            dataset_data: dict = self._api_client.get_dataset(dataset_id=dataset_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataset: {e}")
+
+        project = self.get_project(dataset_data["project"]["id"])
+        sensors = [
+            Sensor.create(sensor_data) for sensor_data in dataset_data["sensors"]
+        ]
+        dataset_data.update({"project": project, "sensors": sensors})
+        return Dataset(**dataset_data)
+
+    # TODO: required arguments for different DataSource
     @staticmethod
     def create_dataset(
         name: str,
@@ -290,11 +322,17 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the dataset: {e}")
 
-        dataset_data.pop("project")
-        dataset_data.pop("sensors")
+        dataset_data.update(
+            {
+                "project": project,
+                "sensors": sensors,
+                "sequential": sequential,
+                "generate_metadata": generate_metadata,
+            }
+        )
 
         if data_source in {DataSource.Azure, DataSource.AWS}:
-            return Dataset(project=project, sensors=sensors, **dataset_data)
+            return Dataset(**dataset_data)
 
         # start uploading from local
         folder_paths: list[Optional[str]] = [
@@ -347,4 +385,4 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"failed to upload files: {e}")
 
-        return Dataset(project=project, sensors=sensors, **dataset_data)
+        return Dataset(**dataset_data)

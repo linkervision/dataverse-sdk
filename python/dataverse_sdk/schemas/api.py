@@ -98,4 +98,4 @@ class DatasetAPISchema(BaseModel):
     annotation_folder: Optional[str] = None
     lidar_folder: Optional[str] = None
     render_pcd: Optional[str] = None
-    extra_annotations: Optional[str] = None
+    extra_annotations: Optional[list[str]] = None
