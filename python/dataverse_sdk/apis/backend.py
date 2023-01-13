@@ -136,7 +136,12 @@ class BackendAPI:
         self.headers["Authorization"] = f"Bearer {access_token}"
 
     def create_project(
-        self, name: str, ontology_data: dict, sensor_data: list[dict]
+        self,
+        name: str,
+        ontology_data: dict,
+        sensor_data: list[dict],
+        project_tag_data: dict = None,
+        description: str = None,
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/projects/",
@@ -146,6 +151,8 @@ class BackendAPI:
                 "name": name,
                 "ontology_data": ontology_data,
                 "sensor_data": sensor_data,
+                "project_tag_data": project_tag_data,
+                "description": description,
             },
         )
 
