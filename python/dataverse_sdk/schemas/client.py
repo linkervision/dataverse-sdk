@@ -55,6 +55,9 @@ class Sensor(BaseModel):
     name: str
     type: SensorType
 
+    class Config:
+        use_enum_values = True
+
     @classmethod
     def create(cls, sensor_data: dict) -> "Sensor":
         return cls(**sensor_data)

@@ -113,6 +113,20 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+
+        def parse_attribute(attr_list: list) -> list:
+            new_attribute_list: list[AttributeAPISchema] = []
+            for attr in attr_list:
+                attr.pop("id", None)
+                if attr["type"] != "option":
+                    new_attribute_list.append(attr)
+                    continue
+                attr["option_data"] = [
+                    opt_data["value"] for opt_data in attr.pop("options", [])
+                ]
+                new_attribute_list.append(attr)
+            return new_attribute_list
+
         if client is None:
             client = DataverseClient.get_client()
 
@@ -125,37 +139,16 @@ class DataverseClient:
             if rank not in cls_:
                 cls_["rank"] = rank
                 rank += 1
-            if not (cur_attrs := cls_.pop("attributes", None)):
+            if not (obj_attrs := cls_.pop("attributes", None)):
                 classes_data_list.append(cls_)
                 continue
-            new_attribute_list: list[AttributeAPISchema] = []
-            for attr in cur_attrs:
-                attr.pop("id", None)
-                if attr["type"] != "option":
-                    new_attribute_list.append(attr)
-                    continue
-                attr["option_data"] = [
-                    opt_data["value"] for opt_data in attr.pop("options", [])
-                ]
-                new_attribute_list.append(attr)
-            cls_["attribute_data"] = new_attribute_list
+            cls_["attribute_data"] = parse_attribute(obj_attrs)
             classes_data_list.append(cls_)
         raw_ontology_data["ontology_classes_data"] = classes_data_list
         if project_tag is not None:
             raw_project_tag_data: dict = project_tag.dict(exclude_none=True)
-            new_attribute_list: list[AttributeAPISchema] = []
-            if cur_attrs := raw_project_tag_data.pop("attributes", None):
-
-                for attr in cur_attrs:
-                    attr.pop("id", None)
-                    if attr["type"] != "option":
-                        new_attribute_list.append(attr)
-                        continue
-                    attr["option_data"] = [
-                        opt_data["value"] for opt_data in attr.pop("options", [])
-                    ]
-                    new_attribute_list.append(attr)
-            raw_project_tag_data["attribute_data"] = new_attribute_list
+            if tag_attrs := raw_project_tag_data.pop("attributes", None):
+                raw_project_tag_data["attribute_data"] = parse_attribute(tag_attrs)
         else:
             raw_project_tag_data = {}
 
