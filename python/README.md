@@ -70,17 +70,16 @@ sensors = [
     Sensor(name="camera 1", type=SensorType.CAMERA),
     Sensor(name="lidar 1", type=SensorType.LIDAR),
 ]
-project_tag = ProjectTag( attributes= [
-            {
-                "name": "year",
-                "type": "number"
-            },
-            {
-                "name": "unknown_object",
-                "type": "option",
-                "options": [{"value":"fire"}, {"value":"leaves"}, {"value":"water"}
-                ]
-            }])
+project_tag = ProjectTag(
+    attributes=[
+        {"name": "year", "type": "number"},
+        {
+            "name": "unknown_object",
+            "type": "option",
+            "options": [{"value": "fire"}, {"value": "leaves"}, {"value": "water"}],
+        },
+    ]
+)
 
 project = client.create_project(name="test project", ontology=ontology, sensors=sensors, project_tag=project_tag)
 ```

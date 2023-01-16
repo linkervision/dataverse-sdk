@@ -140,8 +140,8 @@ class BackendAPI:
         name: str,
         ontology_data: dict,
         sensor_data: list[dict],
-        project_tag_data: dict = None,
-        description: str = None,
+        project_tag_data: Optional[dict] = None,
+        description: Optional[str] = None,
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/projects/",
