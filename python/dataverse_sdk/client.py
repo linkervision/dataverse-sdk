@@ -12,8 +12,9 @@ from .schemas.api import (
     DatasetAPISchema,
     OntologyAPISchema,
     ProjectAPISchema,
+    ProjectTagAPISchema,
 )
-from .schemas.client import Dataset, DataSource, Ontology, Project, Sensor
+from .schemas.client import Dataset, DataSource, Ontology, Project, ProjectTag, Sensor
 from .schemas.common import AnnotationFormat, DatasetType
 from .utils.utils import get_filepaths
 
@@ -84,6 +85,7 @@ class DataverseClient:
         name: str,
         ontology: Ontology,
         sensors: list[Sensor],
+        project_tag: Optional[ProjectTag] = None,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
     ) -> Project:
@@ -111,6 +113,20 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+
+        def parse_attribute(attr_list: list) -> list:
+            new_attribute_list: list[AttributeAPISchema] = []
+            for attr in attr_list:
+                attr.pop("id", None)
+                if attr["type"] != "option":
+                    new_attribute_list.append(attr)
+                    continue
+                attr["option_data"] = [
+                    opt_data["value"] for opt_data in attr.pop("options", [])
+                ]
+                new_attribute_list.append(attr)
+            return new_attribute_list
+
         if client is None:
             client = DataverseClient.get_client()
 
@@ -123,23 +139,21 @@ class DataverseClient:
             if rank not in cls_:
                 cls_["rank"] = rank
                 rank += 1
-            if not (cur_attrs := cls_.pop("attributes", None)):
+            if not (obj_attrs := cls_.pop("attributes", None)):
                 classes_data_list.append(cls_)
                 continue
-            new_attribute_list: list[AttributeAPISchema] = []
-            for attr in cur_attrs:
-                attr.pop("id", None)
-                if attr["type"] != "option":
-                    new_attribute_list.append(attr)
-                    continue
-                attr["option_data"] = [
-                    opt_data["value"] for opt_data in attr.pop("options", [])
-                ]
-                new_attribute_list.append(attr)
-            cls_["attribute_data"] = new_attribute_list
+            cls_["attribute_data"] = parse_attribute(obj_attrs)
             classes_data_list.append(cls_)
         raw_ontology_data["ontology_classes_data"] = classes_data_list
+        if project_tag is not None:
+            raw_project_tag_data: dict = project_tag.dict(exclude_none=True)
+            if tag_attrs := raw_project_tag_data.pop("attributes", None):
+                raw_project_tag_data["attribute_data"] = parse_attribute(tag_attrs)
+        else:
+            raw_project_tag_data = {}
+
         ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
+        project_tag_data = ProjectTagAPISchema(**raw_project_tag_data).dict()
         sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
 
         try:
@@ -147,6 +161,7 @@ class DataverseClient:
                 name=name,
                 ontology_data=ontology_data,
                 sensor_data=sensor_data,
+                project_tag_data=project_tag_data,
                 description=description,
             ).dict(exclude_none=True)
         except ValidationError as e:

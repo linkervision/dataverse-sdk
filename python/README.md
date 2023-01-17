@@ -70,7 +70,18 @@ sensors = [
     Sensor(name="camera 1", type=SensorType.CAMERA),
     Sensor(name="lidar 1", type=SensorType.LIDAR),
 ]
-project = client.create_project(name="test project", ontology=ontology, sensors=sensors)
+project_tag = ProjectTag(
+    attributes=[
+        {"name": "year", "type": "number"},
+        {
+            "name": "unknown_object",
+            "type": "option",
+            "options": [{"value": "fire"}, {"value": "leaves"}, {"value": "water"}],
+        },
+    ]
+)
+
+project = client.create_project(name="test project", ontology=ontology, sensors=sensors, project_tag=project_tag)
 ```
 
 ### Get Project
@@ -146,4 +157,3 @@ dataset = client.get_dataset(id)
 ## Links to language repos
 
 [Python Readme](https://github.com/linkernetworks/dataverse-sdk/tree/develop/python/README.md)
-

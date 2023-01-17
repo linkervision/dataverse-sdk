@@ -39,6 +39,17 @@ class Attribute(BaseModel):
         return value
 
 
+class ProjectTag(BaseModel):
+    attributes: Optional[list[Attribute]] = None
+
+    class Config:
+        use_enum_values = True
+
+    @classmethod
+    def create(cls, project_tag_data: dict) -> "ProjectTag":
+        return cls(**project_tag_data)
+
+
 class Sensor(BaseModel):
     id: Optional[int] = None
     name: str
@@ -88,7 +99,7 @@ class Ontology(BaseModel):
                 name=cls_["name"],
                 color=cls_["color"],
                 rank=cls_["rank"],
-                # TODO: attributes
+                attributes=cls_["attributes"],
             )
             for cls_ in ontology_data["classes"]
         ]
@@ -123,6 +134,7 @@ class Project(BaseModel):
     ego_car: Optional[str] = None
     ontology: Ontology
     sensors: list[Sensor]
+    project_tag: Optional[ProjectTag] = None
 
     @classmethod
     def create(cls, project_data: dict) -> "Project":
@@ -130,6 +142,7 @@ class Project(BaseModel):
         sensors = [
             Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
         ]
+        project_tag = ProjectTag.create(project_data["project_tag"])
         return cls(
             id=project_data["id"],
             name=project_data["name"],
@@ -137,6 +150,7 @@ class Project(BaseModel):
             ego_car=project_data["ego_car"],
             ontology=ontology,
             sensors=sensors,
+            project_tag=project_tag,
         )
 
     def create_dataset(

@@ -31,6 +31,13 @@ class AttributeAPISchema(BaseModel):
         return value
 
 
+class ProjectTagAPISchema(BaseModel):
+    attribute_data: Optional[list[AttributeAPISchema]] = None
+
+    class Config:
+        use_enum_values = True
+
+
 class SensorAPISchema(BaseModel):
     id: Optional[int] = None
     name: str
@@ -76,6 +83,7 @@ class ProjectAPISchema(BaseModel):
     ego_car: Optional[str] = None
     ontology_data: OntologyAPISchema
     sensor_data: list[SensorAPISchema]
+    project_tag_data: ProjectTagAPISchema
 
 
 class DatasetAPISchema(BaseModel):
