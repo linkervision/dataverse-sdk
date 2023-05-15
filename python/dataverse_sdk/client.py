@@ -246,6 +246,7 @@ class DataverseClient:
         sas_token: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
+        auto_tagging: list = [],
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
@@ -279,6 +280,8 @@ class DataverseClient:
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
+        auto_tagging: list
+            generate auto_tagging with target models (weather/scene/timeofday)
         description : Optional[str], optional
             description of the dataset, by default None
         render_pcd : bool, optional
@@ -321,6 +324,7 @@ class DataverseClient:
                 sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
+                auto_tagging=auto_tagging,
                 render_pcd=render_pcd,
                 description=description,
                 **kwargs,
@@ -343,6 +347,7 @@ class DataverseClient:
                 "sensors": sensors,
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
+                "auto_tagging": auto_tagging,
             }
         )
 

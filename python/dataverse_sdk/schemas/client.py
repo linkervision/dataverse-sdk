@@ -166,6 +166,7 @@ class Project(BaseModel):
         sas_token: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
+        auto_tagging: list = [],
         render_pcd: bool = False,
         description: Optional[str] = None,
         **kwargs,
@@ -196,6 +197,8 @@ class Project(BaseModel):
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
+        auto_tagging: list, optional
+            generate auto_tagging with target models (weather/scene/timeofday), by default []
         render_pcd : bool, optional
             render pcd preview image or not, be default False
         description : Optional[str], optional
@@ -226,6 +229,7 @@ class Project(BaseModel):
             sas_token=sas_token,
             sequential=sequential,
             generate_metadata=generate_metadata,
+            auto_tagging=auto_tagging,
             render_pcd=render_pcd,
             description=description,
             **kwargs,
@@ -244,6 +248,7 @@ class Dataset(BaseModel):
     status: DatasetStatus
     sequential: bool = False
     generate_metadata: bool = False
+    auto_tagging: list = []
     description: Optional[str] = None
     file_count: Optional[int] = None
     image_count: Optional[int] = None
