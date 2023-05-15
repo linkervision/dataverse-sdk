@@ -40,12 +40,21 @@ Once you've initialized a DataverseClient, you can interact with Dataverse from 
 
 The following sections provide examples for the most common DataVerse tasksm including:
 
+* [List Projects](#list-projects)
 * [Create Project](#create-project)
 * [Get Project](#get-project)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
 
 
+### List Projects
+The `list_projects` method will list all projects of the given sites.
+
+
+```Python
+projects = client.list_projects()
+
+```
 ### Create Project
 
 The `create_project` method will create project on the connected site with the defined ontology and sensors.
