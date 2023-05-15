@@ -166,6 +166,14 @@ class BackendAPI:
         )
         return resp.json()
 
+    def list_projects(self) -> list:
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/basic/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
     def create_dataset(
         self,
         name: str,
@@ -178,13 +186,17 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list = [],
+        auto_tagging: list = None,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
-        annotations: Optional[list[str]] = [],
+        annotations: Optional[list[str]] = None,
     ) -> dict:
+        if auto_tagging is None:
+            auto_tagging = []
+        if annotations is None:
+            annotations = []
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
             method="post",
@@ -226,7 +238,6 @@ class BackendAPI:
         is_finished: bool,
         file_dict: dict[str, bytes],
     ):
-
         file_dict["json"] = (
             None,
             json.dumps(
@@ -248,7 +259,6 @@ class BackendAPI:
         return resp
 
     def update_dataset(self, dataset_id: int, **kwargs):
-
         resp = self.send_request(
             url=f"{self.host}/api/datasets/{dataset_id}/",
             method="patch",

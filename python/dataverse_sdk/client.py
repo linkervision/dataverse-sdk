@@ -174,6 +174,13 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data)
 
+    def list_projects(self):
+        try:
+            project_list: list = self._api_client.list_projects()
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the project: {e}")
+        return project_list
+
     def get_project(self, project_id: int):
         """Get project detail by project-id
 
