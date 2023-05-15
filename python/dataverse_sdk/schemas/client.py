@@ -164,9 +164,10 @@ class Project(BaseModel):
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
+        annotations: list = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list = [],
+        auto_tagging: list = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         **kwargs,
@@ -193,6 +194,8 @@ class Project(BaseModel):
             container name for Azure, by default None
         sas_token : Optional[str], optional
             SAStoken for Azure, by default None
+        annotations: list, optional
+            list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
             sequential or not., by default False
         generate_metadata : bool, optional
@@ -216,6 +219,11 @@ class Project(BaseModel):
         """
         from ..client import DataverseClient
 
+        if auto_tagging is None:
+            auto_tagging = []
+        if annotations is None:
+            annotations = []
+
         dataset_output = DataverseClient.create_dataset(
             name=name,
             data_source=data_source,
@@ -227,6 +235,7 @@ class Project(BaseModel):
             container_name=container_name,
             data_folder=data_folder,
             sas_token=sas_token,
+            annotations=annotations,
             sequential=sequential,
             generate_metadata=generate_metadata,
             auto_tagging=auto_tagging,
@@ -248,7 +257,6 @@ class Dataset(BaseModel):
     status: DatasetStatus
     sequential: bool = False
     generate_metadata: bool = False
-    auto_tagging: list = []
     description: Optional[str] = None
     file_count: Optional[int] = None
     image_count: Optional[int] = None

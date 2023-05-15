@@ -183,7 +183,7 @@ class BackendAPI:
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
-        extra_annotations: Optional[list[str]] = None,
+        annotations: Optional[list[str]] = [],
     ) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
@@ -205,7 +205,7 @@ class BackendAPI:
                 "auto_tagging": auto_tagging,
                 "render_pcd": render_pcd,
                 "description": description if description else "",
-                "extra_annotations": extra_annotations if extra_annotations else [],
+                "annotations": annotations if annotations else [],
             },
         )
         return resp.json()

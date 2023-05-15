@@ -105,6 +105,7 @@ dataset_data = {
     "sas_token": "azure sas token",
     "name": "Dataset 1",
     "type": DatasetType.ANNOTATED_DATA,
+    "annotations": ["groundtruth"]
     "generate_metadata": False,
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
@@ -126,11 +127,12 @@ dataset_data = {
     "name": "Dataset Local Upload",
     "type": DatasetType.ANNOTATED_DATA,
     "generate_metadata": False,
+    "auto_tagging": ["weather"],
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
     "sensors": project.sensors,
-    "extra_annotations" :['model_name']  #optional
+    "annotations" :['model_name']
 }
 dataset = project.create_dataset(**dataset_data)
 ```

@@ -61,7 +61,6 @@ class DataverseClient:
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
     ) -> None:
-
         try:
             self._api_client = BackendAPI(
                 host=self.host,
@@ -244,9 +243,10 @@ class DataverseClient:
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
+        annotations: list[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list = [],
+        auto_tagging: list[str] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
@@ -276,6 +276,8 @@ class DataverseClient:
             container name for Azure, by default None
         sas_token : Optional[str], optional
             SAStoken for Azure, by default None
+        annotations: list, optional
+            list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
             sequential or not., by default False
         generate_metadata : bool, optional
@@ -305,6 +307,15 @@ class DataverseClient:
         if data_source not in DataSource:
             raise ValueError(f"Data source ({data_source}) is not supported currently.")
 
+        if annotations is None:
+            annotations = []
+        if auto_tagging is None:
+            auto_tagging = []
+
+        if type == DatasetType.ANNOTATED_DATA and len(annotations) == 0:
+            raise ValueError(
+                "Annoted data should provide at least one annotation folder name (groundtruth or model_name)"
+            )
         if client is None:
             client = DataverseClient.get_client()
 
@@ -318,6 +329,7 @@ class DataverseClient:
                 data_source=data_source,
                 type=type,
                 annotation_format=annotation_format,
+                annotations=annotations,
                 storage_url=storage_url,
                 container_name=container_name,
                 data_folder=data_folder,
