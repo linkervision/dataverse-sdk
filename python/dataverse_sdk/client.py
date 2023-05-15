@@ -360,6 +360,7 @@ class DataverseClient:
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
                 "auto_tagging": auto_tagging,
+                "annotations": annotations,
             }
         )
 
