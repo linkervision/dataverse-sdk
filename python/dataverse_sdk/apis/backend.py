@@ -2,6 +2,7 @@ import inspect
 import json
 import logging
 from typing import Optional, Union
+from urllib.parse import urlencode
 
 import requests
 from requests import sessions
@@ -170,18 +171,17 @@ class BackendAPI:
         self,
         current_user: Optional[bool] = True,
         exclude_sensor_type: Optional[str] = None,
-        ontology__image_type: Optional[str] = None,
+        image_type: Optional[str] = None,
+        **kwargs,
     ) -> list:
-        query_param = []
         if current_user:
-            query_param.append(f"current_user={current_user}")
+            kwargs["current_user"] = current_user
         if exclude_sensor_type is not None:
-            query_param.append(f"exclude_sensor_type={exclude_sensor_type}")
-        if ontology__image_type is not None:
-            query_param.append(f"ontology__image_type={ontology__image_type}")
-        query = "?" + "&".join(query_param)
+            kwargs["exclude_sensor_type"] = exclude_sensor_type
+        if image_type is not None:
+            kwargs["ontology__image_type"] = image_type
         resp = self.send_request(
-            url=f"{self.host}/api/projects/basic/{query}",
+            url=f"{self.host}/api/projects/basic/?{urlencode(kwargs)}",
             method="get",
             headers=self.headers,
         )
@@ -199,7 +199,7 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list = None,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,

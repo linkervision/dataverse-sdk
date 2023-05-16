@@ -52,7 +52,9 @@ The `list_projects` method will list all projects of the given sites.
 
 
 ```Python
-projects = client.list_projects()
+projects = client.list_projects(current_user = True,
+                                exclude_sensor_type=SensorType.LIDAR,
+                                image_type= OntologyImageType._2D_BOUNDING_BOX)
 
 ```
 ### Create Project

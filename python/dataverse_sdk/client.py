@@ -174,13 +174,38 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data)
 
-    def list_projects(self):
-        # TODO: might open the filter parameters in the future
+    def list_projects(
+        self,
+        current_user: bool = True,
+        exclude_sensor_type: SensorType = SensorType.LIDAR,
+        image_type: OntologyImageType = OntologyImageType._2D_BOUNDING_BOX,
+    ) -> list:
+        """list projects in dataverse (with given filter query params)
+
+        Parameters
+        ----------
+        current_user : bool, optional
+            only show the projects of current user, by default True
+        exclude_sensor_type : SensorType, optional
+            exclude the projects with the given sensor type, by default SensorType.LIDAR
+        image_type : OntologyImageType, optional
+            only include the projects with the given image type, by default OntologyImageType._2D_BOUNDING_BOX
+
+        Returns
+        -------
+        list
+            list of projects [{'id': 5, 'name': 'Kitti Sequential Project'}, {'id': 6, 'name': 'project2'}]
+
+        Raises
+        ------
+        ClientConnectionError
+            raise error if there is any error occurs when calling backend APIs.
+        """
         try:
             project_list: list = self._api_client.list_projects(
-                current_user=True,
-                exclude_sensor_type=SensorType.LIDAR,
-                ontology__image_type=OntologyImageType._2D_BOUNDING_BOX,
+                current_user=current_user,
+                exclude_sensor_type=exclude_sensor_type.value,
+                image_type=image_type.value,
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
