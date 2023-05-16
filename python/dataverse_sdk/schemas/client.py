@@ -142,6 +142,8 @@ class Project(BaseModel):
         sensors = [
             Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
         ]
+        if project_data["project_tag"] is None:
+            project_data["project_tag"] = {}
         project_tag = ProjectTag.create(project_data["project_tag"])
         return cls(
             id=project_data["id"],
@@ -164,10 +166,10 @@ class Project(BaseModel):
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
-        annotations: list = None,
+        annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list = None,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         **kwargs,

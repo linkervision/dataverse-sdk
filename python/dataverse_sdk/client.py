@@ -15,7 +15,7 @@ from .schemas.api import (
     ProjectTagAPISchema,
 )
 from .schemas.client import Dataset, DataSource, Ontology, Project, ProjectTag, Sensor
-from .schemas.common import AnnotationFormat, DatasetType
+from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
 from .utils.utils import get_filepaths
 
 
@@ -175,10 +175,15 @@ class DataverseClient:
         return Project.create(project_data)
 
     def list_projects(self):
+        # TODO: might open the filter parameters in the future
         try:
-            project_list: list = self._api_client.list_projects()
+            project_list: list = self._api_client.list_projects(
+                current_user=True,
+                exclude_sensor_type=SensorType.LIDAR,
+                ontology__image_type=OntologyImageType._2D_BOUNDING_BOX,
+            )
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get the project: {e}")
+            raise ClientConnectionError(f"Failed to get the projects: {e}")
         return project_list
 
     def get_project(self, project_id: int):
@@ -250,10 +255,10 @@ class DataverseClient:
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
-        annotations: list[str] = None,
+        annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: list[str] = None,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,

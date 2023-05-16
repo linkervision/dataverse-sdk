@@ -166,9 +166,22 @@ class BackendAPI:
         )
         return resp.json()
 
-    def list_projects(self) -> list:
+    def list_projects(
+        self,
+        current_user: Optional[bool] = True,
+        exclude_sensor_type: Optional[str] = None,
+        ontology__image_type: Optional[str] = None,
+    ) -> list:
+        query_param = []
+        if current_user:
+            query_param.append(f"current_user={current_user}")
+        if exclude_sensor_type is not None:
+            query_param.append(f"exclude_sensor_type={exclude_sensor_type}")
+        if ontology__image_type is not None:
+            query_param.append(f"ontology__image_type={ontology__image_type}")
+        query = "?" + "&".join(query_param)
         resp = self.send_request(
-            url=f"{self.host}/api/projects/basic/",
+            url=f"{self.host}/api/projects/basic/{query}",
             method="get",
             headers=self.headers,
         )
