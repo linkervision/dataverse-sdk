@@ -177,8 +177,8 @@ class DataverseClient:
     def list_projects(
         self,
         current_user: bool = True,
-        exclude_sensor_type: SensorType = SensorType.LIDAR,
-        image_type: OntologyImageType = OntologyImageType._2D_BOUNDING_BOX,
+        exclude_sensor_type: Optional[SensorType] = None,
+        image_type: Optional[OntologyImageType] = None,
     ) -> list:
         """list projects in dataverse (with given filter query params)
 
@@ -186,10 +186,10 @@ class DataverseClient:
         ----------
         current_user : bool, optional
             only show the projects of current user, by default True
-        exclude_sensor_type : SensorType, optional
-            exclude the projects with the given sensor type, by default SensorType.LIDAR
-        image_type : OntologyImageType, optional
-            only include the projects with the given image type, by default OntologyImageType._2D_BOUNDING_BOX
+        exclude_sensor_type : Optional[SensorType], optional
+            exclude the projects with the given sensor type, by default None
+        image_type : Optional[OntologyImageType], optional
+            only include the projects with the given image type, by default None
 
         Returns
         -------
@@ -201,11 +201,12 @@ class DataverseClient:
         ClientConnectionError
             raise error if there is any error occurs when calling backend APIs.
         """
+
         try:
             project_list: list = self._api_client.list_projects(
                 current_user=current_user,
-                exclude_sensor_type=exclude_sensor_type.value,
-                image_type=image_type.value,
+                exclude_sensor_type=exclude_sensor_type,
+                image_type=image_type,
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
