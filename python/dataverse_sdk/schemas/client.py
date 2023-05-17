@@ -155,6 +155,12 @@ class Project(BaseModel):
             project_tag=project_tag,
         )
 
+    def list_models(self) -> list:
+        from ..client import DataverseClient
+
+        model_list: list = DataverseClient.list_models(project_id=self.id)
+        return model_list
+
     def create_dataset(
         self,
         name: str,
@@ -269,3 +275,28 @@ class Dataset(BaseModel):
 
     class Config:
         extra = "allow"
+
+
+class MLModel(BaseModel):
+    id: Optional[int] = None
+    name: str
+    updated_at: str
+    project: Project
+    classes: list
+    triton_model_name: str
+    description: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+    def get_label_file(self) -> dict:
+        from ..client import DataverseClient
+
+        labels: dict = DataverseClient.get_label_file(model_id=self.id)
+        return labels
+
+    def get_triton_model_file(self):
+        from ..client import DataverseClient
+
+        model_file = DataverseClient.get_triton_model_file(model_id=self.id)
+        return model_file

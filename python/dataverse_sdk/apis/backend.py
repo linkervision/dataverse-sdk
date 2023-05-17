@@ -187,6 +187,39 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def list_ml_models(self, project_id: int, **kwargs) -> list:
+        kwargs["project"] = project_id
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
+    def get_ml_model(self, model_id: int):
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/{model_id}/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
+    def get_ml_model_labels(self, model_id: int):
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/{model_id}/labels/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
+    def get_ml_model_file(self, model_id: int):
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/{model_id}/model/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
     def create_dataset(
         self,
         name: str,
