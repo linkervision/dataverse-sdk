@@ -142,6 +142,8 @@ class Project(BaseModel):
         sensors = [
             Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
         ]
+        if project_data["project_tag"] is None:
+            project_data["project_tag"] = {}
         project_tag = ProjectTag.create(project_data["project_tag"])
         return cls(
             id=project_data["id"],
@@ -164,8 +166,10 @@ class Project(BaseModel):
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
+        annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         **kwargs,
@@ -192,10 +196,14 @@ class Project(BaseModel):
             container name for Azure, by default None
         sas_token : Optional[str], optional
             SAStoken for Azure, by default None
+        annotations: list, optional
+            list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
+        auto_tagging: list, optional
+            generate auto_tagging with target models (weather/scene/timeofday), by default []
         render_pcd : bool, optional
             render pcd preview image or not, be default False
         description : Optional[str], optional
@@ -213,6 +221,11 @@ class Project(BaseModel):
         """
         from ..client import DataverseClient
 
+        if auto_tagging is None:
+            auto_tagging = []
+        if annotations is None:
+            annotations = []
+
         dataset_output = DataverseClient.create_dataset(
             name=name,
             data_source=data_source,
@@ -224,8 +237,10 @@ class Project(BaseModel):
             container_name=container_name,
             data_folder=data_folder,
             sas_token=sas_token,
+            annotations=annotations,
             sequential=sequential,
             generate_metadata=generate_metadata,
+            auto_tagging=auto_tagging,
             render_pcd=render_pcd,
             description=description,
             **kwargs,

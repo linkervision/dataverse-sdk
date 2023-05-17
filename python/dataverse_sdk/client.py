@@ -15,7 +15,7 @@ from .schemas.api import (
     ProjectTagAPISchema,
 )
 from .schemas.client import Dataset, DataSource, Ontology, Project, ProjectTag, Sensor
-from .schemas.common import AnnotationFormat, DatasetType
+from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
 from .utils.utils import get_filepaths
 
 
@@ -61,7 +61,6 @@ class DataverseClient:
         access_token: Optional[str] = None,
         refresh_token: Optional[str] = None,
     ) -> None:
-
         try:
             self._api_client = BackendAPI(
                 host=self.host,
@@ -175,6 +174,44 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data)
 
+    def list_projects(
+        self,
+        current_user: bool = True,
+        exclude_sensor_type: Optional[SensorType] = None,
+        image_type: Optional[OntologyImageType] = None,
+    ) -> list:
+        """list projects in dataverse (with given filter query params)
+
+        Parameters
+        ----------
+        current_user : bool, optional
+            only show the projects of current user, by default True
+        exclude_sensor_type : Optional[SensorType], optional
+            exclude the projects with the given sensor type, by default None
+        image_type : Optional[OntologyImageType], optional
+            only include the projects with the given image type, by default None
+
+        Returns
+        -------
+        list
+            list of projects [{'id': 5, 'name': 'Kitti Sequential Project'}, {'id': 6, 'name': 'project2'}]
+
+        Raises
+        ------
+        ClientConnectionError
+            raise error if there is any error occurs when calling backend APIs.
+        """
+
+        try:
+            project_list: list = self._api_client.list_projects(
+                current_user=current_user,
+                exclude_sensor_type=exclude_sensor_type,
+                image_type=image_type,
+            )
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the projects: {e}")
+        return project_list
+
     def get_project(self, project_id: int):
         """Get project detail by project-id
 
@@ -244,8 +281,10 @@ class DataverseClient:
         data_folder: str,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
+        annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
@@ -275,10 +314,14 @@ class DataverseClient:
             container name for Azure, by default None
         sas_token : Optional[str], optional
             SAStoken for Azure, by default None
+        annotations: list, optional
+            list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
+        auto_tagging: list
+            generate auto_tagging with target models (weather/scene/timeofday)
         description : Optional[str], optional
             description of the dataset, by default None
         render_pcd : bool, optional
@@ -302,6 +345,15 @@ class DataverseClient:
         if data_source not in DataSource:
             raise ValueError(f"Data source ({data_source}) is not supported currently.")
 
+        if annotations is None:
+            annotations = []
+        if auto_tagging is None:
+            auto_tagging = []
+
+        if type == DatasetType.ANNOTATED_DATA and len(annotations) == 0:
+            raise ValueError(
+                "Annoted data should provide at least one annotation folder name (groundtruth or model_name)"
+            )
         if client is None:
             client = DataverseClient.get_client()
 
@@ -315,12 +367,14 @@ class DataverseClient:
                 data_source=data_source,
                 type=type,
                 annotation_format=annotation_format,
+                annotations=annotations,
                 storage_url=storage_url,
                 container_name=container_name,
                 data_folder=data_folder,
                 sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
+                auto_tagging=auto_tagging,
                 render_pcd=render_pcd,
                 description=description,
                 **kwargs,
@@ -343,6 +397,8 @@ class DataverseClient:
                 "sensors": sensors,
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
+                "auto_tagging": auto_tagging,
+                "annotations": annotations,
             }
         )
 

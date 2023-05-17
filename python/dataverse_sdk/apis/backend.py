@@ -2,6 +2,7 @@ import inspect
 import json
 import logging
 from typing import Optional, Union
+from urllib.parse import urlencode
 
 import requests
 from requests import sessions
@@ -166,6 +167,26 @@ class BackendAPI:
         )
         return resp.json()
 
+    def list_projects(
+        self,
+        current_user: Optional[bool] = True,
+        exclude_sensor_type: Optional[str] = None,
+        image_type: Optional[str] = None,
+        **kwargs,
+    ) -> list:
+        if current_user:
+            kwargs["current_user"] = current_user
+        if exclude_sensor_type is not None:
+            kwargs["exclude_sensor_type"] = exclude_sensor_type.value
+        if image_type is not None:
+            kwargs["ontology__image_type"] = image_type.value
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/basic/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
     def create_dataset(
         self,
         name: str,
@@ -178,12 +199,17 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
+        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
-        extra_annotations: Optional[list[str]] = None,
+        annotations: Optional[list[str]] = None,
     ) -> dict:
+        if auto_tagging is None:
+            auto_tagging = []
+        if annotations is None:
+            annotations = []
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
             method="post",
@@ -201,9 +227,10 @@ class BackendAPI:
                 "sequential": sequential,
                 "annotation_format": annotation_format,
                 "generate_metadata": generate_metadata,
+                "auto_tagging": auto_tagging,
                 "render_pcd": render_pcd,
                 "description": description if description else "",
-                "extra_annotations": extra_annotations if extra_annotations else [],
+                "annotations": annotations if annotations else [],
             },
         )
         return resp.json()
@@ -224,7 +251,6 @@ class BackendAPI:
         is_finished: bool,
         file_dict: dict[str, bytes],
     ):
-
         file_dict["json"] = (
             None,
             json.dumps(
@@ -246,7 +272,6 @@ class BackendAPI:
         return resp
 
     def update_dataset(self, dataset_id: int, **kwargs):
-
         resp = self.send_request(
             url=f"{self.host}/api/datasets/{dataset_id}/",
             method="patch",

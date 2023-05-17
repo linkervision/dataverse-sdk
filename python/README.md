@@ -40,12 +40,23 @@ Once you've initialized a DataverseClient, you can interact with Dataverse from 
 
 The following sections provide examples for the most common DataVerse tasksm including:
 
+* [List Projects](#list-projects)
 * [Create Project](#create-project)
 * [Get Project](#get-project)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
 
 
+### List Projects
+The `list_projects` method will list all projects of the given sites.
+
+
+```Python
+projects = client.list_projects(current_user = True,
+                                exclude_sensor_type=SensorType.LIDAR,
+                                image_type= OntologyImageType._2D_BOUNDING_BOX)
+
+```
 ### Create Project
 
 The `create_project` method will create project on the connected site with the defined ontology and sensors.
@@ -105,6 +116,7 @@ dataset_data = {
     "sas_token": "azure sas token",
     "name": "Dataset 1",
     "type": DatasetType.ANNOTATED_DATA,
+    "annotations": ["groundtruth"]
     "generate_metadata": False,
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
@@ -126,11 +138,12 @@ dataset_data = {
     "name": "Dataset Local Upload",
     "type": DatasetType.ANNOTATED_DATA,
     "generate_metadata": False,
+    "auto_tagging": ["weather"],
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
     "sensors": project.sensors,
-    "extra_annotations" :['model_name']  #optional
+    "annotations" :['model_name']
 }
 dataset = project.create_dataset(**dataset_data)
 ```
