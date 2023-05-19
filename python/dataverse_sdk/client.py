@@ -259,23 +259,20 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the models: {e}")
         return model_list
 
-    def get_model(self, model_id: int):
+    def get_model(self, model_id: int) -> MLModel:
         try:
             model_data: dict = self._api_client.get_ml_model(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
         project = self.get_project(project_id=model_data["project"]["id"])
-        model_class_id = {i["id"] for i in model_data["classes"]}
-        classes_new = [
-            class1 for class1 in project.ontology.classes if class1.id in model_class_id
-        ]
+        classes_new = [ontology_class for ontology_class in project.ontology.classes]
         model_data.update({"project": project, "classes": classes_new})
         return MLModel(**model_data)
 
     def get_label_file(self, model_id: int):
         try:
-            labels: dict = self._api_client.get_ml_model_labels(model_id=model_id)
+            labels: bytes = self._api_client.get_ml_model_labels(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get model labels: {e}")
         return labels
