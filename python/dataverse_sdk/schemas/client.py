@@ -161,6 +161,12 @@ class Project(BaseModel):
         model_list: list = DataverseClient.list_models(project_id=self.id)
         return model_list
 
+    def get_model(self, model_id: int):
+        from ..client import DataverseClient
+
+        model_data = DataverseClient.get_model(model_id=model_id, project=self)
+        return model_data
+
     def create_dataset(
         self,
         name: str,

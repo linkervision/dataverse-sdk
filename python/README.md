@@ -171,8 +171,14 @@ The `get_model` method will get the model detail info by the given model-id
 
 ```Python
 model = client.get_model(model_id=30)
+model = project.get_model(model_id=30)
 ```
+From the given model, we could get the label file and the triton model file by the commands below.
+```Python
+model.get_label_file()
+model.get_triton_model_file()
 
+```
 
 
 ## Troubleshooting

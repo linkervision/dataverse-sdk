@@ -250,6 +250,24 @@ class DataverseClient:
         project_id: int,
         client: Optional["DataverseClient"] = None,
     ) -> list:
+        """Get the model list by project id
+
+        Parameters
+        ----------
+        project_id : int
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+
+        Returns
+        -------
+        list
+            model list from api response
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
@@ -259,27 +277,72 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the models: {e}")
         return model_list
 
-    def get_model(self, model_id: int) -> MLModel:
+    @staticmethod
+    def get_model(
+        model_id: int, client: Optional["DataverseClient"] = None, **kwargs
+    ) -> MLModel:
+        """get the model detail by model id
+
+        Parameters
+        ----------
+        model_id : int
+        client : Optional[&quot;DataverseClient&quot;], optional
+            client class, by default None
+
+        Returns
+        -------
+        MLModel
+            BaseModel for ml_model that store model information
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
         try:
-            model_data: dict = self._api_client.get_ml_model(model_id=model_id)
+            model_data: dict = api.get_ml_model(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
-        project = self.get_project(project_id=model_data["project"]["id"])
-        classes_new = [ontology_class for ontology_class in project.ontology.classes]
-        model_data.update({"project": project, "classes": classes_new})
+        # TODO: modify these 3 lines if API update
+        model_list = client.list_models(project_id=model_data["project"]["id"])
+        target_model = [model for model in model_list if model["id"] == model_id][0]
+        target_class_id = set(target_model["classes"])
+        # get project info
+        project = kwargs.get("project")
+        if project is None:
+            project = client.get_project(project_id=model_data["project"]["id"])
+        classes = [
+            ontology_class
+            for ontology_class in project.ontology.classes
+            if ontology_class.id in target_class_id
+        ]
+        model_data.update({"id": model_id, "project": project, "classes": classes})
         return MLModel(**model_data)
 
-    def get_label_file(self, model_id: int):
+    @staticmethod
+    def get_label_file(model_id: int, client: Optional["DataverseClient"] = None):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
         try:
-            labels: bytes = self._api_client.get_ml_model_labels(model_id=model_id)
+            labels: bytes = api.get_ml_model_labels(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get model labels: {e}")
         return labels
 
-    def get_triton_model_file(self, model_id: int):
+    @staticmethod
+    def get_triton_model_file(
+        model_id: int, client: Optional["DataverseClient"] = None
+    ):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
         try:
-            model_file: bytes = self._api_client.get_ml_model_file(model_id=model_id)
+            model_file: bytes = api.get_ml_model_file(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get triton model file: {e}")
         return model_file
