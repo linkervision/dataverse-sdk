@@ -1,3 +1,4 @@
+from io import BytesIO
 from os.path import isfile
 from typing import Optional
 
@@ -279,15 +280,19 @@ class DataverseClient:
 
     @staticmethod
     def get_model(
-        model_id: int, client: Optional["DataverseClient"] = None, **kwargs
+        model_id: int,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
     ) -> MLModel:
         """get the model detail by model id
 
         Parameters
         ----------
         model_id : int
-        client : Optional[&quot;DataverseClient&quot;], optional
+        client : Optional["DataverseClient&quot"], optional
             client class, by default None
+        project : Optional["Project"], optional
+            the project class, by default None
 
         Returns
         -------
@@ -307,14 +312,12 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
-        # TODO: modify these 3 lines if API update
-        model_list = client.list_models(project_id=model_data["project"]["id"])
-        target_model = [model for model in model_list if model["id"] == model_id][0]
-        target_class_id = set(target_model["classes"])
-        # get project info
-        project = kwargs.get("project")
+        target_class_id = {
+            ontology_class["id"] for ontology_class in model_data["classes"]
+        }
         if project is None:
             project = client.get_project(project_id=model_data["project"]["id"])
+        # get classes used in the model
         classes = [
             ontology_class
             for ontology_class in project.ontology.classes
@@ -324,28 +327,32 @@ class DataverseClient:
         return MLModel(**model_data)
 
     @staticmethod
-    def get_label_file(model_id: int, client: Optional["DataverseClient"] = None):
+    def get_label_file(
+        model_id: int, client: Optional["DataverseClient"] = None
+    ) -> Optional[BytesIO]:
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
         try:
-            labels: bytes = api.get_ml_model_labels(model_id=model_id)
+            labels: BytesIO = api.get_ml_model_labels(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get model labels: {e}")
-        return labels
+        if labels:
+            return labels
 
     @staticmethod
     def get_triton_model_file(
         model_id: int, client: Optional["DataverseClient"] = None
-    ):
+    ) -> Optional[BytesIO]:
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
         try:
-            model_file: bytes = api.get_ml_model_file(model_id=model_id)
+            model_file: BytesIO = api.get_ml_model_file(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get triton model file: {e}")
-        return model_file
+        if model_file:
+            return model_file
 
     def get_dataset(self, dataset_id: int):
         """Get dataset detail and status by id
