@@ -1,3 +1,4 @@
+from io import BytesIO
 from os.path import isfile
 from typing import Optional
 
@@ -14,7 +15,15 @@ from .schemas.api import (
     ProjectAPISchema,
     ProjectTagAPISchema,
 )
-from .schemas.client import Dataset, DataSource, Ontology, Project, ProjectTag, Sensor
+from .schemas.client import (
+    Dataset,
+    DataSource,
+    MLModel,
+    Ontology,
+    Project,
+    ProjectTag,
+    Sensor,
+)
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
 from .utils.utils import get_filepaths
 
@@ -236,6 +245,114 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
+
+    @staticmethod
+    def list_models(
+        project_id: int,
+        client: Optional["DataverseClient"] = None,
+    ) -> list:
+        """Get the model list by project id
+
+        Parameters
+        ----------
+        project_id : int
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+
+        Returns
+        -------
+        list
+            model list from api response
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        try:
+            model_list: list = api.list_ml_models(project_id=project_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the models: {e}")
+        return model_list
+
+    @staticmethod
+    def get_model(
+        model_id: int,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ) -> MLModel:
+        """get the model detail by model id
+
+        Parameters
+        ----------
+        model_id : int
+        client : Optional["DataverseClient&quot"], optional
+            client class, by default None
+        project : Optional["Project"], optional
+            the project class, by default None
+
+        Returns
+        -------
+        MLModel
+            BaseModel for ml_model that store model information
+
+        Raises
+        ------
+        ClientConnectionError
+            raise exception if there is any error occurs when calling backend APIs.
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        try:
+            model_data: dict = api.get_ml_model(model_id=model_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataset: {e}")
+
+        target_class_id = {
+            ontology_class["id"] for ontology_class in model_data["classes"]
+        }
+        if project is None:
+            project = client.get_project(project_id=model_data["project"]["id"])
+        # get classes used in the model
+        classes = [
+            ontology_class
+            for ontology_class in project.ontology.classes
+            if ontology_class.id in target_class_id
+        ]
+        model_data.update({"id": model_id, "project": project, "classes": classes})
+        return MLModel(**model_data)
+
+    @staticmethod
+    def get_label_file(
+        model_id: int, client: Optional["DataverseClient"] = None
+    ) -> Optional[BytesIO]:
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        try:
+            labels: BytesIO = api.get_ml_model_labels(model_id=model_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get model labels: {e}")
+        if labels:
+            return labels
+
+    @staticmethod
+    def get_triton_model_file(
+        model_id: int, client: Optional["DataverseClient"] = None
+    ) -> Optional[BytesIO]:
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        try:
+            model_file: BytesIO = api.get_ml_model_file(model_id=model_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get triton model file: {e}")
+        if model_file:
+            return model_file
 
     def get_dataset(self, dataset_id: int):
         """Get dataset detail and status by id

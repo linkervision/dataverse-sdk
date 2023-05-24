@@ -45,7 +45,7 @@ The following sections provide examples for the most common DataVerse tasksm inc
 * [Get Project](#get-project)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
-
+* [List Models](#list-models)
 
 ### List Projects
 The `list_projects` method will list all projects of the given sites.
@@ -154,6 +154,30 @@ The `get_dataset` method retrieves the dataset info from the connected site. The
 
 ```Python
 dataset = client.get_dataset(id)
+```
+
+### List Models
+The `list_models` method will list all the models in the given project
+
+```Python
+#1
+models = client.list_models(project_id = 1)
+#2
+project = client.get_project(project_id=1)
+models = project.list_models()
+```
+### Get Model
+The `get_model` method will get the model detail info by the given model-id
+
+```Python
+model = client.get_model(model_id=30)
+model = project.get_model(model_id=30)
+```
+From the given model, we could get the label file and the triton model file by the commands below.
+```Python
+model.get_label_file()
+model.get_triton_model_file()
+
 ```
 
 
