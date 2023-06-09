@@ -188,7 +188,7 @@ class DataverseClient:
         current_user: bool = True,
         exclude_sensor_type: Optional[SensorType] = None,
         image_type: Optional[OntologyImageType] = None,
-    ) -> list:
+    ) -> list[Project]:
         """list projects in dataverse (with given filter query params)
 
         Parameters
@@ -202,8 +202,8 @@ class DataverseClient:
 
         Returns
         -------
-        list
-            list of projects [{'id': 5, 'name': 'Kitti Sequential Project'}, {'id': 6, 'name': 'project2'}]
+        list[Projects]
+            list of project items
 
         Raises
         ------
@@ -219,7 +219,10 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
-        return project_list
+        output_project_list = []
+        for project in project_list:
+            output_project_list.append(self.get_project(project_id=project["id"]))
+        return output_project_list
 
     def get_project(self, project_id: int):
         """Get project detail by project-id
@@ -259,11 +262,13 @@ class DataverseClient:
         project_id : int
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        project: Optional["Project"]
+            project basemodel, by default None
 
         Returns
         -------
         list
-            model list from api response
+            list of model items
 
         Raises
         ------
@@ -277,10 +282,10 @@ class DataverseClient:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
-        output_model_list = []
+
         if project is None:
             project = client.get_project(project_id=project_id)
-
+        output_model_list = []
         for model in model_list:
             classes = [
                 ontology_class
