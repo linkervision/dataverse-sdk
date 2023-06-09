@@ -250,7 +250,8 @@ class DataverseClient:
     def list_models(
         project_id: int,
         client: Optional["DataverseClient"] = None,
-    ) -> list:
+        project: Optional["Project"] = None,
+    ) -> list[MLModel]:
         """Get the model list by project id
 
         Parameters
@@ -276,7 +277,27 @@ class DataverseClient:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
-        return model_list
+        output_model_list = []
+        if project is None:
+            project = client.get_project(project_id=project_id)
+
+        for model in model_list:
+            classes = [
+                ontology_class
+                for ontology_class in project.ontology.classes
+                if ontology_class.id in model["classes"]
+            ]
+            ml_model = MLModel(
+                id=model["id"],
+                name=model["name"],
+                updated_at=model["updated_at"],
+                project=project,
+                classes=classes,
+                triton_model_name=model["configuration"]["triton_model_name"],
+                description=model["description"],
+            )
+            output_model_list.append(ml_model)
+        return output_model_list
 
     @staticmethod
     def get_model(

@@ -158,7 +158,7 @@ class Project(BaseModel):
     def list_models(self) -> list:
         from ..client import DataverseClient
 
-        model_list: list = DataverseClient.list_models(project_id=self.id)
+        model_list: list = DataverseClient.list_models(project_id=self.id, project=self)
         return model_list
 
     def get_model(self, model_id: int):
