@@ -128,21 +128,25 @@ class DataConfig(BaseModel):
 
 
 class Project(BaseModel):
-    id: Optional[int] = None
+    id: int
     name: str
     description: Optional[str] = None
     ego_car: Optional[str] = None
     ontology: Ontology
-    sensors: list[Sensor]
+    sensors: Optional[list[Sensor]] = None
     project_tag: Optional[ProjectTag] = None
 
     @classmethod
     def create(cls, project_data: dict) -> "Project":
         ontology = Ontology.create(project_data["ontology"])
-        sensors = [
-            Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
-        ]
-        if project_data["project_tag"] is None:
+        # TODO modify the condition if list projects results with list fields
+        if project_data.get("sensors") is None:
+            sensors = None
+        else:
+            sensors = [
+                Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
+            ]
+        if project_data.get("project_tag") is None:
             project_data["project_tag"] = {}
         project_tag = ProjectTag.create(project_data["project_tag"])
         return cls(
@@ -158,7 +162,7 @@ class Project(BaseModel):
     def list_models(self) -> list:
         from ..client import DataverseClient
 
-        model_list: list = DataverseClient.list_models(project_id=self.id)
+        model_list: list = DataverseClient.list_models(project_id=self.id, project=self)
         return model_list
 
     def get_model(self, model_id: int):
@@ -294,6 +298,38 @@ class MLModel(BaseModel):
 
     class Config:
         extra = "allow"
+
+    @classmethod
+    def create(cls, model_data: dict) -> "MLModel":
+        if isinstance(model_data["classes"][0], dict):
+            target_class_id = {
+                ontology_class["id"] for ontology_class in model_data["classes"]
+            }
+        else:
+            target_class_id = set(model_data["classes"])
+
+        from ..client import DataverseClient
+
+        if model_data["project"] is None:
+            project = DataverseClient.get_project(
+                project_id=model_data["project"]["id"]
+            )
+        else:
+            project = model_data["project"]
+        # get classes used in the model
+        classes = [
+            ontology_class
+            for ontology_class in project.ontology.classes
+            if ontology_class.id in target_class_id
+        ]
+        return cls(
+            id=model_data["id"],
+            name=model_data["name"],
+            project=project,
+            classes=classes,
+            updated_at=model_data["updated_at"],
+            triton_model_name=model_data["triton_model_name"],
+        )
 
     def get_label_file(self) -> dict:
         from ..client import DataverseClient

@@ -188,7 +188,7 @@ class DataverseClient:
         current_user: bool = True,
         exclude_sensor_type: Optional[SensorType] = None,
         image_type: Optional[OntologyImageType] = None,
-    ) -> list:
+    ) -> list[Project]:
         """list projects in dataverse (with given filter query params)
 
         Parameters
@@ -202,8 +202,8 @@ class DataverseClient:
 
         Returns
         -------
-        list
-            list of projects [{'id': 5, 'name': 'Kitti Sequential Project'}, {'id': 6, 'name': 'project2'}]
+        list[Projects]
+            list of project items
 
         Raises
         ------
@@ -219,9 +219,13 @@ class DataverseClient:
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
-        return project_list
+        output_project_list = []
+        for project in project_list:
+            output_project_list.append(Project.create(project))
+        return output_project_list
 
-    def get_project(self, project_id: int):
+    @staticmethod
+    def get_project(project_id: int, client: Optional["DataverseClient"] = None):
         """Get project detail by project-id
 
         Parameters
@@ -239,9 +243,12 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
 
         try:
-            project_data: dict = self._api_client.get_project(project_id=project_id)
+            project_data: dict = api.get_project(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
@@ -250,7 +257,8 @@ class DataverseClient:
     def list_models(
         project_id: int,
         client: Optional["DataverseClient"] = None,
-    ) -> list:
+        project: Optional["Project"] = None,
+    ) -> list[MLModel]:
         """Get the model list by project id
 
         Parameters
@@ -258,11 +266,13 @@ class DataverseClient:
         project_id : int
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        project: Optional["Project"]
+            project basemodel, by default None
 
         Returns
         -------
         list
-            model list from api response
+            list of model items
 
         Raises
         ------
@@ -276,7 +286,21 @@ class DataverseClient:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
-        return model_list
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        output_model_list = []
+        for model_data in model_list:
+            model_data.update(
+                {
+                    "project": project,
+                    "triton_model_name": model_data["configuration"][
+                        "triton_model_name"
+                    ],
+                }
+            )
+            ml_model = MLModel.create(model_data)
+            output_model_list.append(ml_model)
+        return output_model_list
 
     @staticmethod
     def get_model(
@@ -312,19 +336,10 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
-        target_class_id = {
-            ontology_class["id"] for ontology_class in model_data["classes"]
-        }
         if project is None:
             project = client.get_project(project_id=model_data["project"]["id"])
-        # get classes used in the model
-        classes = [
-            ontology_class
-            for ontology_class in project.ontology.classes
-            if ontology_class.id in target_class_id
-        ]
-        model_data.update({"id": model_id, "project": project, "classes": classes})
-        return MLModel(**model_data)
+        model_data.update({"id": model_id, "project": project})
+        return MLModel.create(model_data)
 
     @staticmethod
     def get_label_file(
