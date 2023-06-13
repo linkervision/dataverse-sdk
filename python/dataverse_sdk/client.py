@@ -286,20 +286,19 @@ class DataverseClient:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
-
         if project is None:
-            project = client.get_project(project_id=project_id)
+            project = DataverseClient.get_project(project_id=project_id)
         output_model_list = []
-        for model in model_list:
-            ml_model = MLModel(
-                id=model["id"],
-                name=model["name"],
-                updated_at=model["updated_at"],
-                project=project,
-                classes=model["classes"],
-                triton_model_name=model["configuration"]["triton_model_name"],
-                description=model["description"],
+        for model_data in model_list:
+            model_data.update(
+                {
+                    "project": project,
+                    "triton_model_name": model_data["configuration"][
+                        "triton_model_name"
+                    ],
+                }
             )
+            ml_model = MLModel.create(model_data)
             output_model_list.append(ml_model)
         return output_model_list
 
@@ -337,19 +336,10 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
-        target_class_id = {
-            ontology_class["id"] for ontology_class in model_data["classes"]
-        }
         if project is None:
             project = client.get_project(project_id=model_data["project"]["id"])
-        # get classes used in the model
-        classes = [
-            ontology_class
-            for ontology_class in project.ontology.classes
-            if ontology_class.id in target_class_id
-        ]
-        model_data.update({"id": model_id, "project": project, "classes": classes})
-        return MLModel(**model_data)
+        model_data.update({"id": model_id, "project": project})
+        return MLModel.create(model_data)
 
     @staticmethod
     def get_label_file(
