@@ -128,21 +128,25 @@ class DataConfig(BaseModel):
 
 
 class Project(BaseModel):
-    id: Optional[int] = None
+    id: int
     name: str
     description: Optional[str] = None
     ego_car: Optional[str] = None
     ontology: Ontology
-    sensors: list[Sensor]
+    sensors: Optional[list[Sensor]] = None
     project_tag: Optional[ProjectTag] = None
 
     @classmethod
     def create(cls, project_data: dict) -> "Project":
         ontology = Ontology.create(project_data["ontology"])
-        sensors = [
-            Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
-        ]
-        if project_data["project_tag"] is None:
+        # TODO modify the condition if list projects results with list fields
+        if project_data.get("sensors") is None:
+            sensors = None
+        else:
+            sensors = [
+                Sensor.create(sensor_data) for sensor_data in project_data["sensors"]
+            ]
+        if project_data.get("project_tag") is None:
             project_data["project_tag"] = {}
         project_tag = ProjectTag.create(project_data["project_tag"])
         return cls(

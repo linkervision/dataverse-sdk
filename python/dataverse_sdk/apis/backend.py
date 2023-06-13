@@ -175,14 +175,15 @@ class BackendAPI:
         image_type: Optional[str] = None,
         **kwargs,
     ) -> list:
-        if current_user:
-            kwargs["current_user"] = current_user
-        if exclude_sensor_type is not None:
-            kwargs["exclude_sensor_type"] = exclude_sensor_type.value
+        # TODO open this filter parameters after API updated
+        # if current_user:
+        #     kwargs["current_user"] = current_user
+        # if exclude_sensor_type is not None:
+        #     kwargs["exclude_sensor_type"] = exclude_sensor_type.value
         if image_type is not None:
             kwargs["ontology__image_type"] = image_type.value
         resp = self.send_request(
-            url=f"{self.host}/api/projects/basic/?{urlencode(kwargs)}",
+            url=f"{self.host}/api/projects/?{urlencode(kwargs)}",
             method="get",
             headers=self.headers,
         )

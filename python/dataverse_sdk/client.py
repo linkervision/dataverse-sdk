@@ -221,10 +221,11 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
         output_project_list = []
         for project in project_list:
-            output_project_list.append(self.get_project(project_id=project["id"]))
+            output_project_list.append(Project.create(project))
         return output_project_list
 
-    def get_project(self, project_id: int):
+    @staticmethod
+    def get_project(project_id: int, client: Optional["DataverseClient"] = None):
         """Get project detail by project-id
 
         Parameters
@@ -242,9 +243,12 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
 
         try:
-            project_data: dict = self._api_client.get_project(project_id=project_id)
+            project_data: dict = api.get_project(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
@@ -287,17 +291,12 @@ class DataverseClient:
             project = client.get_project(project_id=project_id)
         output_model_list = []
         for model in model_list:
-            classes = [
-                ontology_class
-                for ontology_class in project.ontology.classes
-                if ontology_class.id in model["classes"]
-            ]
             ml_model = MLModel(
                 id=model["id"],
                 name=model["name"],
                 updated_at=model["updated_at"],
                 project=project,
-                classes=classes,
+                classes=model["classes"],
                 triton_model_name=model["configuration"]["triton_model_name"],
                 description=model["description"],
             )
