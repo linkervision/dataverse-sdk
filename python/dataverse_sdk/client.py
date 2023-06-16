@@ -362,7 +362,7 @@ class DataverseClient:
 
         Returns
         -------
-        tuple[bool, str]
+        (status, save_path): tuple[bool, str]
             the first item means whether the download success or not
             the second item shows the save_path
         """
@@ -398,7 +398,7 @@ class DataverseClient:
 
         Returns
         -------
-        tuple[bool, str]
+        (status, save_path): tuple[bool, str]
             the first item means whether the download success or not
             the second item shows the save_path
         """

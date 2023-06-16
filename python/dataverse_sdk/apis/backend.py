@@ -47,7 +47,6 @@ class BackendAPI:
         attempts: int = 1,
         max_attempts: int = 5,
         data: Optional[Union[str, dict]] = None,
-        stream: bool = False,
         timeout: int = 3000,
         **kwargs,
     ):
@@ -61,8 +60,6 @@ class BackendAPI:
             and kwargs.get("headers", {}).get("Content-Type") == "application/json"
         ):
             data = json.dumps(data)
-        if stream:
-            kwargs["stream"] = stream
 
         parent_func = inspect.stack()[2][3]
         try:
