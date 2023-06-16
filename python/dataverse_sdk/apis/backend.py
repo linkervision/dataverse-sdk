@@ -1,7 +1,6 @@
 import inspect
 import json
 import logging
-from io import BytesIO
 from typing import Optional, Union
 from urllib.parse import urlencode
 
@@ -48,6 +47,8 @@ class BackendAPI:
         attempts: int = 1,
         max_attempts: int = 5,
         data: Optional[Union[str, dict]] = None,
+        stream: bool = False,
+        timeout: int = 3000,
         **kwargs,
     ):
         if attempts > max_attempts:
@@ -60,13 +61,17 @@ class BackendAPI:
             and kwargs.get("headers", {}).get("Content-Type") == "application/json"
         ):
             data = json.dumps(data)
+        if stream:
+            kwargs["stream"] = stream
 
         parent_func = inspect.stack()[2][3]
         try:
             with sessions.Session() as session:
                 session.mount("http://", self.adapter)
                 session.mount("https://", self.adapter)
-                resp = session.request(method=method, url=url, data=data, **kwargs)
+                resp = session.request(
+                    method=method, url=url, data=data, timeout=timeout, **kwargs
+                )
         except requests.exceptions.Timeout:
             logger.warning(f"Request timeout: {method} {url}")
             raise
@@ -205,19 +210,27 @@ class BackendAPI:
         )
         return resp.json()
 
-    def get_ml_model_labels(self, model_id: int) -> Optional[BytesIO]:
+    def get_ml_model_labels(
+        self, model_id: int, timeout: int = 3000
+    ) -> requests.models.Response:
         resp = self.send_request(
             url=f"{self.host}/api/ml_models/{model_id}/labels/",
             method="get",
             headers=self.headers,
+            stream=True,
+            timeout=timeout,
         )
         return resp
 
-    def get_ml_model_file(self, model_id: int) -> Optional[BytesIO]:
+    def get_ml_model_file(
+        self, model_id: int, timeout: int = 3000
+    ) -> requests.models.Response:
         resp = self.send_request(
             url=f"{self.host}/api/ml_models/{model_id}/model/",
             method="get",
             headers=self.headers,
+            stream=True,
+            timeout=timeout,
         )
         return resp
 

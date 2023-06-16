@@ -1,4 +1,4 @@
-from io import BytesIO
+import logging
 from os.path import isfile
 from typing import Optional
 
@@ -25,7 +25,7 @@ from .schemas.client import (
     Sensor,
 )
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
-from .utils.utils import get_filepaths
+from .utils.utils import download_file_from_response, get_filepaths
 
 
 class DataverseClient:
@@ -343,31 +343,75 @@ class DataverseClient:
 
     @staticmethod
     def get_label_file(
-        model_id: int, client: Optional["DataverseClient"] = None
-    ) -> Optional[BytesIO]:
+        model_id: int,
+        save_path: str = "./labels.txt",
+        timeout: int = 3000,
+        client: Optional["DataverseClient"] = None,
+    ) -> tuple[bool, str]:
+        """Download the model label file (which is a string txt file)
+
+        Parameters
+        ----------
+        model_id : int
+        save_path : str, optional
+            local path for saving the label_file, by default './labels.txt'
+        timeout : int, optional
+            maximum timeout of the request, by default 3000
+        client : Optional[&quot;DataverseClient&quot;], optional
+            client class, by default None
+
+        Returns
+        -------
+        tuple[bool, str]
+            the first item means whether the download success or not
+            the second item shows the save_path
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
         try:
-            labels: BytesIO = api.get_ml_model_labels(model_id=model_id)
+            resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
+            download_file_from_response(response=resp, save_path=save_path)
+            return True, save_path
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get model labels: {e}")
-        if labels:
-            return labels
+            logging.exception("Fail to get model label file", e)
+            return False, save_path
 
     @staticmethod
     def get_triton_model_file(
-        model_id: int, client: Optional["DataverseClient"] = None
-    ) -> Optional[BytesIO]:
+        model_id: int,
+        save_path: str = "./model.zip",
+        timeout: int = 3000,
+        client: Optional["DataverseClient"] = None,
+    ) -> tuple[bool, str]:
+        """Download the triton model file (which is a zip file)
+
+        Parameters
+        ----------
+        model_id : int
+        save_path : str, optional
+            local path for saving the triton model file, by default './model.zip'
+        timeout : int, optional
+            maximum timeout of the request, by default 3000
+        client : Optional[&quot;DataverseClient&quot;], optional
+            client class, by default None
+
+        Returns
+        -------
+        tuple[bool, str]
+            the first item means whether the download success or not
+            the second item shows the save_path
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
         try:
-            model_file: BytesIO = api.get_ml_model_file(model_id=model_id)
+            resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
+            download_file_from_response(response=resp, save_path=save_path)
+            return True, save_path
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get triton model file: {e}")
-        if model_file:
-            return model_file
+            logging.exception("Failed to get triton model file", e)
+            return False, save_path
 
     def get_dataset(self, dataset_id: int):
         """Get dataset detail and status by id
