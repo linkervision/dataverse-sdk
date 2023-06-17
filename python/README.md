@@ -175,8 +175,8 @@ model = project.get_model(model_id=30)
 ```
 From the given model, we could get the label file and the triton model file by the commands below.
 ```Python
-model.get_label_file()
-model.get_triton_model_file()
+status, label_file_path = model.get_label_file(save_path="./labels.txt", timeout=6000)
+status, label_file_path = model.get_triton_model_file(save_path="./model.zip", timeout=6000)
 
 ```
 

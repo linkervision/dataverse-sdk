@@ -331,14 +331,20 @@ class MLModel(BaseModel):
             triton_model_name=model_data["triton_model_name"],
         )
 
-    def get_label_file(self) -> dict:
+    def get_label_file(
+        self, save_path: str = "./labels.txt", timeout: int = 3000
+    ) -> tuple[bool, str]:
         from ..client import DataverseClient
 
-        labels: dict = DataverseClient.get_label_file(model_id=self.id)
-        return labels
+        return DataverseClient.get_label_file(
+            model_id=self.id, save_path=save_path, timeout=timeout
+        )
 
-    def get_triton_model_file(self):
+    def get_triton_model_file(
+        self, save_path: str = "./model.zip", timeout: int = 3000
+    ) -> tuple[bool, str]:
         from ..client import DataverseClient
 
-        model_file = DataverseClient.get_triton_model_file(model_id=self.id)
-        return model_file
+        return DataverseClient.get_triton_model_file(
+            model_id=self.id, save_path=save_path, timeout=timeout
+        )
