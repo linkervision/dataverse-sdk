@@ -329,9 +329,10 @@ class DataverseClient:
                         option["value"]
                         in current_attribute_map[attr["name"]]["options"]
                     ):
-                        raise ValueError(
+                        logging.info(
                             f'Attribute {attr["name"]} with option value, {option["value"]}, already exists'
                         )
+                        continue
                     attr["option_data"].append(option["value"])
             patched_attribute_data.append(attr)
         project_tag_data = {"patched_attribute_data": patched_attribute_data}
@@ -354,12 +355,12 @@ class DataverseClient:
         current_classes = {
             ontology_class.name for ontology_class in project.ontology.classes
         }
-        # new project tag attributes to be creaeted
+        # new ontology classes to be creaeted
         new_classes_data = []
         for ontology_class in new_classes:
             # can not create existing classes
             if ontology_class.name in current_classes:
-                raise ValueError(
+                raise NotImplementedError(
                     f"Class name {ontology_class.name} exists. Can not create new classes!"
                 )
             attribute_data = []
@@ -418,22 +419,24 @@ class DataverseClient:
                 attr = attr.dict()
                 attr_options = attr.pop("options", [])
                 if attr["name"] in current_attribute_map:
-                    if attr.type != current_attribute_map[attr["name"]]["type"]:
+                    if attr["type"] != current_attribute_map[attr["name"]].type:
                         raise NotImplementedError(
                             f"The data type of attribute {attr.type} can not be modified"
                         )
                 if attr["type"] == "option":
                     attr["option_data"] = []
-                    current_attribute_options = {
+                    current_attribute_options: set = {
                         option.value
                         for option in current_attribute_map[attr["name"]].options
                     }
                     for option in attr_options:
                         # do not update the existing option value
                         if option["value"] in current_attribute_options:
+                            logging.info(
+                                f'class {ontology_class.name} and attribute {attr["name"]} \
+                                         with option value {option["value"]} already exists'
+                            )
                             continue
-                        # raise ValueError(f'class {ontology_class.name} and attribute {attr.name}
-                        # with option value {option.value} already exists')
                         attr["option_data"].append(option["value"])
                 attribute_data.append(attr)
 
