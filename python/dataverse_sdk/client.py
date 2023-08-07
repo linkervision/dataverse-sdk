@@ -20,6 +20,7 @@ from .schemas.client import (
     DataSource,
     MLModel,
     Ontology,
+    OntologyClass,
     Project,
     ProjectTag,
     Sensor,
@@ -252,6 +253,195 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
+
+    @staticmethod
+    def add_project_tags(
+        project_id: int,
+        new_project_tags: ProjectTag,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        current_attributes = project.project_tag.attributes
+        current_attribute_map: dict = {
+            attr.name: {"type": attr.type, "options": attr.options}
+            for attr in current_attributes
+        }
+        # new project tag attributes to be creaeted
+        new_attribute_data = []
+        for attr in new_project_tags.attributes:
+            # can not create existing tag attributes
+            attr = attr.dict()
+            attr_options = attr.pop("options", [])
+            if attr["name"] in current_attribute_map:
+                raise NotImplementedError(
+                    f'Tag attribute name {attr["name"]} exists. Can not create new tag!'
+                )
+            if attr["type"] == "option":
+                attr["option_data"] = [opt_data["value"] for opt_data in attr_options]
+            new_attribute_data.append(attr)
+        project_tag_data = {"new_attribute_data": new_attribute_data}
+        return api.edit_project(
+            project_id=project_id, project_tag_data=project_tag_data
+        )
+
+    @staticmethod
+    def edit_project_tags(
+        project_id: int,
+        edit_project_tags: ProjectTag,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        current_attributes = project.project_tag.attributes
+        current_attribute_map: dict = {
+            attr.name: {
+                "type": attr.type,
+                "options": {option.value for option in attr.options},
+            }
+            for attr in current_attributes
+        }
+        # old project tag attributes to be extended
+        patched_attribute_data = []
+        for attr in edit_project_tags.attributes:
+            attr = attr.dict()
+            attr_options = attr.pop("options", [])
+            if attr["name"] not in current_attribute_map:
+                raise NotImplementedError(
+                    f'Attribute name {attr["name"]} does not exist. Need to add new attribute!'
+                )
+            if attr["type"] != current_attribute_map[attr["name"]]["type"]:
+                raise NotImplementedError(
+                    f'The data type of attribute {attr["type"]} can not be modified'
+                )
+            if attr["type"] == "option":
+                attr["option_data"] = []
+                for option in attr_options:
+                    if (
+                        option["value"]
+                        in current_attribute_map[attr["name"]]["options"]
+                    ):
+                        raise ValueError(
+                            f'Attribute {attr["name"]} with option value, {option["value"]}, already exists'
+                        )
+                    attr["option_data"].append(option["value"])
+            patched_attribute_data.append(attr)
+        project_tag_data = {"patched_attribute_data": patched_attribute_data}
+        return api.edit_project(
+            project_id=project_id, project_tag_data=project_tag_data
+        )
+
+    @staticmethod
+    def add_project_classes(
+        project_id: int,
+        new_classes: list[OntologyClass],
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        current_classes = {
+            ontology_class.name for ontology_class in project.ontology.classes
+        }
+        # new project tag attributes to be creaeted
+        new_classes_data = []
+        for ontology_class in new_classes:
+            # can not create existing classes
+            if ontology_class.name in current_classes:
+                raise ValueError(
+                    f"Class name {ontology_class.name} exists. Can not create new classes!"
+                )
+            attribute_data = []
+            for attr in ontology_class.attributes:
+                attr = attr.dict()
+                attr_options = attr.pop("options", [])
+                if attr["type"] == "option":
+                    attr["option_data"] = [
+                        opt_data["value"] for opt_data in attr_options
+                    ]
+                attribute_data.append(attr)
+            new_classes_data.append(
+                {
+                    "name": ontology_class.name,
+                    "color": ontology_class.color,
+                    "attribute_data": attribute_data,
+                }
+            )
+        ontology_data = {"new_classes_data": new_classes_data}
+        return api.edit_project(project_id=project_id, ontology_data=ontology_data)
+
+    @staticmethod
+    def edit_project_classes(
+        project_id: int,
+        edit_classes: list[OntologyClass],
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ):
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        current_classes_names = {
+            ontology_class.name for ontology_class in project.ontology.classes
+        }
+        # new project tag attributes to be creaeted
+        patched_classes_data = []
+        for ontology_class in edit_classes:
+            # can not create existing classes
+            if ontology_class.name not in current_classes_names:
+                raise ValueError(
+                    f"Class name {ontology_class.name} does not exist. Try to create a new class instead!"
+                )
+            current_class_attributes = [
+                current_class.attributes
+                for current_class in project.ontology.classes
+                if current_class.name == ontology_class.name
+            ][0]
+            current_attribute_map = {
+                attr.name: attr for attr in current_class_attributes
+            }
+            # parse attribute
+            attribute_data = []
+            for attr in ontology_class.attributes:
+                attr = attr.dict()
+                attr_options = attr.pop("options", [])
+                if attr["name"] in current_attribute_map:
+                    if attr.type != current_attribute_map[attr["name"]]["type"]:
+                        raise NotImplementedError(
+                            f"The data type of attribute {attr.type} can not be modified"
+                        )
+                if attr["type"] == "option":
+                    attr["option_data"] = []
+                    current_attribute_options = {
+                        option.value
+                        for option in current_attribute_map[attr["name"]].options
+                    }
+                    for option in attr_options:
+                        # do not update the existing option value
+                        if option["value"] in current_attribute_options:
+                            continue
+                        # raise ValueError(f'class {ontology_class.name} and attribute {attr.name}
+                        # with option value {option.value} already exists')
+                        attr["option_data"].append(option["value"])
+                attribute_data.append(attr)
+
+            patched_classes_data.append(
+                {"name": ontology_class.name, "attribute_data": attribute_data}
+            )
+        ontology_data = {"patched_classes_data": patched_classes_data}
+        return api.edit_project(project_id=project_id, ontology_data=ontology_data)
 
     @staticmethod
     def list_models(

@@ -159,7 +159,31 @@ class BackendAPI:
                 "description": description,
             },
         )
+        return resp.json()
 
+    def edit_project(
+        self,
+        project_id: int,
+        name: Optional[str] = None,
+        ontology_data: Optional[dict] = None,
+        project_tag_data: Optional[dict] = None,
+        description: Optional[str] = None,
+    ) -> dict:
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        if ontology_data is not None:
+            data["ontology_data"] = ontology_data
+        if project_tag_data is not None:
+            data["project_tag_data"] = project_tag_data
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/{project_id}/",
+            method="patch",
+            headers=self.headers,
+            data=data,
+        )
         return resp.json()
 
     def get_project(self, project_id) -> dict:

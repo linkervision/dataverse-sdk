@@ -159,6 +159,16 @@ class Project(BaseModel):
             project_tag=project_tag,
         )
 
+    # @classmethod
+    # def edit_project_tags(cls, new_project_tag: Optional[ProjectTag]=None, edit_project_tag:
+    # Optional[ProjectTag]=None):
+    #     return {}
+
+    # @classmethod
+    # def edit_ontology_classes(cls, classes: list):
+
+    #     return None
+
     def list_models(self) -> list:
         from ..client import DataverseClient
 
