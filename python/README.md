@@ -103,6 +103,84 @@ The `get_proejct` method retrieves the project from the connected site. The `id`
 project = client.get_project(id)
 ```
 
+
+### Edit Project
+
+For editing project contents, we have four functions below for add/edit project tags and ontology classes.
+
+#### Add New Project Tags
+```Python
+tag = {
+        "attributes": [
+            {
+                "name": "month",
+                "type": "number"
+            },
+            {
+                "name": "weather",
+                "type": "option",
+                "options": [{"value":"sunny"}, {"value":"rainy"}, {"value":"cloudy"}
+                ]
+            }]}
+new_project_tag= ProjectTag(**tag)
+client.add_project_tags(project_id = 10, new_project_tags=new_project_tag)
+#OR
+project.add_project_tags(new_project_tags=new_project_tag)
+```
+
+#### Edit Project Tags
+```Python
+tag = {
+        "attributes": [
+            {
+                "name": "weather",
+                "type": "option",
+                "options": [{"value":"unknown"}, {"value":"snowy"}
+                ]
+            }]}
+edit_project_tag= ProjectTag(**tag)
+client.edit_project_tags(project_id = 10, edit_project_tags=new_project_tag)
+#OR
+project.edit_project_tags(edit_project_tags=edit_project_tag)
+```
+
+#### Add New Ontology Classes
+```Python
+new_classes = [OntologyClass(name="obstruction",
+                    rank=9,
+                    color="#AB4321",
+                    attributes=[{
+                    "name":
+                    "status",
+                    "type":
+                    "option",
+                    "options": [{
+                    "value": "static"}, {"value": "moving"
+                    }]}])]
+client.add_ontology_classes(project_id=24, new_ontology_classes=new_classes)
+#OR
+project.add_ontology_classes(new_ontology_classes=new_classes)
+```
+
+
+#### Edit Ontology Classes
+```Python
+edit_classes = [OntologyClass(name="obstruction",
+                    color="#AB4321",
+                    attributes=[{
+                    "name":
+                    "status",
+                    "type":
+                    "option",
+                    "options": [{
+                    "value": "unknown"}]}])]
+client.edit_ontology_classes(project_id=24, edit_ontology_classes=edit_classes)
+#OR
+project.edit_ontology_classes(edit_ontology_classes=edit_classes)
+```
+
+
+
 ### Create Dataset
 
 * Use `create_dataset` to create dataset from **cloud storage**

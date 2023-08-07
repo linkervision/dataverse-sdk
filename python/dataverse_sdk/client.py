@@ -260,7 +260,27 @@ class DataverseClient:
         new_project_tags: ProjectTag,
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
-    ):
+    ) -> dict:
+        """Add New Project Tags
+
+        Parameters
+        ----------
+        project_id : int
+        new_project_tags : ProjectTag
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        NotImplementedError
+            Do not create existing tags
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
@@ -295,7 +315,32 @@ class DataverseClient:
         edit_project_tags: ProjectTag,
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
-    ):
+    ) -> dict:
+        """Edit existing project tags
+
+        Parameters
+        ----------
+        project_id : int
+        edit_project_tags : ProjectTag
+            _description_
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ValueErrorError
+            -- Can not edit project tags that does not exist
+        NotImplementedError
+            -- Can not modify the data type of existing project tags
+            -- Can not edit project tag with all existing options
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
@@ -315,7 +360,7 @@ class DataverseClient:
             attr = attr.dict()
             attr_options = attr.pop("options", [])
             if attr["name"] not in current_attribute_map:
-                raise NotImplementedError(
+                raise ValueError(
                     f'Attribute name {attr["name"]} does not exist. Need to add new attribute!'
                 )
             if attr["type"] != current_attribute_map[attr["name"]]["type"]:
@@ -334,6 +379,10 @@ class DataverseClient:
                         )
                         continue
                     attr["option_data"].append(option["value"])
+                if not len(attr["option_data"]):
+                    raise NotImplementedError(
+                        f'All option values of attribute {attr["name"]} already exist'
+                    )
             patched_attribute_data.append(attr)
         project_tag_data = {"patched_attribute_data": patched_attribute_data}
         return api.edit_project(
@@ -341,12 +390,33 @@ class DataverseClient:
         )
 
     @staticmethod
-    def add_project_classes(
+    def add_ontology_classes(
         project_id: int,
-        new_classes: list[OntologyClass],
+        new_ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
-    ):
+    ) -> dict:
+        """Add new ontology classes
+
+        Parameters
+        ----------
+        project_id : int
+        new_ontology_classes : list[OntologyClass]
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        NotImplementedError
+            Do not create existing classes
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
@@ -357,7 +427,7 @@ class DataverseClient:
         }
         # new ontology classes to be creaeted
         new_classes_data = []
-        for ontology_class in new_classes:
+        for ontology_class in new_ontology_classes:
             # can not create existing classes
             if ontology_class.name in current_classes:
                 raise NotImplementedError(
@@ -383,12 +453,36 @@ class DataverseClient:
         return api.edit_project(project_id=project_id, ontology_data=ontology_data)
 
     @staticmethod
-    def edit_project_classes(
+    def edit_ontology_classes(
         project_id: int,
-        edit_classes: list[OntologyClass],
+        edit_ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
-    ):
+    ) -> dict:
+        """_summary_
+
+        Parameters
+        ----------
+        project_id : int
+        edit_ontology_classes : list[OntologyClass]
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ValueError
+            Can not edit class that does not exist
+        NotImplementedError
+            -- Can not modify the data type of class attributes
+            -- Can not edit class attributes with all existing options
+        """
         if client is None:
             client = DataverseClient.get_client()
         api = client._api_client
@@ -399,7 +493,7 @@ class DataverseClient:
         }
         # new project tag attributes to be creaeted
         patched_classes_data = []
-        for ontology_class in edit_classes:
+        for ontology_class in edit_ontology_classes:
             # can not create existing classes
             if ontology_class.name not in current_classes_names:
                 raise ValueError(
@@ -438,6 +532,11 @@ class DataverseClient:
                             )
                             continue
                         attr["option_data"].append(option["value"])
+                    if not len(attr["option_data"]):
+                        raise NotImplementedError(
+                            f'All option values of class {ontology_class.name} and attribute {attr["name"]} \
+                                already exist'
+                        )
                 attribute_data.append(attr)
 
             patched_classes_data.append(
