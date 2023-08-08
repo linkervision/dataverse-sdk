@@ -299,7 +299,9 @@ class DataverseClient:
                 project_id=project_id, project_tag_data=project_tag_data
             )
         except Exception as e:
-            raise ClientConnectionError(f"Failed to add project tag: {e}")
+            raise ClientConnectionError(
+                f"Failed to add project tag, please check your data: {e}"
+            )
         return project_data
 
     @staticmethod
@@ -347,7 +349,9 @@ class DataverseClient:
                 project_id=project_id, project_tag_data=project_tag_data
             )
         except Exception as e:
-            raise ClientConnectionError(f"Failed to edit project tag: {e}")
+            raise ClientConnectionError(
+                f"Failed to edit project tag, please check your data: {e}"
+            )
         return project_data
 
     @staticmethod
@@ -403,7 +407,9 @@ class DataverseClient:
                 project_id=project_id, ontology_data=ontology_data
             )
         except Exception as e:
-            raise ClientConnectionError(f"Failed to add ontology classes: {e}")
+            raise ClientConnectionError(
+                f"Failed to add ontology classes, please check your data: {e}"
+            )
         return project_data
 
     @staticmethod
@@ -455,7 +461,9 @@ class DataverseClient:
                 project_id=project_id, ontology_data=ontology_data
             )
         except Exception as e:
-            raise ClientConnectionError(f"Failed to edit ontology classes: {e}")
+            raise ClientConnectionError(
+                f"Failed to edit ontology classes, please check your data: {e}"
+            )
         return project_data
 
     @staticmethod

@@ -124,9 +124,9 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.add_project_tags(project_id = 10, project_tag=project_tag)
+client.add_project_tag(project_id = 10, project_tag=project_tag)
 #OR
-project.add_project_tags(project_tag=project_tag)
+project.add_project_tag(project_tag=project_tag)
 ```
 
 #### Edit Project Tags
@@ -145,9 +145,9 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.edit_project_tags(project_id = 10, project_tag=project_tag)
+client.edit_project_tag(project_id = 10, project_tag=project_tag)
 #OR
-project.edit_project_tags(project_tag=project_tag)
+project.edit_project_tag(project_tag=project_tag)
 ```
 
 #### Add New Ontology Classes
