@@ -106,9 +106,10 @@ project = client.get_project(id)
 
 ### Edit Project
 
-For editing project contents, we have four functions below for add/edit project tags and ontology classes.
+For editing project contents, we have four functions below for add/edit project tag and ontology classes.
 
 #### Add New Project Tags
+* Note: Can not create existing project tag!
 ```Python
 tag = {
         "attributes": [
@@ -122,13 +123,18 @@ tag = {
                 "options": [{"value":"sunny"}, {"value":"rainy"}, {"value":"cloudy"}
                 ]
             }]}
-new_project_tag= ProjectTag(**tag)
-client.add_project_tags(project_id = 10, new_project_tags=new_project_tag)
+project_tag= ProjectTag(**tag)
+client.add_project_tags(project_id = 10, project_tag=project_tag)
 #OR
-project.add_project_tags(new_project_tags=new_project_tag)
+project.add_project_tags(project_tag=project_tag)
 ```
 
 #### Edit Project Tags
+** Note:
+1. Can not edit project tag that does not exist
+2. Can not modify the data type of existing project tags
+3. Can not provide attributes with existing options
+
 ```Python
 tag = {
         "attributes": [
@@ -138,13 +144,15 @@ tag = {
                 "options": [{"value":"unknown"}, {"value":"snowy"}
                 ]
             }]}
-edit_project_tag= ProjectTag(**tag)
-client.edit_project_tags(project_id = 10, edit_project_tags=new_project_tag)
+project_tag= ProjectTag(**tag)
+client.edit_project_tags(project_id = 10, project_tag=project_tag)
 #OR
-project.edit_project_tags(edit_project_tags=edit_project_tag)
+project.edit_project_tags(project_tag=project_tag)
 ```
 
 #### Add New Ontology Classes
+
+
 ```Python
 new_classes = [OntologyClass(name="obstruction",
                     rank=9,
@@ -157,13 +165,18 @@ new_classes = [OntologyClass(name="obstruction",
                     "options": [{
                     "value": "static"}, {"value": "moving"
                     }]}])]
-client.add_ontology_classes(project_id=24, new_ontology_classes=new_classes)
+client.add_ontology_classes(project_id=24, ontology_classes=new_classes)
 #OR
-project.add_ontology_classes(new_ontology_classes=new_classes)
+project.add_ontology_classes(ontology_classes=new_classes)
 ```
 
 
 #### Edit Ontology Classes
+** Note:
+1. Can not edit ontology class that does not exist
+2. Can not modify the data type of existing ontology class attributes
+3. Can not provide attributes with existing options
+
 ```Python
 edit_classes = [OntologyClass(name="obstruction",
                     color="#AB4321",
@@ -174,9 +187,9 @@ edit_classes = [OntologyClass(name="obstruction",
                     "option",
                     "options": [{
                     "value": "unknown"}]}])]
-client.edit_ontology_classes(project_id=24, edit_ontology_classes=edit_classes)
+client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes)
 #OR
-project.edit_ontology_classes(edit_ontology_classes=edit_classes)
+project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
 
 

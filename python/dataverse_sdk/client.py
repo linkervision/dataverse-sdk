@@ -353,7 +353,7 @@ class DataverseClient:
     @staticmethod
     def add_ontology_classes(
         project_id: int,
-        new_ontology_classes: list[OntologyClass],
+        ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
     ) -> dict:
@@ -362,7 +362,7 @@ class DataverseClient:
         Parameters
         ----------
         project_id : int
-        new_ontology_classes : list[OntologyClass]
+        ontology_classes : list[OntologyClass]
         client : Optional["DataverseClient"], optional
             clientclass, by default None
         project : Optional["Project"], optional
@@ -385,7 +385,7 @@ class DataverseClient:
             project = DataverseClient.get_project(project_id=project_id)
         # new ontology classes to be creaeted
         new_classes_data = []
-        for ontology_class in new_ontology_classes:
+        for ontology_class in ontology_classes:
             raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
             attribute_data: list = parse_attribute(
                 raw_ontology_class.get("attributes", [])
@@ -409,7 +409,7 @@ class DataverseClient:
     @staticmethod
     def edit_ontology_classes(
         project_id: int,
-        edit_ontology_classes: list[OntologyClass],
+        ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
     ) -> dict:
@@ -418,7 +418,7 @@ class DataverseClient:
         Parameters
         ----------
         project_id : int
-        edit_ontology_classes : list[OntologyClass]
+        ontology_classes : list[OntologyClass]
         client : Optional["DataverseClient"], optional
             clientclass, by default None
         project : Optional["Project"], optional
@@ -441,7 +441,7 @@ class DataverseClient:
             project = DataverseClient.get_project(project_id=project_id)
         # ontology classes to be edited
         patched_classes_data = []
-        for ontology_class in edit_ontology_classes:
+        for ontology_class in ontology_classes:
             raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
             attribute_data: list = parse_attribute(
                 raw_ontology_class.get("attributes", [])

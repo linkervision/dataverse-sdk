@@ -175,19 +175,19 @@ class Project(BaseModel):
         )
         return project
 
-    def add_ontology_classes(self, new_ontology_classes: list[OntologyClass]):
+    def add_ontology_classes(self, ontology_classes: list[OntologyClass]):
         from ..client import DataverseClient
 
         project = DataverseClient.add_ontology_classes(
-            new_ontology_classes=new_ontology_classes, project=self, project_id=self.id
+            ontology_classes=ontology_classes, project=self, project_id=self.id
         )
         return project
 
-    def edit_ontology_classes(self, edit_ontology_classes: list[OntologyClass]):
+    def edit_ontology_classes(self, ontology_classes: list[OntologyClass]):
         from ..client import DataverseClient
 
         project = DataverseClient.edit_ontology_classes(
-            edit_ontology_classes=edit_ontology_classes,
+            ontology_classes=ontology_classes,
             project=self,
             project_id=self.id,
         )
