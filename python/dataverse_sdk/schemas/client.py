@@ -159,19 +159,19 @@ class Project(BaseModel):
             project_tag=project_tag,
         )
 
-    def add_project_tags(self, new_project_tags: ProjectTag):
+    def add_project_tag(self, project_tag: ProjectTag):
         from ..client import DataverseClient
 
-        project = DataverseClient.add_project_tags(
-            new_project_tags=new_project_tags, project=self, project_id=self.id
+        project = DataverseClient.add_project_tag(
+            project_tag=project_tag, project=self, project_id=self.id
         )
         return project
 
-    def edit_project_tags(self, edit_project_tags: ProjectTag):
+    def edit_project_tag(self, project_tag: ProjectTag):
         from ..client import DataverseClient
 
-        project = DataverseClient.edit_project_tags(
-            edit_project_tags=edit_project_tags, project=self, project_id=self.id
+        project = DataverseClient.edit_project_tag(
+            project_tag=project_tag, project=self, project_id=self.id
         )
         return project
 

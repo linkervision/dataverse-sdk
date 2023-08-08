@@ -255,9 +255,9 @@ class DataverseClient:
         return Project.create(project_data)
 
     @staticmethod
-    def add_project_tags(
+    def add_project_tag(
         project_id: int,
-        new_project_tags: ProjectTag,
+        project_tag: ProjectTag,
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
     ) -> dict:
@@ -266,7 +266,7 @@ class DataverseClient:
         Parameters
         ----------
         project_id : int
-        new_project_tags : ProjectTag
+        project_tag : ProjectTag
         client : Optional["DataverseClient"], optional
             clientclass, by default None
         project : Optional["Project"], optional
@@ -278,7 +278,7 @@ class DataverseClient:
 
         Raises
         ------
-        NotImplementedError
+        ValueError
             Do not create existing tags
         """
         if client is None:
@@ -293,12 +293,12 @@ class DataverseClient:
         }
         # new project tag attributes to be creaeted
         new_attribute_data = []
-        for attr in new_project_tags.attributes:
+        for attr in project_tag.attributes:
             # can not create existing tag attributes
             attr = attr.dict()
             attr_options = attr.pop("options", [])
             if attr["name"] in current_attribute_map:
-                raise NotImplementedError(
+                raise ValueError(
                     f'Tag attribute name {attr["name"]} exists. Can not create new tag!'
                 )
             if attr["type"] == "option":
@@ -310,9 +310,9 @@ class DataverseClient:
         )
 
     @staticmethod
-    def edit_project_tags(
+    def edit_project_tag(
         project_id: int,
-        edit_project_tags: ProjectTag,
+        project_tag: ProjectTag,
         client: Optional["DataverseClient"] = None,
         project: Optional["Project"] = None,
     ) -> dict:
@@ -321,8 +321,7 @@ class DataverseClient:
         Parameters
         ----------
         project_id : int
-        edit_project_tags : ProjectTag
-            _description_
+        project_tag : ProjectTag
         client : Optional["DataverseClient"], optional
             clientclass, by default None
         project : Optional["Project"], optional
@@ -356,7 +355,7 @@ class DataverseClient:
         }
         # old project tag attributes to be extended
         patched_attribute_data = []
-        for attr in edit_project_tags.attributes:
+        for attr in project_tag.attributes:
             attr = attr.dict()
             attr_options = attr.pop("options", [])
             if attr["name"] not in current_attribute_map:
