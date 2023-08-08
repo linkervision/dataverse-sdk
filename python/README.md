@@ -152,7 +152,7 @@ project.edit_project_tag(project_tag=project_tag)
 
 #### Add New Ontology Classes
 
-
+* Note: Can not add existing ontology class!
 ```Python
 new_classes = [OntologyClass(name="obstruction",
                     rank=9,
