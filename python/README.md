@@ -103,6 +103,97 @@ The `get_proejct` method retrieves the project from the connected site. The `id`
 project = client.get_project(id)
 ```
 
+
+### Edit Project
+
+For editing project contents, we have four functions below for add/edit project tag and ontology classes.
+
+#### Add New Project Tags
+* Note: Can not create existing project tag!
+```Python
+tag = {
+        "attributes": [
+            {
+                "name": "month",
+                "type": "number"
+            },
+            {
+                "name": "weather",
+                "type": "option",
+                "options": [{"value":"sunny"}, {"value":"rainy"}, {"value":"cloudy"}
+                ]
+            }]}
+project_tag= ProjectTag(**tag)
+client.add_project_tag(project_id = 10, project_tag=project_tag)
+#OR
+project.add_project_tag(project_tag=project_tag)
+```
+
+#### Edit Project Tags
+** Note:
+1. Can not edit project tag that does not exist
+2. Can not modify the data type of existing project tags
+3. Can not provide attributes with existing options
+
+```Python
+tag = {
+        "attributes": [
+            {
+                "name": "weather",
+                "type": "option",
+                "options": [{"value":"unknown"}, {"value":"snowy"}
+                ]
+            }]}
+project_tag= ProjectTag(**tag)
+client.edit_project_tag(project_id = 10, project_tag=project_tag)
+#OR
+project.edit_project_tag(project_tag=project_tag)
+```
+
+#### Add New Ontology Classes
+
+* Note: Can not add existing ontology class!
+```Python
+new_classes = [OntologyClass(name="obstruction",
+                    rank=9,
+                    color="#AB4321",
+                    attributes=[{
+                    "name":
+                    "status",
+                    "type":
+                    "option",
+                    "options": [{
+                    "value": "static"}, {"value": "moving"
+                    }]}])]
+client.add_ontology_classes(project_id=24, ontology_classes=new_classes)
+#OR
+project.add_ontology_classes(ontology_classes=new_classes)
+```
+
+
+#### Edit Ontology Classes
+** Note:
+1. Can not edit ontology class that does not exist
+2. Can not modify the data type of existing ontology class attributes
+3. Can not provide attributes with existing options
+
+```Python
+edit_classes = [OntologyClass(name="obstruction",
+                    color="#AB4321",
+                    attributes=[{
+                    "name":
+                    "status",
+                    "type":
+                    "option",
+                    "options": [{
+                    "value": "unknown"}]}])]
+client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes)
+#OR
+project.edit_ontology_classes(ontology_classes=edit_classes)
+```
+
+
+
 ### Create Dataset
 
 * Use `create_dataset` to create dataset from **cloud storage**

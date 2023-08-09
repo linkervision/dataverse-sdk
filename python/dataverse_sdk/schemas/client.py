@@ -159,6 +159,40 @@ class Project(BaseModel):
             project_tag=project_tag,
         )
 
+    def add_project_tag(self, project_tag: ProjectTag):
+        from ..client import DataverseClient
+
+        project = DataverseClient.add_project_tag(
+            project_tag=project_tag, project=self, project_id=self.id
+        )
+        return project
+
+    def edit_project_tag(self, project_tag: ProjectTag):
+        from ..client import DataverseClient
+
+        project = DataverseClient.edit_project_tag(
+            project_tag=project_tag, project=self, project_id=self.id
+        )
+        return project
+
+    def add_ontology_classes(self, ontology_classes: list[OntologyClass]):
+        from ..client import DataverseClient
+
+        project = DataverseClient.add_ontology_classes(
+            ontology_classes=ontology_classes, project=self, project_id=self.id
+        )
+        return project
+
+    def edit_ontology_classes(self, ontology_classes: list[OntologyClass]):
+        from ..client import DataverseClient
+
+        project = DataverseClient.edit_ontology_classes(
+            ontology_classes=ontology_classes,
+            project=self,
+            project_id=self.id,
+        )
+        return project
+
     def list_models(self) -> list:
         from ..client import DataverseClient
 

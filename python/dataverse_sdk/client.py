@@ -20,12 +20,27 @@ from .schemas.client import (
     DataSource,
     MLModel,
     Ontology,
+    OntologyClass,
     Project,
     ProjectTag,
     Sensor,
 )
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
 from .utils.utils import download_file_from_response, get_filepaths
+
+
+def parse_attribute(attr_list: list) -> list:
+    new_attribute_list: list[AttributeAPISchema] = []
+    for attr in attr_list:
+        attr.pop("id", None)
+        if attr["type"] != "option":
+            new_attribute_list.append(attr)
+            continue
+        attr["option_data"] = [
+            opt_data["value"] for opt_data in attr.pop("options", [])
+        ]
+        new_attribute_list.append(attr)
+    return new_attribute_list
 
 
 class DataverseClient:
@@ -121,19 +136,6 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-
-        def parse_attribute(attr_list: list) -> list:
-            new_attribute_list: list[AttributeAPISchema] = []
-            for attr in attr_list:
-                attr.pop("id", None)
-                if attr["type"] != "option":
-                    new_attribute_list.append(attr)
-                    continue
-                attr["option_data"] = [
-                    opt_data["value"] for opt_data in attr.pop("options", [])
-                ]
-                new_attribute_list.append(attr)
-            return new_attribute_list
 
         if client is None:
             client = DataverseClient.get_client()
@@ -252,6 +254,217 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data)
+
+    @staticmethod
+    def add_project_tag(
+        project_id: int,
+        project_tag: ProjectTag,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ) -> dict:
+        """Add New Project Tag
+
+        Parameters
+        ----------
+        project_id : int
+        project_tag : ProjectTag
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ClientConnectionError
+            API error when creating new project tag
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+
+        raw_project_tag: dict = project_tag.dict(exclude_none=True)
+        # new project tag attributes to be creaeted
+        new_attribute_data: list = parse_attribute(
+            raw_project_tag.get("attributes", [])
+        )
+        project_tag_data = {"new_attribute_data": new_attribute_data}
+        try:
+            project_data: dict = api.edit_project(
+                project_id=project_id, project_tag_data=project_tag_data
+            )
+        except Exception as e:
+            raise ClientConnectionError(
+                f"Failed to add project tag, please check your data: {e}"
+            )
+        return project_data
+
+    @staticmethod
+    def edit_project_tag(
+        project_id: int,
+        project_tag: ProjectTag,
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ) -> dict:
+        """Edit existing project tag
+
+        Parameters
+        ----------
+        project_id : int
+        project_tag : ProjectTag
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ClientConnectionError
+            API error when editing project tag
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+
+        raw_project_tag: dict = project_tag.dict(exclude_none=True)
+        # old project tag attributes to be extended
+        patched_attribute_data: list = parse_attribute(
+            raw_project_tag.get("attributes", [])
+        )
+        project_tag_data = {"patched_attribute_data": patched_attribute_data}
+        try:
+            project_data: dict = api.edit_project(
+                project_id=project_id, project_tag_data=project_tag_data
+            )
+        except Exception as e:
+            raise ClientConnectionError(
+                f"Failed to edit project tag, please check your data: {e}"
+            )
+        return project_data
+
+    @staticmethod
+    def add_ontology_classes(
+        project_id: int,
+        ontology_classes: list[OntologyClass],
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ) -> dict:
+        """Add new ontology classes
+
+        Parameters
+        ----------
+        project_id : int
+        ontology_classes : list[OntologyClass]
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ClientConnectionError
+            API error when creating new ontology class
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        # new ontology classes to be creaeted
+        new_classes_data = []
+        for ontology_class in ontology_classes:
+            raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
+            attribute_data: list = parse_attribute(
+                raw_ontology_class.get("attributes", [])
+            )
+            new_classes_data.append(
+                {
+                    "name": ontology_class.name,
+                    "color": ontology_class.color,
+                    "attribute_data": attribute_data,
+                }
+            )
+        ontology_data = {"new_classes_data": new_classes_data}
+        try:
+            project_data: dict = api.edit_project(
+                project_id=project_id, ontology_data=ontology_data
+            )
+        except Exception as e:
+            raise ClientConnectionError(
+                f"Failed to add ontology classes, please check your data: {e}"
+            )
+        return project_data
+
+    @staticmethod
+    def edit_ontology_classes(
+        project_id: int,
+        ontology_classes: list[OntologyClass],
+        client: Optional["DataverseClient"] = None,
+        project: Optional["Project"] = None,
+    ) -> dict:
+        """Edit ontology classes
+
+        Parameters
+        ----------
+        project_id : int
+        ontology_classes : list[OntologyClass]
+        client : Optional["DataverseClient"], optional
+            clientclass, by default None
+        project : Optional["Project"], optional
+            project basemodel, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with project id and project name info
+
+        Raises
+        ------
+        ClientConnectionError
+            API error when editing ontology classes
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        if project is None:
+            project = DataverseClient.get_project(project_id=project_id)
+        # ontology classes to be edited
+        patched_classes_data = []
+        for ontology_class in ontology_classes:
+            raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
+            attribute_data: list = parse_attribute(
+                raw_ontology_class.get("attributes", [])
+            )
+            patched_classes_data.append(
+                {"name": ontology_class.name, "attribute_data": attribute_data}
+            )
+        ontology_data = {"patched_classes_data": patched_classes_data}
+        try:
+            project_data: dict = api.edit_project(
+                project_id=project_id, ontology_data=ontology_data
+            )
+        except Exception as e:
+            raise ClientConnectionError(
+                f"Failed to edit ontology classes, please check your data: {e}"
+            )
+        return project_data
 
     @staticmethod
     def list_models(
