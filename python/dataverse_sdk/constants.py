@@ -15,6 +15,7 @@ class BaseEnumMeta(EnumMeta):
 class DataverseHost(str, Enum, metaclass=BaseEnumMeta):
     DEV = "https://dev.dataverse.linkervision.ai"
     DEV2 = "https://dev2.dataverse.linkervision.ai"
+    DEV3 = "https://dev3.dataverse.linkervision.ai"
     STAGING = "https://staging.dataverse.linkervision.ai"
     DEMO = "https://demo.dataverse.linkervision.ai"
     PUBLIC = "https://dataverse.linkervision.ai"
