@@ -21,24 +21,19 @@ class BackendAPI:
     def __init__(
         self,
         host: str,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        access_token: str = None,
-        refresh_token: str = None,
+        email: str,
+        password: str,
     ):
         # TODO: Support api versioning
         self.host = host
         self.headers = {"Content-Type": "application/json"}
         self.access_token = None
-        self.refresh_token = None
-
-        if access_token:
-            self.set_auth(access_token=access_token, refresh_token=refresh_token)
-        else:
-            self.login(
-                email=email,
-                password=password,
-            )
+        self.email = email
+        self.password = password
+        self.login(
+            email=email,
+            password=password,
+        )
 
     def send_request(
         self,
@@ -82,12 +77,10 @@ class BackendAPI:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
 
-        if resp.status_code == 403:
+        if resp.status_code == 401 or resp.status_code == 403:
             logger.info(f"[{parent_func}] request forbidden.")
-            if not self.access_token or not self.refresh_token:
-                raise Exception("Invalid credential.")
             logger.info(f"[{parent_func}] start to refresh access token.")
-            self.refresh_access_token()
+            self.login()
             logger.info(f"[{parent_func}] access token refreshed.")
             return self.send_request(
                 url=url,
@@ -112,31 +105,16 @@ class BackendAPI:
             raise ValueError("Can't login with null password.")
 
         resp = self.send_request(
-            url=f"{self.host}/auth/jwt/create/",
+            url=f"{self.host}/auth/users/jwt/",
             method="post",
             headers=self.headers,
             data={"email": email, "password": password},
         )
         json_data = resp.json()
-        self.set_auth(
-            access_token=json_data.get("access"), refresh_token=json_data.get("refresh")
-        )
+        self.set_auth(access_token=json_data["access_token"])
 
-    def refresh_access_token(self, refresh_token: Optional[str] = None):
-        if not refresh_token:
-            refresh_token = self.refresh_token
-        resp = self.send_request(
-            url=f"{self.host}/auth/jwt/refresh/",
-            method="post",
-            headers=self.headers,
-            data={"refresh": refresh_token},
-        )
-        self.set_auth(access_token=resp.json()["access"])
-
-    def set_auth(self, access_token: str, refresh_token: Optional[str] = None):
+    def set_auth(self, access_token: str) -> None:
         self.access_token = access_token
-        if refresh_token:
-            self.refresh_token = refresh_token
         self.headers["Authorization"] = f"Bearer {access_token}"
 
     def create_project(

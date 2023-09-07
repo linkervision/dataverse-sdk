@@ -47,21 +47,19 @@ class DataverseClient:
     def __init__(
         self,
         host: DataverseHost,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        access_token: Optional[str] = None,
-        refresh_token: Optional[str] = None,
+        email: str,
+        password: str,
         alias: str = "default",
     ) -> None:
         """
         Instantiate a Dataverse client.
+
         Parameters
         ----------
         host : DataverseHost
-        email : Optional[str], optional
-        password : Optional[str], optional
-        access_token : Optional[str], optional
-        refresh_token : Optional[str], optional
+        email : str
+        password : str
+
         Raises
         ------
         ValueError
@@ -70,28 +68,19 @@ class DataverseClient:
             raise ValueError("Invalid dataverse host, if the host is available?")
         self.host = host
         self._api_client = None
-        self._init_api_client(
-            email=email,
-            password=password,
-            access_token=access_token,
-            refresh_token=refresh_token,
-        )
+        self._init_api_client(email=email, password=password)
         add_connection(alias=alias, conn=self)
 
     def _init_api_client(
         self,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        access_token: Optional[str] = None,
-        refresh_token: Optional[str] = None,
+        email: str,
+        password: str,
     ) -> None:
         try:
             self._api_client = BackendAPI(
                 host=self.host,
                 email=email,
                 password=password,
-                access_token=access_token,
-                refresh_token=refresh_token,
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
