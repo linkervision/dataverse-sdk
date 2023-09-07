@@ -107,7 +107,7 @@ class BackendAPI:
         resp = self.send_request(
             url=f"{self.host}/auth/users/jwt/",
             method="post",
-            headers=self.headers,
+            headers={"Content-Type": "application/json"},
             data={"email": email, "password": password},
         )
         json_data = resp.json()
