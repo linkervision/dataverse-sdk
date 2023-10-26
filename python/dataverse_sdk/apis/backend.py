@@ -80,7 +80,7 @@ class BackendAPI:
         if resp.status_code == 401 or resp.status_code == 403:
             logger.info(f"[{parent_func}] request forbidden.")
             logger.info(f"[{parent_func}] start to refresh access token.")
-            self.login()
+            self.login(email=self.email, password=self.password)
             logger.info(f"[{parent_func}] access token refreshed.")
             return self.send_request(
                 url=url,
