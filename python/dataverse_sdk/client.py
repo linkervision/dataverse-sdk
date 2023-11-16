@@ -492,12 +492,11 @@ class DataverseClient:
             project = DataverseClient.get_project(project_id=project_id)
         output_model_list = []
         for model_data in model_list:
+            model_config = model_data["configuration"]
             model_data.update(
                 {
                     "project": project,
-                    "triton_model_name": model_data["configuration"][
-                        "triton_model_name"
-                    ],
+                    "triton_model_name": model_config.get("triton_model_name"),
                 }
             )
             ml_model = MLModel.create(model_data)
@@ -613,6 +612,44 @@ class DataverseClient:
             return True, save_path
         except Exception as e:
             logging.exception("Failed to get triton model file", e)
+            return False, save_path
+
+    @staticmethod
+    def get_onnx_model_file(
+        model_id: int,
+        save_path: str = "./model.onnx",
+        timeout: int = 3000,
+        client: Optional["DataverseClient"] = None,
+    ) -> tuple[bool, str]:
+        """Download the onnx model file
+
+        Parameters
+        ----------
+        model_id : int
+        save_path : str, optional
+            local path for saving the onnx model file, by default './model.onnx'
+        timeout : int, optional
+            maximum timeout of the request, by default 3000
+        client : Optional[&quot;DataverseClient&quot;], optional
+            client class, by default None
+
+        Returns
+        -------
+        (status, save_path): tuple[bool, str]
+            the first item means whether the download success or not
+            the second item shows the save_path
+        """
+        if client is None:
+            client = DataverseClient.get_client()
+        api = client._api_client
+        try:
+            resp = api.get_ml_model_file(
+                model_id=model_id, timeout=timeout, model_format="onnx"
+            )
+            download_file_from_response(response=resp, save_path=save_path)
+            return True, save_path
+        except Exception as e:
+            logging.exception("Failed to get onnx model file", e)
             return False, save_path
 
     def get_dataset(self, dataset_id: int):

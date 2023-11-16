@@ -192,8 +192,9 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
-    def list_ml_models(self, project_id: int, **kwargs) -> list:
+    def list_ml_models(self, project_id: int, type: str = "project", **kwargs) -> list:
         kwargs["project"] = project_id
+        kwargs["type"] = type
         resp = self.send_request(
             url=f"{self.host}/api/ml_models/?{urlencode(kwargs)}",
             method="get",
@@ -222,10 +223,11 @@ class BackendAPI:
         return resp
 
     def get_ml_model_file(
-        self, model_id: int, timeout: int = 3000
+        self, model_id: int, timeout: int = 3000, model_format: str = "triton", **kwargs
     ) -> requests.models.Response:
+        kwargs["model_format"] = model_format
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/{model_id}/model/",
+            url=f"{self.host}/api/ml_models/{model_id}/model/?{urlencode(kwargs)}",
             method="get",
             headers=self.headers,
             stream=True,

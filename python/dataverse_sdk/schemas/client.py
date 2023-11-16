@@ -382,3 +382,12 @@ class MLModel(BaseModel):
         return DataverseClient.get_triton_model_file(
             model_id=self.id, save_path=save_path, timeout=timeout
         )
+
+    def get_onnx_model_file(
+        self, save_path: str = "./model.onnx", timeout: int = 3000
+    ) -> tuple[bool, str]:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_onnx_model_file(
+            model_id=self.id, save_path=save_path, timeout=timeout
+        )
