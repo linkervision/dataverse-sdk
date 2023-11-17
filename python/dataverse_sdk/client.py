@@ -702,9 +702,9 @@ class DataverseClient:
         auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
+        client: Optional["DataverseClient"] = None,
         access_key_id: Optional[str] = None,
         secret_access_key:Optional[str] = None,
-        client: Optional["DataverseClient"] = None,
         **kwargs,
     ) -> Dataset:
         """Create Dataset
@@ -799,7 +799,7 @@ class DataverseClient:
                 render_pcd=render_pcd,
                 description=description,
                 access_key_id=access_key_id,
-                secret_access_key=secret_access_key
+                secret_access_key=secret_access_key,
                 **kwargs,
             ).dict(exclude_none=True)
         except ValidationError as e:

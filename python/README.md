@@ -200,14 +200,14 @@ project.edit_ontology_classes(ontology_classes=edit_classes)
 
 ```Python
 dataset_data = {
-    "data_source": DataSource.Azure/Datasource.AWS,
+    "data_source": DataSource.Azure/DataSource.AWS,
     "storage_url": "storage/url",
     "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
     "sas_token": "azure sas token",
     "name": "Dataset 1",
     "type": DatasetType.ANNOTATED_DATA,
-    "annotations": ["groundtruth"]
+    "annotations": ["groundtruth"],
     "generate_metadata": False,
     "auto_tagging": ["timeofday"],
     "render_pcd": False,
