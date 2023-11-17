@@ -209,6 +209,7 @@ dataset_data = {
     "type": DatasetType.ANNOTATED_DATA,
     "annotations": ["groundtruth"]
     "generate_metadata": False,
+    "auto_tagging": ["timeofday"],
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
@@ -264,11 +265,11 @@ The `get_model` method will get the model detail info by the given model-id
 model = client.get_model(model_id=30)
 model = project.get_model(model_id=30)
 ```
-From the given model, we could get the label file and the triton model file by the commands below.
+From the given model, we could get the label file / triton model file / onnx model file by the commands below.
 ```Python
 status, label_file_path = model.get_label_file(save_path="./labels.txt", timeout=6000)
 status, triton_model_path = model.get_triton_model_file(save_path="./model.zip", timeout=6000)
-
+status, onnx_model_path = model.get_onnx_model_file(save_path="./model.zip", timeout=6000)
 ```
 
 
