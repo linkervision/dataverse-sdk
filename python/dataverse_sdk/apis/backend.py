@@ -251,16 +251,14 @@ class BackendAPI:
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
         annotations: Optional[list[str]] = None,
+        access_key_id: Optional[str] = None,
+        secret_access_key: Optional[str] = None,
     ) -> dict:
         if auto_tagging is None:
             auto_tagging = []
         if annotations is None:
             annotations = []
-        resp = self.send_request(
-            url=f"{self.host}/api/datasets/",
-            method="post",
-            headers=self.headers,
-            data={
+        payload_data = {
                 "name": name,
                 "project_id": project_id,
                 "sensor_ids": sensor_ids,
@@ -277,7 +275,17 @@ class BackendAPI:
                 "render_pcd": render_pcd,
                 "description": description if description else "",
                 "annotations": annotations if annotations else [],
-            },
+                
+            }
+        if secret_access_key:
+            payload_data.update({"secret_access_key":secret_access_key})
+        if access_key_id:
+            payload_data.update({"access_key_id":access_key_id})
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/",
+            method="post",
+            headers=self.headers,
+            data=payload_data,
         )
         return resp.json()
 
