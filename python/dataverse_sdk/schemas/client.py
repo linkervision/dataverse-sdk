@@ -112,21 +112,6 @@ class Ontology(BaseModel):
         )
 
 
-class DataConfig(BaseModel):
-    storage_url: str
-    container_name: Optional[str]
-    sas_token: Optional[str]
-    data_folder: str
-    sequential: bool
-    generate_metadata: bool
-    description: Optional[str]
-    type: str
-    annotation_format: str
-
-    class Config:
-        extra = "allow"
-
-
 class Project(BaseModel):
     id: int
     name: str
