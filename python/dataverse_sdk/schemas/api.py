@@ -108,3 +108,5 @@ class DatasetAPISchema(BaseModel):
     lidar_folder: Optional[str] = None
     render_pcd: Optional[str] = None
     annotations: Optional[list[str]] = []
+    access_key_id: Optional[str] = None
+    secret_access_key: Optional[str] = None
