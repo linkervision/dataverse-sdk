@@ -213,6 +213,8 @@ dataset_data = {
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
     "sensors": project.sensors,
+    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
+    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
 }
 dataset = project.create_dataset(**dataset_data)
 ```
