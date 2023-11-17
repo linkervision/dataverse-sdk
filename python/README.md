@@ -209,6 +209,7 @@ dataset_data = {
     "type": DatasetType.ANNOTATED_DATA,
     "annotations": ["groundtruth"]
     "generate_metadata": False,
+    "auto_tagging": ["timeofday"],
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
