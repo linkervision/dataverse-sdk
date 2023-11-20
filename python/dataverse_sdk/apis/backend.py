@@ -253,33 +253,46 @@ class BackendAPI:
         sas_token: Optional[str] = None,
         description: Optional[str] = None,
         annotations: Optional[list[str]] = None,
+        access_key_id: Optional[str] = None,
+        secret_access_key: Optional[str] = None,
     ) -> dict:
         if auto_tagging is None:
             auto_tagging = []
         if annotations is None:
             annotations = []
+        payload_data = {
+            "name": name,
+            "project_id": project_id,
+            "sensor_ids": sensor_ids,
+            "data_source": data_source,
+            "storage_url": storage_url,
+            "container_name": container_name,
+            "data_folder": data_folder,
+            "sas_token": sas_token,
+            "type": type,
+            "sequential": sequential,
+            "annotation_format": annotation_format,
+            "generate_metadata": generate_metadata,
+            "auto_tagging": auto_tagging,
+            "render_pcd": render_pcd,
+            "description": description if description else "",
+            "annotations": annotations if annotations else [],
+        }
+
+        aws_access_key = {secret_access_key, access_key_id}
+
+        if not all(not access_key for access_key in aws_access_key):
+            raise ValueError("Need to assign both secret_access_key and access_key_id")
+        elif all(access_key for access_key in aws_access_key):
+            payload_data.update(
+                {"secret_access_key": secret_access_key, "access_key_id": access_key_id}
+            )
+
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
             method="post",
             headers=self.headers,
-            data={
-                "name": name,
-                "project_id": project_id,
-                "sensor_ids": sensor_ids,
-                "data_source": data_source,
-                "storage_url": storage_url,
-                "container_name": container_name,
-                "data_folder": data_folder,
-                "sas_token": sas_token,
-                "type": type,
-                "sequential": sequential,
-                "annotation_format": annotation_format,
-                "generate_metadata": generate_metadata,
-                "auto_tagging": auto_tagging,
-                "render_pcd": render_pcd,
-                "description": description if description else "",
-                "annotations": annotations if annotations else [],
-            },
+            data=payload_data,
         )
         return resp.json()
 

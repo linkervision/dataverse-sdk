@@ -200,20 +200,22 @@ project.edit_ontology_classes(ontology_classes=edit_classes)
 
 ```Python
 dataset_data = {
-    "data_source": DataSource.Azure/Datasource.AWS,
+    "data_source": DataSource.Azure/DataSource.AWS,
     "storage_url": "storage/url",
     "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
     "sas_token": "azure sas token",
     "name": "Dataset 1",
     "type": DatasetType.ANNOTATED_DATA,
-    "annotations": ["groundtruth"]
+    "annotations": ["groundtruth"],
     "generate_metadata": False,
     "auto_tagging": ["timeofday"],
     "render_pcd": False,
     "annotation_format": AnnotationFormat.VISION_AI,
     "sequential": False,
     "sensors": project.sensors,
+    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
+    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
 }
 dataset = project.create_dataset(**dataset_data)
 ```

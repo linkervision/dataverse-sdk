@@ -703,6 +703,8 @@ class DataverseClient:
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
+        access_key_id: Optional[str] = None,
+        secret_access_key:Optional[str] = None,
         **kwargs,
     ) -> Dataset:
         """Create Dataset
@@ -741,6 +743,10 @@ class DataverseClient:
             description of the dataset, by default None
         render_pcd : bool, optional
             render pcd preview image or not, be default False
+        access_key_id : Optional[str], optional
+            access key id for AWS s3 bucket, by default None
+        secret_access_key : Optional[str], optional
+            secret access key for AWS s3 bucket, by default None
         client : Optional[DataverseClient]
             the client to be used to create the dataset, will use the default client if it's None
 
@@ -792,6 +798,8 @@ class DataverseClient:
                 auto_tagging=auto_tagging,
                 render_pcd=render_pcd,
                 description=description,
+                access_key_id=access_key_id,
+                secret_access_key=secret_access_key,
                 **kwargs,
             ).dict(exclude_none=True)
         except ValidationError as e:

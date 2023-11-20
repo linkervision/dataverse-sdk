@@ -112,21 +112,6 @@ class Ontology(BaseModel):
         )
 
 
-class DataConfig(BaseModel):
-    storage_url: str
-    container_name: Optional[str]
-    sas_token: Optional[str]
-    data_folder: str
-    sequential: bool
-    generate_metadata: bool
-    description: Optional[str]
-    type: str
-    annotation_format: str
-
-    class Config:
-        extra = "allow"
-
-
 class Project(BaseModel):
     id: int
     name: str
@@ -222,6 +207,8 @@ class Project(BaseModel):
         auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
+        access_key_id: Optional[str] = None,
+        secret_access_key:Optional[str] = None,
         **kwargs,
     ):
         """Create Dataset From project itself
@@ -258,6 +245,10 @@ class Project(BaseModel):
             render pcd preview image or not, be default False
         description : Optional[str], optional
             description of the dataset, by default None
+        access_key_id : Optional[str], optional
+            access key id for AWS s3 bucket, by default None
+        secret_access_key : Optional[str], optional
+            secret access key for AWS s3 bucket, by default None
 
         Returns
         -------
@@ -293,6 +284,8 @@ class Project(BaseModel):
             auto_tagging=auto_tagging,
             render_pcd=render_pcd,
             description=description,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
             **kwargs,
         )
         return dataset_output
