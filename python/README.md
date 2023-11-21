@@ -5,8 +5,10 @@ Use Dataverse-SDK for Python to help you to interact with the Dataverse platform
   - Get Project by project-id
   - Create Dataset from your AWS/Azure storage or local
   - Get Dataset by dataset-id
+  - List models for your selected project-id
+  - Get and download your model
 
-[Package (PyPi)](https://test.pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkernetworks/dataverse-sdk)
+[Package (PyPi)](https://pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkernetworks/dataverse-sdk)
 
 
 ## Getting started
@@ -27,7 +29,7 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host=DataverseHost.STAGING, email="XXX", password="***"
+    host=DataverseHost.DEMO, email="XXX", password="***"
 )
 assert client is get_connection()
 ```
@@ -46,25 +48,40 @@ The following sections provide examples for the most common DataVerse tasksm inc
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
 * [List Models](#list-models)
+* [Get and Download Model](#get-model)
 
 ### List Projects
 The `list_projects` method will list all projects of the given sites.
 
-
+* Example Usage:
 ```Python
 projects = client.list_projects(current_user = True,
                                 exclude_sensor_type=SensorType.LIDAR,
                                 image_type= OntologyImageType._2D_BOUNDING_BOX)
 
 ```
+
+* Input arguments:
+
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| current_user         | bool  | True     | only show the projects of current user    |
+| exclude_sensor_type  | SensorType.CAMERA <br>  SensorType.LIDAR| None  |   exclude the projects with the given sensor type  |
+| image_type  | OntologyImageType._2D_BOUNDING_BOX <br> OntologyImageType.SEMANTIC_SEGMENTATION <br> OntologyImageType.CLASSIFICATION <br> OntologyImageType.POINT<br> OntologyImageType.POLYGON <br> OntologyImageType.POLYLINE | None  |  only include the projects with the given image type  |
+
+
+
 ### Create Project
 
 The `create_project` method will create project on the connected site with the defined ontology and sensors.
 
+* Example Usage:
 ```Python
+# 1) Create ontology with ontologyclass object
 ontology = Ontology(
-    name="test ot",
+    name="sample ontology",
     image_type=OntologyImageType._2D_BOUNDING_BOX,
+    pcd_type = None,
     classes=[
         OntologyClass(name="Pedestrian", rank=1, color="#234567"),
         OntologyClass(name="Truck", rank=2, color="#345678"),
@@ -77,10 +94,19 @@ ontology = Ontology(
         OntologyClass(name="Person_sitting", rank=9, color="#AB1234"),
     ],
 )
+```
+For project with camera sensor, there would be only one image_type for one project. You could choose from `[OntologyImageType._2D_BOUNDING_BOX, OntologyImageType.SEMANTIC_SEGMENTATION, OntologyImageType.CLASSIFICATION, OntologyImageType.POINT, OntologyImageType.POLYGON, OntologyImageType.POLYLINE]`.
+
+For project with lidar sensor, your should assign `pcd_type = OntologyPcdType.CUBOID` for the ontology.
+
+```Python
+# 2) Create your sensor list with name / SensorType
 sensors = [
     Sensor(name="camera 1", type=SensorType.CAMERA),
     Sensor(name="lidar 1", type=SensorType.LIDAR),
 ]
+
+# 3) Create your project tag attributes (Optional)
 project_tag = ProjectTag(
     attributes=[
         {"name": "year", "type": "number"},
@@ -92,15 +118,30 @@ project_tag = ProjectTag(
     ]
 )
 
-project = client.create_project(name="test project", ontology=ontology, sensors=sensors, project_tag=project_tag)
+# 4) Create your project with your ontology/sensors/project_tag
+project = client.create_project(name="Sample project", ontology=ontology, sensors=sensors, project_tag=project_tag)
 ```
+
+
+* Input arguments for creating project:
+
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| name        | str  | --    | name of your project    |
+| ontology  | Ontology |-- | the Ontology basemodel data of current project |
+| sensors  | list[Sensor] | -- |  the list of Sensor basemodel data of your project  |
+| project_tag | ProjectTag | None |  your project tags  |
+| description  | str | None | your project description  |
+
+
+
 
 ### Get Project
 
-The `get_proejct` method retrieves the project from the connected site. The `id` parameter is the unique interger ID of the project, not its "name" property.
+The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique interger ID of the project, not its "name" property.
 
 ```Python
-project = client.get_project(id)
+project = client.get_project(project_id= 1)
 ```
 
 
@@ -196,58 +237,59 @@ project.edit_ontology_classes(ontology_classes=edit_classes)
 
 ### Create Dataset
 
-* Use `create_dataset` to create dataset from **cloud storage**
+#### Use `create_dataset` to create dataset from **cloud storage**
 
 ```Python
 dataset_data = {
+    "name": "Dataset 1",
     "data_source": DataSource.Azure/DataSource.AWS,
     "storage_url": "storage/url",
     "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
-    "sas_token": "azure sas token",
-    "name": "Dataset 1",
+    "sensors": project.sensors,
     "type": DatasetType.ANNOTATED_DATA,
+    "annotation_format": AnnotationFormat.VISION_AI,
     "annotations": ["groundtruth"],
+    "sequential": False,
+    "render_pcd": False,
     "generate_metadata": False,
     "auto_tagging": ["timeofday"],
-    "render_pcd": False,
-    "annotation_format": AnnotationFormat.VISION_AI,
-    "sequential": False,
-    "sensors": project.sensors,
+    "sas_token": "azure sas token",  # only for azure storage
     "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
     "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
 }
 dataset = project.create_dataset(**dataset_data)
 ```
 
-* Use `create_dataset` to create dataset from **your local directory**
+* Input arguments for creating dataset from cloud storage:
 
-```Python
-dataset_data = {
-    "data_source": DataSource.SDK,
-    "storage_url" : "",
-    "container_name": "",
-    "sas_token":"",
-    "data_folder": "/path/to/your_localdir",
-    "name": "Dataset Local Upload",
-    "type": DatasetType.ANNOTATED_DATA,
-    "generate_metadata": False,
-    "auto_tagging": ["weather"],
-    "render_pcd": False,
-    "annotation_format": AnnotationFormat.VISION_AI,
-    "sequential": False,
-    "sensors": project.sensors,
-    "annotations" :['model_name']
-}
-dataset = project.create_dataset(**dataset_data)
-```
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| name        | str  | --    | name of your dataset    |
+| data_source | DataSource.Azure <br> DataSource.AWS |-- | the datasource of your dataset |
+| storage_url | str | None |  your cloud storage url  |
+| container_name | str | None |  azure container name  |
+| data_folder | str | None |  the relative data folder from the storage_url and container  |
+| sensors  | list[Sensor] | -- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
+| type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | None |  your dataset type  (annotated or raw data)|
+| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.IMAGE | None |  the format of your annotation data  |
+| annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
+| sequential | bool | False | data is sequential or not   |
+| render_pcd | bool | False | render pcd preview image or not |
+| generate_metadata | bool | False | generate image meta data or not   |
+| auto_tagging | list | None | generate auto_tagging with target models `["weather", "scene", "timeofday"]`   |
+| description  | str | None | your dataset description  |
+| sas_token | str | None | SAStoken for azure container  |
+| access_key_id | str | None |  access key id for AWS private s3 bucket  |
+| secret_access_key | str | None| secret access key for AWS private s3 bucket  |
+
 
 ## Get Dataset
 
-The `get_dataset` method retrieves the dataset info from the connected site. The `id` parameter is the unique interger ID of the dataset, not its "name" property.
+The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique interger ID of the dataset, not its "name" property.
 
 ```Python
-dataset = client.get_dataset(id)
+dataset = client.get_dataset(dataset_id=5)
 ```
 
 ### List Models
@@ -260,6 +302,7 @@ models = client.list_models(project_id = 1)
 project = client.get_project(project_id=1)
 models = project.list_models()
 ```
+
 ### Get Model
 The `get_model` method will get the model detail info by the given model-id
 
@@ -271,7 +314,7 @@ From the given model, we could get the label file / triton model file / onnx mod
 ```Python
 status, label_file_path = model.get_label_file(save_path="./labels.txt", timeout=6000)
 status, triton_model_path = model.get_triton_model_file(save_path="./model.zip", timeout=6000)
-status, onnx_model_path = model.get_onnx_model_file(save_path="./model.zip", timeout=6000)
+status, onnx_model_path = model.get_onnx_model_file(save_path="./model.onnx", timeout=6000)
 ```
 
 
