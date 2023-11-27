@@ -23,16 +23,17 @@ pip install dataverse-sdk
 
 ### Create the client
 
-Interaction with the Dataverse site starts with an instance of the `DataverseClient` class. You need an email-account and its password to instantiate the client object.
+Interaction with the Dataverse site starts with an instance of the `DataverseClient` class. You need site url, an email-account and its password to instantiate the client object.
 
 ```Python
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host=DataverseHost.DEMO, email="XXX", password="***"
+    host="https://demo.dataverse.linkervision.ai", email="XXX", password="***"
 )
 assert client is get_connection()
 ```
+
 
 ## Key concepts
 
