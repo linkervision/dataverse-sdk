@@ -70,7 +70,7 @@ projects = client.list_projects(current_user = True,
 | exclude_sensor_type  | SensorType.CAMERA <br>  SensorType.LIDAR| None  |   exclude the projects with the given sensor type  |
 | image_type  | OntologyImageType._2D_BOUNDING_BOX <br> OntologyImageType.SEMANTIC_SEGMENTATION <br> OntologyImageType.CLASSIFICATION <br> OntologyImageType.POINT<br> OntologyImageType.POLYGON <br> OntologyImageType.POLYLINE | None  |  only include the projects with the given image type  |
 
-
+<br>
 
 ### Create Project
 
@@ -128,14 +128,15 @@ project = client.create_project(name="Sample project", ontology=ontology, sensor
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| name        | str  | --    | name of your project    |
-| ontology  | Ontology |-- | the Ontology basemodel data of current project |
-| sensors  | list[Sensor] | -- |  the list of Sensor basemodel data of your project  |
+| name        | str  | *--    | name of your project    |
+| ontology  | Ontology | *-- | the Ontology basemodel data of current project |
+| sensors  | list[Sensor] | *-- |  the list of Sensor basemodel data of your project  |
 | project_tag | ProjectTag | None |  your project tags  |
 | description  | str | None | your project description  |
 
+`＊--`: required argument without default
 
-
+<br>
 
 ### Get Project
 
@@ -145,6 +146,7 @@ The `get_proejct` method retrieves the project from the connected site. The `pro
 project = client.get_project(project_id= 1)
 ```
 
+<br>
 
 ### Edit Project
 
@@ -234,7 +236,7 @@ client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes)
 project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
 
-
+<br>
 
 ### Create Dataset
 
@@ -264,16 +266,16 @@ dataset = project.create_dataset(**dataset_data)
 
 * Input arguments for creating dataset from cloud storage:
 
-| Argument name      | Type/Options   | Default   | Description   |
+| Argument name      | Type/Options   | Default | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| name        | str  | --    | name of your dataset    |
-| data_source | DataSource.Azure <br> DataSource.AWS |-- | the datasource of your dataset |
-| storage_url | str | None |  your cloud storage url  |
+| name        | str  | ＊--    | name of your dataset    |
+| data_source | DataSource.Azure <br> DataSource.AWS | ＊-- | the datasource of your dataset |
+| storage_url | str | ＊-- |  your cloud storage url  |
 | container_name | str | None |  azure container name  |
-| data_folder | str | None |  the relative data folder from the storage_url and container  |
-| sensors  | list[Sensor] | -- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
-| type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | None |  your dataset type  (annotated or raw data)|
-| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.IMAGE | None |  the format of your annotation data  |
+| data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
+| sensors  | list[Sensor] | ＊-- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
+| type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
+| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.IMAGE | ＊-- |  the format of your annotation data  |
 | annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
 | sequential | bool | False | data is sequential or not   |
 | render_pcd | bool | False | render pcd preview image or not |
@@ -284,14 +286,18 @@ dataset = project.create_dataset(**dataset_data)
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
 | secret_access_key | str | None| secret access key for AWS private s3 bucket  |
 
+`＊--`: required argument without default
 
-## Get Dataset
+<br>
+
+### Get Dataset
 
 The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique interger ID of the dataset, not its "name" property.
 
 ```Python
 dataset = client.get_dataset(dataset_id=5)
 ```
+<br>
 
 ### List Models
 The `list_models` method will list all the models in the given project
@@ -303,6 +309,7 @@ models = client.list_models(project_id = 1)
 project = client.get_project(project_id=1)
 models = project.list_models()
 ```
+<br>
 
 ### Get Model
 The `get_model` method will get the model detail info by the given model-id
@@ -317,7 +324,7 @@ status, label_file_path = model.get_label_file(save_path="./labels.txt", timeout
 status, triton_model_path = model.get_triton_model_file(save_path="./model.zip", timeout=6000)
 status, onnx_model_path = model.get_onnx_model_file(save_path="./model.onnx", timeout=6000)
 ```
-
+<br>
 
 ## Troubleshooting
 
