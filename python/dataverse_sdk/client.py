@@ -110,6 +110,10 @@ class DataverseClient:
             the Ontology basemodel data of current project
         sensors : list[Sensor]
             the list of Sensor basemodel data of current project
+        project_tag : Optional[ProjectTag]
+            your project tags
+        description : Optional[str]
+            your project description
         client : Optional[DataverseClient]
             the client to be used to create the project, will use the default client if it's None
 
@@ -704,7 +708,7 @@ class DataverseClient:
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
         access_key_id: Optional[str] = None,
-        secret_access_key:Optional[str] = None,
+        secret_access_key: Optional[str] = None,
         **kwargs,
     ) -> Dataset:
         """Create Dataset
