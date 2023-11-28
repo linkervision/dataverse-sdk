@@ -282,7 +282,7 @@ class BackendAPI:
         aws_access_key = {secret_access_key, access_key_id}
         if not (all(aws_access_key) or not any(aws_access_key)):
             raise ValueError("Need to assign both secret_access_key and access_key_id")
-        elif all(aws_access_key):
+        if secret_access_key and access_key_id:
             payload_data.update(
                 {"secret_access_key": secret_access_key, "access_key_id": access_key_id}
             )
