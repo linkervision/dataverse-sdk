@@ -29,7 +29,7 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host="https://demo.dataverse.linkervision.ai", email="XXX", password="***"
+    host=DataverseHost.PRODUCTION, email="XXX", password="***"
 )
 assert client is get_connection()
 ```
