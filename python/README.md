@@ -29,7 +29,7 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host="https://demo.dataverse.linkervision.ai", email="XXX", password="***"
+    host=DataverseHost.PRODUCTION, email="XXX", password="***"
 )
 assert client is get_connection()
 ```
@@ -103,8 +103,8 @@ For project with lidar sensor, your should assign `pcd_type = OntologyPcdType.CU
 ```Python
 # 2) Create your sensor list with name / SensorType
 sensors = [
-    Sensor(name="camera 1", type=SensorType.CAMERA),
-    Sensor(name="lidar 1", type=SensorType.LIDAR),
+    Sensor(name="camera_1", type=SensorType.CAMERA),
+    Sensor(name="lidar_1", type=SensorType.LIDAR),
 ]
 
 # 3) Create your project tag attributes (Optional)
