@@ -1,0 +1,60 @@
+---
+exclude: "docs|migrations|.tox"
+default_stages: [commit]
+fail_fast: false
+
+# TODO: ctrl+c ctrl+v from https://github.com/apache/airflow/blob/main/.pre-commit-config.yaml
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: fix-encoding-pragma
+        args: ["--remove"]
+      - id: check-case-conflict
+      - id: check-docstring-first
+      # Disabled due to https://github.com/docker/for-mac/issues/5029
+      # - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+        exclude: /README\.rst$|^docs/.*\.rst$
+      - id: check-symlinks
+      - id: check-xml
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: detect-private-key
+      - id: check-added-large-files
+
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile=black"]
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        args: ["--py38-plus","--keep-runtime-typing"] # py39 will somehow break Pydantic
+        exclude: (visionai_json_schema\.py)
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args: ["--config=./ci/setup.cfg"]
+        additional_dependencies: ["flake8-bugbear==22.7.1"]
+
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.5.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        entry: commitlint --config=ci/.commitlint.yaml --edit
+        additional_dependencies: ["conventional-changelog-conventionalcommits"]
