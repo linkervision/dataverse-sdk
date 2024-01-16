@@ -29,16 +29,26 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="XXX", password="***", alias="default"
+    host=DataverseHost.PRODUCTION, email="XXX", password="***", alias="default", force = False,
 )
 assert client is get_connection()
 
 # Should provide different alias if you are trying to connect to different workspaces
 client2 = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="acount-2", password="***", alias="client2"
+    host=DataverseHost.PRODUCTION, email="account-2", password="***", alias="client2", force = False,
 )
 assert client2 is get_connection()
 ```
+
+* Input arguments:
+
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| host        | str  | 	＊--    | the host url of the dataverse site    |
+| email  | str | ＊--  |  the email account of your dataverse workspace |
+| password  | str | ＊--  |  the password of your dataverse workspace  |
+| alias | str | 'default' |  the connection alias of your dataverse client |
+| force  | bool | False  |  whether force to replace the connection if the given alias exists |
 
 
 ## Key concepts
