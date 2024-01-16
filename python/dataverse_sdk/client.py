@@ -241,13 +241,14 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data, client_alias=client_alias)
 
-    def get_project(self, project_id: int):
+    def get_project(self, project_id: int, client_alias: Optional[str] = None):
         """Get project detail by project-id
 
         Parameters
         ----------
         project_id : int
             project-id in db
+        client_alias: Optional[str], by default None (will reset to self.alias if it's not provided)
 
         Returns
         -------
@@ -259,9 +260,11 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        client = self.get_client(self.alias)
+        if client_alias is None:
+            client_alias = self.alias
+        client = self.get_client(client_alias)
         return self.get_client_project(
-            project_id=project_id, client=client, client_alias=self.alias
+            project_id=project_id, client=client, client_alias=client_alias
         )
 
     @staticmethod

@@ -32,6 +32,12 @@ client = DataverseClient(
     host=DataverseHost.PRODUCTION, email="XXX", password="***", alias="default"
 )
 assert client is get_connection()
+
+# Should provide different alias if you are trying to connect to different workspaces
+client2 = DataverseClient(
+    host=DataverseHost.PRODUCTION, email="acount-2", password="***", alias="client2"
+)
+assert client2 is get_connection()
 ```
 
 
@@ -170,7 +176,7 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.add_project_tag(project_id = 10, project_tag=project_tag)
+client.add_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.add_project_tag(project_tag=project_tag)
 ```
@@ -191,7 +197,7 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.edit_project_tag(project_id = 10, project_tag=project_tag)
+client.edit_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.edit_project_tag(project_tag=project_tag)
 ```
@@ -211,7 +217,7 @@ new_classes = [OntologyClass(name="obstruction",
                     "options": [{
                     "value": "static"}, {"value": "moving"
                     }]}])]
-client.add_ontology_classes(project_id=24, ontology_classes=new_classes)
+client.add_ontology_classes(project_id=24, ontology_classes=new_classes, client_alias=client.alias)
 #OR
 project.add_ontology_classes(ontology_classes=new_classes)
 ```
@@ -233,7 +239,7 @@ edit_classes = [OntologyClass(name="obstruction",
                     "option",
                     "options": [{
                     "value": "unknown"}]}])]
-client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes)
+client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes, client_alias=client.alias)
 #OR
 project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
@@ -264,6 +270,7 @@ dataset_data = {
     "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
 }
 dataset = project.create_dataset(**dataset_data)
+
 ```
 
 * Input arguments for creating dataset from cloud storage:
@@ -310,7 +317,7 @@ The `list_models` method will list all the models in the given project
 
 ```Python
 #1
-models = client.list_models(project_id = 1)
+models = client.list_models(project_id = 1, client_alias=client.alias)
 #2
 project = client.get_project(project_id=1)
 models = project.list_models()
@@ -321,7 +328,7 @@ models = project.list_models()
 The `get_model` method will get the model detail info by the given model-id
 
 ```Python
-model = client.get_model(model_id=30)
+model = client.get_model(model_id=30, client_alias=client.alias)
 model = project.get_model(model_id=30)
 ```
 From the given model, we could get the label file / triton model file / onnx model file by the commands below.
