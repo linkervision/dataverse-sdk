@@ -10,17 +10,23 @@ class Connections:
     def __init__(self):
         self._conns = {}
 
-    def add_connection(self, alias, conn):
+    def add_connection(self, alias, conn, force=True):
         """
         Add a connection object, it will be passed through as-is.
         """
+        if force is False:
+            if alias in self._conns:
+                raise ValueError(f"The connection alias, {alias}, is already exist")
         self._conns[alias] = conn
 
-    def create_connection(self, alias="default", **kwargs):
+    def create_connection(self, alias="default", force=True, **kwargs):
         """
         Construct an instance of ``dataverse_sdk.DataverseClient`` and register
         it under given alias.
         """
+        if force is False:
+            if alias in self._conns:
+                raise ValueError(f"The connection alias, {alias}, is already exist")
         from .client import DataverseClient
 
         conn = self._conns[alias] = DataverseClient(**kwargs)
