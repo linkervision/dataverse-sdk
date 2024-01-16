@@ -617,7 +617,7 @@ class DataverseClient:
         try:
             model_data: dict = api.get_ml_model(model_id=model_id)
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get the dataset: {e}")
+            raise ClientConnectionError(f"Failed to get the model: {e}")
 
         if project is None:
             project = client.get_client_project(
@@ -762,7 +762,7 @@ class DataverseClient:
             logging.exception("Failed to get onnx model file")
             return False, save_path
 
-    def get_dataset(self, dataset_id: int):
+    def get_dataset(self, dataset_id: int, client_alias: Optional[str] = None):
         """Get dataset detail and status by id
 
         Parameters
@@ -774,15 +774,18 @@ class DataverseClient:
         -------
         Dataset
             dataset basemodel from host response for client usage
+        client_alias: Optional[str], by default None (will reset to self.alias if it's not provided)
 
         Raises
         ------
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-
+        if client_alias is None:
+            client_alias = self.alias
+        client = self.get_client(client_alias)
         try:
-            dataset_data: dict = self._api_client.get_dataset(dataset_id=dataset_id)
+            dataset_data: dict = client._api_client.get_dataset(dataset_id=dataset_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
@@ -791,7 +794,7 @@ class DataverseClient:
             Sensor.create(sensor_data) for sensor_data in dataset_data["sensors"]
         ]
         dataset_data.update({"project": project, "sensors": sensors})
-        return Dataset(**dataset_data, client_alias=self.alias)
+        return Dataset(**dataset_data, client_alias=client_alias)
 
     # TODO: required arguments for different DataSource
     @staticmethod

@@ -201,7 +201,9 @@ class Project(BaseModel):
     def get_model(self, model_id: int):
         from ..client import DataverseClient
 
-        model_data = DataverseClient.get_model(model_id=model_id, project=self)
+        model_data = DataverseClient.get_model(
+            model_id=model_id, project=self, client_alias=self.client_alias
+        )
         return model_data
 
     def create_dataset(

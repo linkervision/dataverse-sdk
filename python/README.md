@@ -148,10 +148,10 @@ project = client.create_project(name="Sample project", ontology=ontology, sensor
 
 ### Get Project
 
-The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique interger ID of the project, not its "name" property.
+The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique integer ID of the project, not its "name" property.
 
 ```Python
-project = client.get_project(project_id= 1)
+project = client.get_project(project_id= 1, client_alias=client.alias) # if client_alias is not provided, we'll get it from client
 ```
 
 <br>
@@ -176,6 +176,7 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
+#should provided client_alias if calling from client
 client.add_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.add_project_tag(project_tag=project_tag)
@@ -197,6 +198,7 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
+#should provided client_alias if calling from client
 client.edit_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.edit_project_tag(project_tag=project_tag)
@@ -217,6 +219,7 @@ new_classes = [OntologyClass(name="obstruction",
                     "options": [{
                     "value": "static"}, {"value": "moving"
                     }]}])]
+#should provided client_alias if calling from client
 client.add_ontology_classes(project_id=24, ontology_classes=new_classes, client_alias=client.alias)
 #OR
 project.add_ontology_classes(ontology_classes=new_classes)
@@ -239,6 +242,7 @@ edit_classes = [OntologyClass(name="obstruction",
                     "option",
                     "options": [{
                     "value": "unknown"}]}])]
+#should provided client_alias if calling from client
 client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes, client_alias=client.alias)
 #OR
 project.edit_ontology_classes(ontology_classes=edit_classes)
