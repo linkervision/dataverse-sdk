@@ -1,5 +1,5 @@
 # Dataverse SDK For Python
-Dataverse is a MLOPs platform for assisting in data selection, data visualization and model training in comupter vision.
+Dataverse is a MLOPs platform for assisting in data selection, data visualization and model training in computer vision.
 Use Dataverse-SDK for Python to help you to interact with the Dataverse platform by Python. Currently, the library supports:
   - Create Project with your input ontology and sensors
   - Get Project by project-id
@@ -103,8 +103,8 @@ For project with lidar sensor, your should assign `pcd_type = OntologyPcdType.CU
 ```Python
 # 2) Create your sensor list with name / SensorType
 sensors = [
-    Sensor(name="camera_1", type=SensorType.CAMERA),
-    Sensor(name="lidar_1", type=SensorType.LIDAR),
+    Sensor(name="camera1", type=SensorType.CAMERA),
+    Sensor(name="lidar1", type=SensorType.LIDAR),
 ]
 
 # 3) Create your project tag attributes (Optional)
@@ -298,7 +298,7 @@ dataset = project.create_dataset(**dataset_data)
 
 ### Get Dataset
 
-The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique interger ID of the dataset, not its "name" property.
+The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique integer ID of the dataset, not its "name" property.
 
 ```Python
 dataset = client.get_dataset(dataset_id=5)

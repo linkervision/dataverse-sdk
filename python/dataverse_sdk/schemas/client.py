@@ -355,7 +355,7 @@ class MLModel(BaseModel):
         from ..client import DataverseClient
 
         if model_data["project"] is None:
-            project = DataverseClient.get_project(
+            project = DataverseClient.get_client_project(
                 project_id=model_data["project"]["id"], client_alias=client_alias
             )
         else:
