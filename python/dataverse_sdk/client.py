@@ -735,9 +735,9 @@ class DataverseClient:
         """
         if client_alias is None:
             client_alias = self.alias
-        client = self.get_client(client_alias)
+        api, client_alias = DataverseClient._get_api_client(client_alias=client_alias)
         try:
-            dataset_data: dict = client._api_client.get_dataset(dataset_id=dataset_id)
+            dataset_data: dict = api.get_dataset(dataset_id=dataset_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
