@@ -90,6 +90,21 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
 
     @staticmethod
+    def _get_api_client(
+        client: Optional["DataverseClient"] = None, client_alias: Optional[str] = None
+    ):
+        if client is None:
+            if client_alias is None:
+                raise ValueError(
+                    "Please provide the DataverseClient or the connection alias!"
+                )
+            client = DataverseClient.get_client(client_alias)
+        else:
+            client_alias = client.alias
+        api = client._api_client
+        return api, client_alias
+
+    @staticmethod
     def get_client(alias: str = "default") -> "DataverseClient":
         try:
             return get_connection(alias)
@@ -226,15 +241,9 @@ class DataverseClient:
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
     ):
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = cls.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             project_data: dict = api.get_project(project_id=project_id)
         except Exception as e:
@@ -262,10 +271,7 @@ class DataverseClient:
         """
         if client_alias is None:
             client_alias = self.alias
-        client = self.get_client(client_alias)
-        return self.get_client_project(
-            project_id=project_id, client=client, client_alias=client_alias
-        )
+        return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
     @staticmethod
     def add_project_tag(
@@ -296,18 +302,12 @@ class DataverseClient:
         ClientConnectionError
             API error when creating new project tag
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
             project = DataverseClient.get_client_project(
-                project_id=project_id, client=client, client_alias=client_alias
+                project_id=project_id, client_alias=client_alias
             )
 
         raw_project_tag: dict = project_tag.dict(exclude_none=True)
@@ -357,15 +357,9 @@ class DataverseClient:
             API error when editing project tag
         """
 
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
@@ -417,15 +411,9 @@ class DataverseClient:
         ClientConnectionError
             API error when creating new ontology class
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
@@ -485,15 +473,9 @@ class DataverseClient:
         ClientConnectionError
             API error when editing ontology classes
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
@@ -547,15 +529,9 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
@@ -605,22 +581,16 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             model_data: dict = api.get_ml_model(model_id=model_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the model: {e}")
 
         if project is None:
-            project = client.get_client_project(
+            project = DataverseClient.get_client_project(
                 project_id=model_data["project"]["id"],
                 client=client,
                 client_alias=client_alias,
@@ -655,15 +625,9 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
@@ -699,15 +663,9 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
@@ -743,15 +701,9 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the DataverseClient or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_file(
                 model_id=model_id, timeout=timeout, model_format="onnx"
@@ -891,14 +843,9 @@ class DataverseClient:
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        if client is None:
-            if client_alias is None:
-                raise ValueError(
-                    "Please provide the dataverse client or the connection alias!"
-                )
-            client = DataverseClient.get_client(client_alias)
-        else:
-            client_alias = client.alias
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
 
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
@@ -928,8 +875,6 @@ class DataverseClient:
             raise ValidationError(
                 f"Something wrong when composing the final dataset data: {e}"
             )
-
-        api = client._api_client
 
         try:
             dataset_data = api.create_dataset(**raw_dataset_data)
