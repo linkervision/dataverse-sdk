@@ -92,7 +92,7 @@ class DataverseClient:
     @staticmethod
     def _get_api_client(
         client: Optional["DataverseClient"] = None, client_alias: Optional[str] = None
-    ):
+    ) -> tuple[BackendAPI, str]:
         if client is None:
             if client_alias is None:
                 raise ValueError(
