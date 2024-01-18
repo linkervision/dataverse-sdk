@@ -50,6 +50,7 @@ class DataverseClient:
         email: str,
         password: str,
         alias: str = "default",
+        force: bool = False,
     ) -> None:
         """
         Instantiate a Dataverse client.
@@ -59,6 +60,8 @@ class DataverseClient:
         host : DataverseHost
         email : str
         password : str
+        alias: str
+        force: bool, whether replace the connection if alias exists, default is False
 
         Raises
         ------
@@ -68,8 +71,9 @@ class DataverseClient:
             raise ValueError("Invalid dataverse host, if the host is available?")
         self.host = host
         self._api_client = None
+        self.alias = alias
         self._init_api_client(email=email, password=password)
-        add_connection(alias=alias, conn=self)
+        add_connection(alias=alias, conn=self, force=force)
 
     def _init_api_client(
         self,
@@ -86,20 +90,34 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
 
     @staticmethod
+    def _get_api_client(
+        client: Optional["DataverseClient"] = None, client_alias: Optional[str] = None
+    ) -> tuple[BackendAPI, str]:
+        if client is None:
+            if client_alias is None:
+                raise ValueError(
+                    "Please provide the DataverseClient or the connection alias!"
+                )
+            client = DataverseClient.get_client(client_alias)
+        else:
+            client_alias = client.alias
+        api = client._api_client
+        return api, client_alias
+
+    @staticmethod
     def get_client(alias: str = "default") -> "DataverseClient":
         try:
             return get_connection(alias)
         except KeyError:
             raise
 
-    @staticmethod
     def create_project(
+        self,
         name: str,
         ontology: Ontology,
         sensors: list[Sensor],
         project_tag: Optional[ProjectTag] = None,
         description: Optional[str] = None,
-        client: Optional["DataverseClient"] = None,
     ) -> Project:
         """Creates project from client data
         Parameters
@@ -114,8 +132,6 @@ class DataverseClient:
             your project tags
         description : Optional[str]
             your project description
-        client : Optional[DataverseClient]
-            the client to be used to create the project, will use the default client if it's None
 
         Returns
         -------
@@ -129,9 +145,6 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-
-        if client is None:
-            client = DataverseClient.get_client()
 
         raw_ontology_data: dict = ontology.dict(exclude_none=True)
         classes_data_list: list[dict] = []
@@ -173,10 +186,10 @@ class DataverseClient:
             )
 
         try:
-            project_data: dict = client._api_client.create_project(**raw_project_data)
+            project_data: dict = self._api_client.create_project(**raw_project_data)
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
-        return Project.create(project_data)
+        return Project.create(project_data=project_data, client_alias=self.alias)
 
     def list_projects(
         self,
@@ -216,17 +229,35 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
         output_project_list = []
         for project in project_list:
-            output_project_list.append(Project.create(project))
+            output_project_list.append(
+                Project.create(project_data=project, client_alias=self.alias)
+            )
         return output_project_list
 
-    @staticmethod
-    def get_project(project_id: int, client: Optional["DataverseClient"] = None):
+    @classmethod
+    def get_client_project(
+        cls,
+        project_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ):
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            project_data: dict = api.get_project(project_id=project_id)
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the project: {e}")
+        return Project.create(project_data, client_alias=client_alias)
+
+    def get_project(self, project_id: int, client_alias: Optional[str] = None):
         """Get project detail by project-id
 
         Parameters
         ----------
         project_id : int
             project-id in db
+        client_alias: Optional[str], by default None (will reset to self.alias if it's not provided)
 
         Returns
         -------
@@ -238,21 +269,16 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
-
-        try:
-            project_data: dict = api.get_project(project_id=project_id)
-        except Exception as e:
-            raise ClientConnectionError(f"Failed to get the project: {e}")
-        return Project.create(project_data)
+        if client_alias is None:
+            client_alias = self.alias
+        return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
     @staticmethod
     def add_project_tag(
         project_id: int,
         project_tag: ProjectTag,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> dict:
         """Add New Project Tag
@@ -263,6 +289,7 @@ class DataverseClient:
         project_tag : ProjectTag
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project : Optional["Project"], optional
             project basemodel, by default None
         Returns
@@ -275,11 +302,13 @@ class DataverseClient:
         ClientConnectionError
             API error when creating new project tag
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
-            project = DataverseClient.get_project(project_id=project_id)
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client_alias=client_alias
+            )
 
         raw_project_tag: dict = project_tag.dict(exclude_none=True)
         # new project tag attributes to be creaeted
@@ -302,6 +331,7 @@ class DataverseClient:
         project_id: int,
         project_tag: ProjectTag,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> dict:
         """Edit existing project tag
@@ -312,6 +342,7 @@ class DataverseClient:
         project_tag : ProjectTag
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project : Optional["Project"], optional
             project basemodel, by default None
 
@@ -325,11 +356,14 @@ class DataverseClient:
         ClientConnectionError
             API error when editing project tag
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
-            project = DataverseClient.get_project(project_id=project_id)
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client=client, client_alias=client_alias
+            )
 
         raw_project_tag: dict = project_tag.dict(exclude_none=True)
         # old project tag attributes to be extended
@@ -352,6 +386,7 @@ class DataverseClient:
         project_id: int,
         ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> dict:
         """Add new ontology classes
@@ -362,6 +397,7 @@ class DataverseClient:
         ontology_classes : list[OntologyClass]
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project : Optional["Project"], optional
             project basemodel, by default None
 
@@ -375,11 +411,13 @@ class DataverseClient:
         ClientConnectionError
             API error when creating new ontology class
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
-            project = DataverseClient.get_project(project_id=project_id)
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client=client, client_alias=client_alias
+            )
         # new ontology classes to be creaeted
         new_classes_data = []
         for ontology_class in ontology_classes:
@@ -410,6 +448,7 @@ class DataverseClient:
         project_id: int,
         ontology_classes: list[OntologyClass],
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> dict:
         """Edit ontology classes
@@ -420,6 +459,7 @@ class DataverseClient:
         ontology_classes : list[OntologyClass]
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project : Optional["Project"], optional
             project basemodel, by default None
 
@@ -433,11 +473,13 @@ class DataverseClient:
         ClientConnectionError
             API error when editing ontology classes
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         if project is None:
-            project = DataverseClient.get_project(project_id=project_id)
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client=client, client_alias=client_alias
+            )
         # ontology classes to be edited
         patched_classes_data = []
         for ontology_class in ontology_classes:
@@ -463,6 +505,7 @@ class DataverseClient:
     def list_models(
         project_id: int,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> list[MLModel]:
         """Get the model list by project id
@@ -472,6 +515,7 @@ class DataverseClient:
         project_id : int
         client : Optional["DataverseClient"], optional
             clientclass, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project: Optional["Project"]
             project basemodel, by default None
 
@@ -485,15 +529,17 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             model_list: list = api.list_ml_models(project_id=project_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
         if project is None:
-            project = DataverseClient.get_project(project_id=project_id)
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client=client, client_alias=client_alias
+            )
         output_model_list = []
         for model_data in model_list:
             model_config = model_data["configuration"]
@@ -503,7 +549,7 @@ class DataverseClient:
                     "triton_model_name": model_config.get("triton_model_name"),
                 }
             )
-            ml_model = MLModel.create(model_data)
+            ml_model = MLModel.create(model_data, client_alias=client_alias)
             output_model_list.append(ml_model)
         return output_model_list
 
@@ -511,6 +557,7 @@ class DataverseClient:
     def get_model(
         model_id: int,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
     ) -> MLModel:
         """get the model detail by model id
@@ -518,8 +565,9 @@ class DataverseClient:
         Parameters
         ----------
         model_id : int
-        client : Optional["DataverseClient&quot"], optional
+        client : Optional["DataverseClient"], optional
             client class, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
         project : Optional["Project"], optional
             the project class, by default None
 
@@ -533,18 +581,22 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             model_data: dict = api.get_ml_model(model_id=model_id)
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get the dataset: {e}")
+            raise ClientConnectionError(f"Failed to get the model: {e}")
 
         if project is None:
-            project = client.get_project(project_id=model_data["project"]["id"])
+            project = DataverseClient.get_client_project(
+                project_id=model_data["project"]["id"],
+                client=client,
+                client_alias=client_alias,
+            )
         model_data.update({"id": model_id, "project": project})
-        return MLModel.create(model_data)
+        return MLModel.create(model_data, client_alias=client_alias)
 
     @staticmethod
     def get_label_file(
@@ -552,6 +604,7 @@ class DataverseClient:
         save_path: str = "./labels.txt",
         timeout: int = 3000,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
     ) -> tuple[bool, str]:
         """Download the model label file (which is a string txt file)
 
@@ -564,6 +617,7 @@ class DataverseClient:
             maximum timeout of the request, by default 3000
         client : Optional[&quot;DataverseClient&quot;], optional
             client class, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
 
         Returns
         -------
@@ -571,15 +625,15 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
-        except Exception as e:
-            logging.exception("Fail to get model label file", e)
+        except Exception:
+            logging.exception("Failed to get model label file")
             return False, save_path
 
     @staticmethod
@@ -588,6 +642,7 @@ class DataverseClient:
         save_path: str = "./model.zip",
         timeout: int = 3000,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
     ) -> tuple[bool, str]:
         """Download the triton model file (which is a zip file)
 
@@ -600,6 +655,7 @@ class DataverseClient:
             maximum timeout of the request, by default 3000
         client : Optional[&quot;DataverseClient&quot;], optional
             client class, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
 
         Returns
         -------
@@ -607,15 +663,15 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
-        except Exception as e:
-            logging.exception("Failed to get triton model file", e)
+        except Exception:
+            logging.exception("Failed to get triton model file")
             return False, save_path
 
     @staticmethod
@@ -624,6 +680,7 @@ class DataverseClient:
         save_path: str = "./model.onnx",
         timeout: int = 3000,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
     ) -> tuple[bool, str]:
         """Download the onnx model file
 
@@ -634,8 +691,9 @@ class DataverseClient:
             local path for saving the onnx model file, by default './model.onnx'
         timeout : int, optional
             maximum timeout of the request, by default 3000
-        client : Optional[&quot;DataverseClient&quot;], optional
+        client : Optional['DataverseClient'], optional
             client class, by default None
+        client_alias: Optional[str], by default None (should be provided if client is None)
 
         Returns
         -------
@@ -643,20 +701,20 @@ class DataverseClient:
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        if client is None:
-            client = DataverseClient.get_client()
-        api = client._api_client
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
         try:
             resp = api.get_ml_model_file(
                 model_id=model_id, timeout=timeout, model_format="onnx"
             )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
-        except Exception as e:
-            logging.exception("Failed to get onnx model file", e)
+        except Exception:
+            logging.exception("Failed to get onnx model file")
             return False, save_path
 
-    def get_dataset(self, dataset_id: int):
+    def get_dataset(self, dataset_id: int, client_alias: Optional[str] = None):
         """Get dataset detail and status by id
 
         Parameters
@@ -668,15 +726,18 @@ class DataverseClient:
         -------
         Dataset
             dataset basemodel from host response for client usage
+        client_alias: Optional[str], by default None (will reset to self.alias if it's not provided)
 
         Raises
         ------
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-
+        if client_alias is None:
+            client_alias = self.alias
+        api, client_alias = DataverseClient._get_api_client(client_alias=client_alias)
         try:
-            dataset_data: dict = self._api_client.get_dataset(dataset_id=dataset_id)
+            dataset_data: dict = api.get_dataset(dataset_id=dataset_id)
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
@@ -685,7 +746,7 @@ class DataverseClient:
             Sensor.create(sensor_data) for sensor_data in dataset_data["sensors"]
         ]
         dataset_data.update({"project": project, "sensors": sensors})
-        return Dataset(**dataset_data)
+        return Dataset(**dataset_data, client_alias=client_alias)
 
     # TODO: required arguments for different DataSource
     @staticmethod
@@ -707,6 +768,7 @@ class DataverseClient:
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
         access_key_id: Optional[str] = None,
         secret_access_key: Optional[str] = None,
         **kwargs,
@@ -767,8 +829,10 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if data_source not in DataSource:
-            raise ValueError(f"Data source ({data_source}) is not supported currently.")
+        if data_source not in {DataSource.AWS, data_source.Azure}:
+            raise ValueError(
+                f"Data source ({data_source}) is not supported for SDK import"
+            )
 
         if annotations is None:
             annotations = []
@@ -777,10 +841,11 @@ class DataverseClient:
 
         if type == DatasetType.ANNOTATED_DATA and len(annotations) == 0:
             raise ValueError(
-                "Annoted data should provide at least one annotation folder name (groundtruth or model_name)"
+                "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        if client is None:
-            client = DataverseClient.get_client()
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
 
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
@@ -811,8 +876,6 @@ class DataverseClient:
                 f"Something wrong when composing the final dataset data: {e}"
             )
 
-        api = client._api_client
-
         try:
             dataset_data = api.create_dataset(**raw_dataset_data)
         except Exception as e:
@@ -830,8 +893,9 @@ class DataverseClient:
         )
 
         if data_source in {DataSource.Azure, DataSource.AWS}:
-            return Dataset(**dataset_data)
+            return Dataset(**dataset_data, client_alias=client_alias)
 
+        # TODO open for the sdk-local uploading
         # start uploading from local
         folder_paths: list[Optional[str]] = [
             raw_dataset_data.get("data_folder"),
@@ -883,4 +947,4 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"failed to upload files: {e}")
 
-        return Dataset(**dataset_data)
+        return Dataset(**dataset_data, client_alias=client_alias)

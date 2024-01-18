@@ -1,5 +1,5 @@
 # Dataverse SDK For Python
-Dataverse is a MLOPs platform for assisting in data selection, data visualization and model training in comupter vision.
+Dataverse is a MLOPs platform for assisting in data selection, data visualization and model training in computer vision.
 Use Dataverse-SDK for Python to help you to interact with the Dataverse platform by Python. Currently, the library supports:
   - Create Project with your input ontology and sensors
   - Get Project by project-id
@@ -29,10 +29,26 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="XXX", password="***"
+    host=DataverseHost.PRODUCTION, email="XXX", password="***", alias="default", force = False,
 )
 assert client is get_connection()
+
+# Should provide different alias if you are trying to connect to different workspaces
+client2 = DataverseClient(
+    host=DataverseHost.PRODUCTION, email="account-2", password="***", alias="client2", force = False,
+)
+assert client2 is get_connection()
 ```
+
+* Input arguments:
+
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| host        | str  | 	＊--    | the host url of the dataverse site    |
+| email  | str | ＊--  |  the email account of your dataverse workspace |
+| password  | str | ＊--  |  the password of your dataverse workspace  |
+| alias | str | 'default' |  the connection alias of your dataverse client |
+| force  | bool | False  |  whether force to replace the connection if the given alias exists |
 
 
 ## Key concepts
@@ -103,8 +119,8 @@ For project with lidar sensor, your should assign `pcd_type = OntologyPcdType.CU
 ```Python
 # 2) Create your sensor list with name / SensorType
 sensors = [
-    Sensor(name="camera_1", type=SensorType.CAMERA),
-    Sensor(name="lidar_1", type=SensorType.LIDAR),
+    Sensor(name="camera1", type=SensorType.CAMERA),
+    Sensor(name="lidar1", type=SensorType.LIDAR),
 ]
 
 # 3) Create your project tag attributes (Optional)
@@ -142,10 +158,10 @@ project = client.create_project(name="Sample project", ontology=ontology, sensor
 
 ### Get Project
 
-The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique interger ID of the project, not its "name" property.
+The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique integer ID of the project, not its "name" property.
 
 ```Python
-project = client.get_project(project_id= 1)
+project = client.get_project(project_id= 1, client_alias=client.alias) # if client_alias is not provided, we'll get it from client
 ```
 
 <br>
@@ -170,7 +186,8 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.add_project_tag(project_id = 10, project_tag=project_tag)
+#should provided client_alias if calling from client
+client.add_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.add_project_tag(project_tag=project_tag)
 ```
@@ -191,7 +208,8 @@ tag = {
                 ]
             }]}
 project_tag= ProjectTag(**tag)
-client.edit_project_tag(project_id = 10, project_tag=project_tag)
+#should provided client_alias if calling from client
+client.edit_project_tag(project_id = 10, project_tag=project_tag, client_alias=client.alias)
 #OR
 project.edit_project_tag(project_tag=project_tag)
 ```
@@ -211,7 +229,8 @@ new_classes = [OntologyClass(name="obstruction",
                     "options": [{
                     "value": "static"}, {"value": "moving"
                     }]}])]
-client.add_ontology_classes(project_id=24, ontology_classes=new_classes)
+#should provided client_alias if calling from client
+client.add_ontology_classes(project_id=24, ontology_classes=new_classes, client_alias=client.alias)
 #OR
 project.add_ontology_classes(ontology_classes=new_classes)
 ```
@@ -233,7 +252,8 @@ edit_classes = [OntologyClass(name="obstruction",
                     "option",
                     "options": [{
                     "value": "unknown"}]}])]
-client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes)
+#should provided client_alias if calling from client
+client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes, client_alias=client.alias)
 #OR
 project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
@@ -264,6 +284,7 @@ dataset_data = {
     "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
 }
 dataset = project.create_dataset(**dataset_data)
+
 ```
 
 * Input arguments for creating dataset from cloud storage:
@@ -298,7 +319,7 @@ dataset = project.create_dataset(**dataset_data)
 
 ### Get Dataset
 
-The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique interger ID of the dataset, not its "name" property.
+The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique integer ID of the dataset, not its "name" property.
 
 ```Python
 dataset = client.get_dataset(dataset_id=5)
@@ -310,7 +331,7 @@ The `list_models` method will list all the models in the given project
 
 ```Python
 #1
-models = client.list_models(project_id = 1)
+models = client.list_models(project_id = 1, client_alias=client.alias)
 #2
 project = client.get_project(project_id=1)
 models = project.list_models()
@@ -321,7 +342,7 @@ models = project.list_models()
 The `get_model` method will get the model detail info by the given model-id
 
 ```Python
-model = client.get_model(model_id=30)
+model = client.get_model(model_id=30, client_alias=client.alias)
 model = project.get_model(model_id=30)
 ```
 From the given model, we could get the label file / triton model file / onnx model file by the commands below.

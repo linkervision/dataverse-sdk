@@ -115,6 +115,7 @@ class Ontology(BaseModel):
 class Project(BaseModel):
     id: int
     name: str
+    client_alias: str
     description: Optional[str] = None
     ego_car: Optional[str] = None
     ontology: Ontology
@@ -122,7 +123,7 @@ class Project(BaseModel):
     project_tag: Optional[ProjectTag] = None
 
     @classmethod
-    def create(cls, project_data: dict) -> "Project":
+    def create(cls, project_data: dict, client_alias: str) -> "Project":
         ontology = Ontology.create(project_data["ontology"])
         # TODO modify the condition if list projects results with list fields
         if project_data.get("sensors") is None:
@@ -142,13 +143,17 @@ class Project(BaseModel):
             ontology=ontology,
             sensors=sensors,
             project_tag=project_tag,
+            client_alias=client_alias,
         )
 
     def add_project_tag(self, project_tag: ProjectTag):
         from ..client import DataverseClient
 
         project = DataverseClient.add_project_tag(
-            project_tag=project_tag, project=self, project_id=self.id
+            project_tag=project_tag,
+            project=self,
+            project_id=self.id,
+            client_alias=self.client_alias,
         )
         return project
 
@@ -156,7 +161,10 @@ class Project(BaseModel):
         from ..client import DataverseClient
 
         project = DataverseClient.edit_project_tag(
-            project_tag=project_tag, project=self, project_id=self.id
+            project_tag=project_tag,
+            project=self,
+            project_id=self.id,
+            client_alias=self.client_alias,
         )
         return project
 
@@ -164,7 +172,10 @@ class Project(BaseModel):
         from ..client import DataverseClient
 
         project = DataverseClient.add_ontology_classes(
-            ontology_classes=ontology_classes, project=self, project_id=self.id
+            ontology_classes=ontology_classes,
+            project=self,
+            project_id=self.id,
+            client_alias=self.client_alias,
         )
         return project
 
@@ -175,19 +186,24 @@ class Project(BaseModel):
             ontology_classes=ontology_classes,
             project=self,
             project_id=self.id,
+            client_alias=self.client_alias,
         )
         return project
 
     def list_models(self) -> list:
         from ..client import DataverseClient
 
-        model_list: list = DataverseClient.list_models(project_id=self.id, project=self)
+        model_list: list = DataverseClient.list_models(
+            project_id=self.id, project=self, client_alias=self.client_alias
+        )
         return model_list
 
     def get_model(self, model_id: int):
         from ..client import DataverseClient
 
-        model_data = DataverseClient.get_model(model_id=model_id, project=self)
+        model_data = DataverseClient.get_model(
+            model_id=model_id, project=self, client_alias=self.client_alias
+        )
         return model_data
 
     def create_dataset(
@@ -208,7 +224,7 @@ class Project(BaseModel):
         render_pcd: bool = False,
         description: Optional[str] = None,
         access_key_id: Optional[str] = None,
-        secret_access_key:Optional[str] = None,
+        secret_access_key: Optional[str] = None,
         **kwargs,
     ):
         """Create Dataset From project itself
@@ -286,6 +302,7 @@ class Project(BaseModel):
             description=description,
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
+            client_alias=self.client_alias,
             **kwargs,
         )
         return dataset_output
@@ -309,6 +326,7 @@ class Dataset(BaseModel):
     created_by: Optional[int] = None
     container_name: Optional[str] = None
     storage_url: Optional[str] = None
+    client_alias: Optional[str] = None
 
     class Config:
         extra = "allow"
@@ -317,6 +335,7 @@ class Dataset(BaseModel):
 class MLModel(BaseModel):
     id: Optional[int] = None
     name: str
+    client_alias: str
     updated_at: str
     project: Project
     classes: list
@@ -327,7 +346,7 @@ class MLModel(BaseModel):
         extra = "allow"
 
     @classmethod
-    def create(cls, model_data: dict) -> "MLModel":
+    def create(cls, model_data: dict, client_alias: str) -> "MLModel":
         if isinstance(model_data["classes"][0], dict):
             target_class_id = {
                 ontology_class["id"] for ontology_class in model_data["classes"]
@@ -338,8 +357,8 @@ class MLModel(BaseModel):
         from ..client import DataverseClient
 
         if model_data["project"] is None:
-            project = DataverseClient.get_project(
-                project_id=model_data["project"]["id"]
+            project = DataverseClient.get_client_project(
+                project_id=model_data["project"]["id"], client_alias=client_alias
             )
         else:
             project = model_data["project"]
@@ -356,6 +375,7 @@ class MLModel(BaseModel):
             classes=classes,
             updated_at=model_data["updated_at"],
             triton_model_name=model_data["triton_model_name"],
+            client_alias=client_alias,
         )
 
     def get_label_file(
@@ -364,7 +384,10 @@ class MLModel(BaseModel):
         from ..client import DataverseClient
 
         return DataverseClient.get_label_file(
-            model_id=self.id, save_path=save_path, timeout=timeout
+            model_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
         )
 
     def get_triton_model_file(
@@ -373,7 +396,10 @@ class MLModel(BaseModel):
         from ..client import DataverseClient
 
         return DataverseClient.get_triton_model_file(
-            model_id=self.id, save_path=save_path, timeout=timeout
+            model_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
         )
 
     def get_onnx_model_file(
@@ -382,5 +408,8 @@ class MLModel(BaseModel):
         from ..client import DataverseClient
 
         return DataverseClient.get_onnx_model_file(
-            model_id=self.id, save_path=save_path, timeout=timeout
+            model_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
         )
