@@ -23,17 +23,18 @@ class BackendAPI:
         host: str,
         email: str,
         password: str,
+        service_id: str,
     ):
         # TODO: Support api versioning
         self.host = host
-        self.headers = {"Content-Type": "application/json"}
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-Request-Service-Id": service_id,
+        }
         self.access_token = None
         self.email = email
         self.password = password
-        self.login(
-            email=email,
-            password=password,
-        )
+        self.login(email=email, password=password)
 
     def send_request(
         self,

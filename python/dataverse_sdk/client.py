@@ -5,7 +5,10 @@ from typing import Optional
 from pydantic import ValidationError
 
 from .apis.backend import BackendAPI
-from .connections import add_connection, get_connection
+from .connections import (
+    add_connection,
+    get_connection,
+)
 from .constants import DataverseHost
 from .exceptions.client import ClientConnectionError
 from .schemas.api import (
@@ -49,6 +52,7 @@ class DataverseClient:
         host: DataverseHost,
         email: str,
         password: str,
+        service_id: str,
         alias: str = "default",
         force: bool = False,
     ) -> None:
@@ -68,23 +72,25 @@ class DataverseClient:
         ValueError
         """
         if host not in DataverseHost:
-            raise ValueError("Invalid dataverse host, if the host is available?")
+            raise ValueError("Invalid dataverse host, is the host available?")
         self.host = host
         self._api_client = None
         self.alias = alias
-        self._init_api_client(email=email, password=password)
+        self._init_api_client(email=email, password=password, service_id=service_id)
         add_connection(alias=alias, conn=self, force=force)
 
     def _init_api_client(
         self,
         email: str,
         password: str,
+        service_id: str,
     ) -> None:
         try:
             self._api_client = BackendAPI(
                 host=self.host,
                 email=email,
                 password=password,
+                service_id=service_id,
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
