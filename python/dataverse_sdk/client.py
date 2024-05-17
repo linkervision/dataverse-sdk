@@ -952,11 +952,11 @@ class DataverseClient:
             raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
 
         loop = asyncio.get_event_loop()
-        results = loop.run_until_complete(
+        failed_urls = loop.run_until_complete(
             DataverseClient.run_upload_tasks(upload_task_queue)
         )
-        if results:
-            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
+        if failed_urls:
+            raise ClientConnectionError(f"failed to upload urls: {failed_urls}")
         return create_dataset_uuid
 
     @staticmethod
