@@ -898,11 +898,8 @@ class DataverseClient:
 
     @staticmethod
     def upload_files_from_local(api: BackendAPI, raw_dataset_data: dict) -> dict:
-        batch_size = 50
-        max_retry_count = 3
-        create_dataset_uuid: str = None
+        loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
-
         # TODO: support more format
         # Current only support scanning data_folder
         # meaning , support Visionai format
@@ -910,13 +907,41 @@ class DataverseClient:
         # raw_dataset_data.get("calibration_folder"),
         # raw_dataset_data.get("lidar_folder"),
         file_paths = DataverseClient._find_all_paths(data_folder)
-        generate_url_queue = deque(
-            (file_paths[i : i + batch_size], 0)
-            for i in range(0, len(file_paths), batch_size)
-        )  # (batched_path, retry_count)
+        upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
+            DataverseClient.run_generate_presigned_urls(
+                file_paths=file_paths, api=api, data_folder=data_folder
+            )
+        )
+        if failed_urls:
+            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
 
-        upload_task_queue = deque()
+        if not create_dataset_uuid:
+            raise ClientConnectionError(
+                "something went wrong, missing create dataset uuid"
+            )
+
+        failed_urls = loop.run_until_complete(
+            DataverseClient.run_upload_tasks(upload_task_queue)
+        )
+        if failed_urls:
+            raise ClientConnectionError(f"failed to upload urls: {failed_urls}")
+        return create_dataset_uuid
+
+    @staticmethod
+    async def run_generate_presigned_urls(
+        file_paths: list, api: BackendAPI, data_folder: str
+    ) -> tuple[deque, str, list[str]]:
+        max_retry_count, batch_size = 3, 50
+
         failed_urls = []
+        upload_task_queue = deque()
+
+        # TODO: convert the following code to async tasks loop
+        generate_url_queue = deque()
+        for i in range(0, len(file_paths), batch_size):
+            generate_url_queue.append((file_paths[i : i + batch_size], 0))
+
+        create_dataset_uuid: str = None
         while len(generate_url_queue) != 0:
             batched_file_paths, retry_count = generate_url_queue.popleft()
             if retry_count >= max_retry_count:
@@ -947,17 +972,7 @@ class DataverseClient:
                 raise
             except Exception:
                 generate_url_queue.append((batched_file_paths, retry_count + 1))
-
-        if failed_urls:
-            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
-
-        loop = asyncio.get_event_loop()
-        failed_urls = loop.run_until_complete(
-            DataverseClient.run_upload_tasks(upload_task_queue)
-        )
-        if failed_urls:
-            raise ClientConnectionError(f"failed to upload urls: {failed_urls}")
-        return create_dataset_uuid
+        return upload_task_queue, create_dataset_uuid, failed_urls
 
     @staticmethod
     async def run_upload_tasks(upload_task_queue: deque) -> list[str]:
