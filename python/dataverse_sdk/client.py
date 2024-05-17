@@ -1,7 +1,9 @@
+import asyncio
 import logging
-from os.path import isfile
+from collections import deque
 from typing import Optional
 
+from httpx import AsyncClient, AsyncHTTPTransport, Response, Timeout
 from pydantic import ValidationError
 
 from .apis.backend import BackendAPI
@@ -10,7 +12,7 @@ from .connections import (
     get_connection,
 )
 from .constants import DataverseHost
-from .exceptions.client import ClientConnectionError
+from .exceptions.client import BadRequest, ClientConnectionError
 from .schemas.api import (
     AttributeAPISchema,
     DatasetAPISchema,
@@ -835,11 +837,6 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-        if data_source not in {DataSource.AWS, data_source.Azure}:
-            raise ValueError(
-                f"Data source ({data_source}) is not supported for SDK import"
-            )
-
         if annotations is None:
             annotations = []
         if auto_tagging is None:
@@ -852,7 +849,6 @@ class DataverseClient:
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
-
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:
@@ -882,11 +878,12 @@ class DataverseClient:
                 f"Something wrong when composing the final dataset data: {e}"
             )
 
-        try:
-            dataset_data = api.create_dataset(**raw_dataset_data)
-        except Exception as e:
-            raise ClientConnectionError(f"Failed to create the dataset: {e}")
-
+        if data_source == DataSource.SDK:
+            create_dataset_uuid = DataverseClient.upload_files_from_local(
+                api, raw_dataset_data
+            )
+            raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
+        dataset_data = api.create_dataset(**raw_dataset_data)
         dataset_data.update(
             {
                 "project": project,
@@ -897,60 +894,147 @@ class DataverseClient:
                 "annotations": annotations,
             }
         )
-
-        if data_source in {DataSource.Azure, DataSource.AWS}:
-            return Dataset(**dataset_data, client_alias=client_alias)
-
-        # TODO open for the sdk-local uploading
-        # start uploading from local
-        folder_paths: list[Optional[str]] = [
-            raw_dataset_data.get("data_folder"),
-            raw_dataset_data.get("annotation_folder"),
-            raw_dataset_data.get("calibration_folder"),
-            raw_dataset_data.get("lidar_folder"),
-        ]
-        annotation_file = raw_dataset_data.get("annotation_file")
-
-        all_filepaths: list[str] = []
-        for path in folder_paths:
-            if path is not None:
-                all_filepaths.extend(get_filepaths(path))
-
-        if annotation_file is not None:
-            if not isfile(annotation_file):
-                raise ValueError("annotation_file expects a file destination")
-
-            all_filepaths.append(annotation_file)
-
-        # TODO: find a better way to get client_container_name
-        # instead of request backend again (generated while create dataset)
-        container_name: dict = api.get_dataset(dataset_data["id"])[
-            "client_container_name"
-        ]
-
-        try:
-            batch_size = 5
-            for i in range(0, len(all_filepaths), batch_size):
-                file_dict: dict[str, bytes] = {
-                    fpath: open(fpath, "rb").read()
-                    for fpath in all_filepaths[i : i + batch_size]
-                }
-
-                api.upload_files(
-                    dataset_id=dataset_data["id"],
-                    container_name=container_name,
-                    file_dict=file_dict,
-                    is_finished=False,
-                )
-
-            # request finished status to backend
-            api.upload_files(
-                dataset_id=dataset_data["id"],
-                container_name=container_name,
-                is_finished=True,
-                file_dict=dict(),
-            )
-        except Exception as e:
-            raise ClientConnectionError(f"failed to upload files: {e}")
-
         return Dataset(**dataset_data, client_alias=client_alias)
+
+    @staticmethod
+    def upload_files_from_local(api: BackendAPI, raw_dataset_data: dict) -> dict:
+        batch_size = 50
+        max_retry_count = 3
+        create_dataset_uuid: str = None
+        data_folder = raw_dataset_data["data_folder"]
+
+        # TODO: support more format
+        # Current only support scanning data_folder
+        # meaning , support Visionai format
+        # raw_dataset_data.get("annotation_folder"),
+        # raw_dataset_data.get("calibration_folder"),
+        # raw_dataset_data.get("lidar_folder"),
+        file_paths = DataverseClient._find_all_paths(data_folder)
+        generate_url_queue = deque(
+            (file_paths[i : i + batch_size], 0)
+            for i in range(0, len(file_paths), batch_size)
+        )  # (batched_path, retry_count)
+
+        upload_task_queue = deque()
+        failed_urls = []
+        while len(generate_url_queue) != 0:
+            batched_file_paths, retry_count = generate_url_queue.popleft()
+            if retry_count >= max_retry_count:
+                failed_urls.extend(batched_file_paths)
+
+            # NOTE: This is extremely slow to do it over here
+            # this replaces the full file path to relative file path
+            # i.e <long data folder path>/data/image.jpg -> /data/image.jpg
+            filtered_paths = [
+                path.replace(data_folder, "") for path in batched_file_paths
+            ]
+            try:
+                resp = api.generate_presigned_url(
+                    file_paths=filtered_paths,
+                    create_dataset_uuid=create_dataset_uuid,
+                    data_source=DataSource.SDK,
+                )
+                url_infos: list[dict] = resp["url_info"]
+                create_dataset_uuid = resp["dataset_info"]["create_dataset_uuid"]
+
+                upload_task_queue.append((batched_file_paths, url_infos))
+
+            except KeyError:
+                logging.exception("Is api schema changed?")
+                raise
+            except BadRequest as e:
+                logging.exception(e)
+                raise
+            except Exception:
+                generate_url_queue.append((batched_file_paths, retry_count + 1))
+
+        if failed_urls:
+            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(
+            DataverseClient.run_upload_tasks(upload_task_queue)
+        )
+        if results:
+            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
+        return create_dataset_uuid
+
+    @staticmethod
+    async def run_upload_tasks(upload_task_queue: deque) -> list[str]:
+        tasks = []
+        client = AsyncThirdPartyAPI()
+        for batched_file_paths, upload_file_infos in upload_task_queue:
+
+            async def f(
+                paths: list[str],
+                upload_infos: list[dict],
+                async_client: AsyncThirdPartyAPI,
+            ) -> list[str]:
+                failed_urls = []
+                for path, info in zip(paths, upload_infos):
+                    try:
+                        with open(path, "rb") as file:
+                            await async_client.upload_file(
+                                method=info["method"],
+                                target_url=info["url"],
+                                file=file.read(),
+                                content_type=info["content_type"],
+                            )
+                    except Exception as e:
+                        logging.exception(e)
+                        failed_urls.append(path)
+
+                return failed_urls
+
+            tasks.append(
+                f(
+                    paths=batched_file_paths,
+                    upload_infos=upload_file_infos,
+                    async_client=client,
+                )
+            )
+
+        failed_urls = []
+        for results in await asyncio.gather(*tasks):
+            failed_urls.extend(results)
+        return failed_urls
+
+    @staticmethod
+    def _find_all_paths(*paths) -> list[str]:
+        all_filepaths: list[str] = []
+        for path in paths:
+            all_filepaths.extend(get_filepaths(path))
+        return all_filepaths
+
+
+class AsyncThirdPartyAPI:
+    transport = AsyncHTTPTransport(
+        retries=5,
+    )
+
+    def __init__(self):
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(5))
+
+    async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
+        try:
+            resp: Response = await self.client.request(method=method, url=url, **kwargs)
+
+        except Exception:
+            logging.exception("async send request error")
+
+        if not 200 <= resp.status_code <= 299:
+            raise Exception(
+                f"status code: {resp.status_code}, response detail: {resp.content}"
+            )
+
+        return resp
+
+    async def upload_file(
+        self, method: str, target_url: str, file: bytes, content_type: str
+    ):
+        await self.async_send_request(
+            method=method,
+            url=target_url,
+            content=file,
+            headers={"Content-Type": content_type},
+        )

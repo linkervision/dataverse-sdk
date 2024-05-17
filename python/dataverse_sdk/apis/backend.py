@@ -8,6 +8,8 @@ import requests
 from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
+from ..exceptions.client import BadRequest
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,12 +93,14 @@ class BackendAPI:
                 **kwargs,
             )
 
+        if resp.status_code == 400:
+            raise BadRequest(resp.json())
+
         if not 200 <= resp.status_code <= 299:
             raise Exception(
                 f"[{parent_func}] request failed (kwargs: {kwargs})"
                 f", status code: {resp.status_code}, response detail: {resp.__dict__}"
             )
-
         return resp
 
     def login(self, email: str, password: str):
@@ -256,6 +260,7 @@ class BackendAPI:
         annotations: Optional[list[str]] = None,
         access_key_id: Optional[str] = None,
         secret_access_key: Optional[str] = None,
+        create_dataset_uuid: Optional[str] = None,
     ) -> dict:
         if auto_tagging is None:
             auto_tagging = []
@@ -288,6 +293,9 @@ class BackendAPI:
                 {"secret_access_key": secret_access_key, "access_key_id": access_key_id}
             )
 
+        if create_dataset_uuid:
+            payload_data.update({"create_dataset_uuid": create_dataset_uuid})
+
         resp = self.send_request(
             url=f"{self.host}/api/datasets/",
             method="post",
@@ -305,32 +313,22 @@ class BackendAPI:
 
         return resp.json()
 
-    def upload_files(
+    def generate_presigned_url(
         self,
-        dataset_id: int,
-        container_name: str,
-        is_finished: bool,
-        file_dict: dict[str, bytes],
+        file_paths: list,
+        create_dataset_uuid: Optional[str],
+        data_source: str,
     ):
-        file_dict["json"] = (
-            None,
-            json.dumps(
-                {
-                    "dataset_id": dataset_id,
-                    "container_name": container_name,
-                    "is_finished": is_finished,
-                }
-            ),
-            "application/json",
-        )
-
+        payload = {"filenames": file_paths, "data_source": data_source}
+        if create_dataset_uuid:
+            payload["create_dataset_uuid"] = create_dataset_uuid
         resp = self.send_request(
-            url=f"{self.host}/api/datasets/upload-files/",
+            url=f"{self.host}/api/datasets/upload-file-information/",
             method="post",
-            headers={"Authorization": self.headers["Authorization"]},
-            files=file_dict,
+            headers=self.headers,
+            data=payload,
         )
-        return resp
+        return resp.json()
 
     def update_dataset(self, dataset_id: int, **kwargs):
         resp = self.send_request(
@@ -339,4 +337,4 @@ class BackendAPI:
             headers=self.headers,
             data=kwargs,
         )
-        return resp
+        return resp.json()
