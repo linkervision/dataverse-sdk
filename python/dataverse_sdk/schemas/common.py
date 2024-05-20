@@ -13,6 +13,7 @@ class AttributeType(str, Enum, metaclass=BaseEnumMeta):
 class OntologyImageType(str, Enum, metaclass=BaseEnumMeta):
     _2D_BOUNDING_BOX = "2d_bounding_box"
     SEMANTIC_SEGMENTATION = "semantic_segmentation"
+    INSTANCE_SEGMENTATION = "instance_segmentation"
     CLASSIFICATION = "classification"
     POINT = "point"
     POLYGON = "polygon"
