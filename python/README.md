@@ -365,4 +365,4 @@ status, onnx_model_path = model.get_onnx_model_file(save_path="./model.onnx", ti
 
 ## Links to language repos
 
-[Python Readme](https://github.com/linkernetworks/dataverse-sdk/tree/develop/python/README.md)
+[Python Readme](https://github.com/linkernetworks/dataverse-sdk/tree/master/python/README.md)
