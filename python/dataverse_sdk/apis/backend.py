@@ -26,6 +26,7 @@ class BackendAPI:
         email: str,
         password: str,
         service_id: str,
+        access_token: str = "",
     ):
         # TODO: Support api versioning
         self.host = host
@@ -33,7 +34,7 @@ class BackendAPI:
             "Content-Type": "application/json",
             "X-Request-Service-Id": service_id,
         }
-        self.access_token = None
+        self.access_token = access_token
         self.email = email
         self.password = password
         self.login(email=email, password=password)
@@ -104,23 +105,35 @@ class BackendAPI:
         return resp
 
     def login(self, email: str, password: str):
+        if email and password:
+            resp = self.send_request(
+                url=f"{self.host}/auth/users/jwt/",
+                method="post",
+                headers={"Content-Type": "application/json"},
+                data={"email": email, "password": password},
+            )
+            json_data = resp.json()
+            self.set_auth(access_token=json_data["access_token"])
+            return
+
+        if self.access_token:
+            self.set_auth(access_token=self.access_token)
+            return
+
         if email is None:
             raise ValueError("Can't login with null email.")
         if password is None:
             raise ValueError("Can't login with null password.")
 
-        resp = self.send_request(
-            url=f"{self.host}/auth/users/jwt/",
-            method="post",
-            headers={"Content-Type": "application/json"},
-            data={"email": email, "password": password},
-        )
-        json_data = resp.json()
-        self.set_auth(access_token=json_data["access_token"])
-
     def set_auth(self, access_token: str) -> None:
-        self.access_token = access_token
         self.headers["Authorization"] = f"Bearer {access_token}"
+
+    def get_user(self) -> dict:
+        return self.send_request(
+            url=f"{self.host}/auth/users/me/",
+            method="get",
+            headers=self.headers,
+        ).json()
 
     def create_project(
         self,

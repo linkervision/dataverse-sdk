@@ -12,10 +12,10 @@ class BaseEnumMeta(EnumMeta):
 
 
 class DataverseHost(str, Enum, metaclass=BaseEnumMeta):
-    DEV = "https://dev.dataverse.linkervision.ai"
-    DEV2 = "https://dev2.dataverse.linkervision.ai"
-    DEV3 = "https://dev3.dataverse.linkervision.ai"
-    STAGING = "https://staging.dataverse.linkervision.ai"
+    DEV = "https://dev.dataverse.linkervision.ai/curation"
+    DEV2 = "https://dev2.dataverse.linkervision.ai/curation"
+    DEV3 = "https://dev3.dataverse.linkervision.ai/curation"
+    STAGING = "https://staging.dataverse.linkervision.ai/curation"
     DEMO = "https://demo.dataverse.linkervision.ai"
     PRODUCTION = "https://dataverse.linkervision.ai"
     LOCAL = "http://localhost:8000"
