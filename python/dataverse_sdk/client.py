@@ -7,10 +7,7 @@ from httpx import AsyncClient, AsyncHTTPTransport, Response, Timeout
 from pydantic import ValidationError
 
 from .apis.backend import BackendAPI
-from .connections import (
-    add_connection,
-    get_connection,
-)
+from .connections import add_connection, get_connection
 from .constants import DataverseHost
 from .exceptions.client import BadRequest, ClientConnectionError
 from .schemas.api import (
@@ -57,6 +54,7 @@ class DataverseClient:
         service_id: str,
         alias: str = "default",
         force: bool = False,
+        access_token: str = "",
     ) -> None:
         """
         Instantiate a Dataverse client.
@@ -66,8 +64,10 @@ class DataverseClient:
         host : DataverseHost
         email : str
         password : str
+        service_id : str
         alias: str
         force: bool, whether replace the connection if alias exists, default is False
+        access_token: str, optional, will try to use access_token to do authentication
 
         Raises
         ------
@@ -78,7 +78,12 @@ class DataverseClient:
         self.host = host
         self._api_client = None
         self.alias = alias
-        self._init_api_client(email=email, password=password, service_id=service_id)
+        self._init_api_client(
+            email=email,
+            password=password,
+            service_id=service_id,
+            access_token=access_token,
+        )
         add_connection(alias=alias, conn=self, force=force)
 
     def _init_api_client(
@@ -86,6 +91,7 @@ class DataverseClient:
         email: str,
         password: str,
         service_id: str,
+        access_token: str = "",
     ) -> None:
         try:
             self._api_client = BackendAPI(
@@ -93,6 +99,7 @@ class DataverseClient:
                 email=email,
                 password=password,
                 service_id=service_id,
+                access_token=access_token,
             )
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
@@ -118,6 +125,9 @@ class DataverseClient:
             return get_connection(alias)
         except KeyError:
             raise
+
+    def get_user(self):
+        return self._api_client.get_user()
 
     def create_project(
         self,

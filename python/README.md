@@ -19,7 +19,7 @@ Use Dataverse-SDK for Python to help you to interact with the Dataverse platform
 pip install dataverse-sdk
 ```
 
-**Prerequisites**: You must have an Dataverse Platform Account and [Python 3.9+](https://www.python.org/downloads/) to use this package.
+**Prerequisites**: You must have an Dataverse Platform Account and [Python 3.10+](https://www.python.org/downloads/) to use this package.
 
 ### Create the client
 
@@ -29,13 +29,18 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
 client = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="XXX", password="***", alias="default", force = False, service_id="xxxx-xxxx-xx-xxx"
+    host=DataverseHost.PRODUCTION, email="XXX", password="***", service_id="xxxx-xxxx-xx-xxx", alias="default", force = False
 )
 assert client is get_connection()
 
 # Should provide different alias if you are trying to connect to different workspaces
 client2 = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="account-2", password="***", alias="client2", force = False,
+    host=DataverseHost.PRODUCTION, email="account-2", password="***", service_id="xxxx-xxxx-xx-xxx", alias="client2", force = False
+)
+assert client2 is get_connection()
+
+client3 = DataverseClient(
+    host=DataverseHost.PRODUCTION, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx"
 )
 assert client2 is get_connection()
 ```
@@ -47,8 +52,10 @@ assert client2 is get_connection()
 | host        | str  | 	＊--    | the host url of the dataverse site    |
 | email  | str | ＊--  |  the email account of your dataverse workspace |
 | password  | str | ＊--  |  the password of your dataverse workspace  |
+| service_id  | str | ＊--   |  The service id of the dataverse you want to connect |
 | alias | str | 'default' |  the connection alias of your dataverse client |
 | force  | bool | False  |  whether force to replace the connection if the given alias exists |
+| access_token  | str | None   | instead of password to do authentication |
 
 
 ## Key concepts
@@ -59,6 +66,7 @@ Once you've initialized a DataverseClient, you can interact with Dataverse from 
 
 The following sections provide examples for the most common DataVerse tasksm including:
 
+* [Get User](#get-user)
 * [List Projects](#list-projects)
 * [Create Project](#create-project)
 * [Get Project](#get-project)
@@ -66,6 +74,15 @@ The following sections provide examples for the most common DataVerse tasksm inc
 * [Get Dataset](#get-dataset)
 * [List Models](#list-models)
 * [Get and Download Model](#get-model)
+
+### Get User
+
+The `get_user` method is to list the current user info.
+You can get the detail info, such as role, permission and user detail.
+
+```python
+user = client.get_user()
+```
 
 ### List Projects
 The `list_projects` method will list all projects of the given sites.
