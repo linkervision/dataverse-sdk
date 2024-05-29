@@ -184,7 +184,7 @@ class BackendAPI:
 
     def get_project(self, project_id) -> dict:
         resp = self.send_request(
-            url=f"{self.host}/api/projects/{project_id}",
+            url=f"{self.host}/api/projects/{project_id}/",
             method="get",
             headers=self.headers,
         )
