@@ -210,7 +210,7 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
-    def list_ml_models(self, project_id: int, type: str = "project", **kwargs) -> list:
+    def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
         kwargs["project"] = project_id
         kwargs["type"] = type
         resp = self.send_request(
