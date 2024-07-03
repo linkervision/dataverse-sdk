@@ -15,7 +15,3 @@ class DataverseExceptionBase(Exception):
         self.status_code = status_code
         self.detail = detail
         self.error = error
-
-
-class BadRequest(DataverseExceptionBase):
-    pass

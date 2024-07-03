@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from .apis.backend import BackendAPI
 from .connections import add_connection, get_connection
 from .constants import DataverseHost
-from .exceptions.client import BadRequest, ClientConnectionError, DataverseExceptionBase
+from .exceptions.client import ClientConnectionError, DataverseExceptionBase
 from .schemas.api import (
     AttributeAPISchema,
     DatasetAPISchema,
@@ -1019,8 +1019,8 @@ class DataverseClient:
             except KeyError:
                 logging.exception("Is api schema changed?")
                 raise
-            except BadRequest as e:
-                logging.exception(e)
+            except DataverseExceptionBase:
+                logging.exception("Got api error from Dataverse")
                 raise
             except Exception:
                 generate_url_queue.append((batched_file_paths, retry_count + 1))

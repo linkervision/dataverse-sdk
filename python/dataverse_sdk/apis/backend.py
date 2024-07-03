@@ -8,7 +8,7 @@ import requests
 from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
-from ..exceptions.client import BadRequest, DataverseExceptionBase
+from ..exceptions.client import DataverseExceptionBase
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +82,17 @@ class BackendAPI:
             raise
 
         if resp.status_code == 401:
-            logger.error(f"[{parent_func}] request forbidden.")
+            logger.exception(f"[{parent_func}] request forbidden.")
             resp_data = resp.json()
             raise DataverseExceptionBase(status_code=resp.status_code, **resp_data)
 
         if resp.status_code == 403:
-            logger.error(f"[{parent_func}] got permission denied")
+            logger.exception(f"[{parent_func}] got permission denied")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if resp.status_code == 400:
-            raise BadRequest(status_code=resp.status_code, **resp.json())
+            logger.exception(f"[{parent_func}] got bad request")
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if not 200 <= resp.status_code <= 299:
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
