@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from .apis.backend import BackendAPI
 from .connections import add_connection, get_connection
 from .constants import DataverseHost
-from .exceptions.client import BadRequest, ClientConnectionError
+from .exceptions.client import BadRequest, ClientConnectionError, DataverseExceptionBase
 from .schemas.api import (
     AttributeAPISchema,
     DatasetAPISchema,
@@ -101,6 +101,8 @@ class DataverseClient:
                 service_id=service_id,
                 access_token=access_token,
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")
 
@@ -205,6 +207,8 @@ class DataverseClient:
 
         try:
             project_data: dict = self._api_client.create_project(**raw_project_data)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data=project_data, client_alias=self.alias)
@@ -243,6 +247,8 @@ class DataverseClient:
                 exclude_sensor_type=exclude_sensor_type,
                 image_type=image_type,
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
         output_project_list = []
@@ -264,6 +270,8 @@ class DataverseClient:
         )
         try:
             project_data: dict = api.get_project(project_id=project_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data, client_alias=client_alias)
@@ -338,6 +346,8 @@ class DataverseClient:
             project_data: dict = api.edit_project(
                 project_id=project_id, project_tag_data=project_tag_data
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(
                 f"Failed to add project tag, please check your data: {e}"
@@ -393,6 +403,8 @@ class DataverseClient:
             project_data: dict = api.edit_project(
                 project_id=project_id, project_tag_data=project_tag_data
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(
                 f"Failed to edit project tag, please check your data: {e}"
@@ -455,6 +467,8 @@ class DataverseClient:
             project_data: dict = api.edit_project(
                 project_id=project_id, ontology_data=ontology_data
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(
                 f"Failed to add ontology classes, please check your data: {e}"
@@ -513,6 +527,8 @@ class DataverseClient:
             project_data: dict = api.edit_project(
                 project_id=project_id, ontology_data=ontology_data
             )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(
                 f"Failed to edit ontology classes, please check your data: {e}"
@@ -552,6 +568,8 @@ class DataverseClient:
         )
         try:
             model_list: list = api.list_ml_models(project_id=project_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the models: {e}")
         if project is None:
@@ -604,6 +622,8 @@ class DataverseClient:
         )
         try:
             model_data: dict = api.get_ml_model(model_id=model_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the model: {e}")
 
@@ -650,6 +670,8 @@ class DataverseClient:
             resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception:
             logging.exception("Failed to get model label file")
             return False, save_path
@@ -688,6 +710,8 @@ class DataverseClient:
             resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception:
             logging.exception("Failed to get triton model file")
             return False, save_path
@@ -728,6 +752,8 @@ class DataverseClient:
             )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception:
             logging.exception("Failed to get onnx model file")
             return False, save_path
@@ -756,6 +782,8 @@ class DataverseClient:
         api, client_alias = DataverseClient._get_api_client(client_alias=client_alias)
         try:
             dataset_data: dict = api.get_dataset(dataset_id=dataset_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 

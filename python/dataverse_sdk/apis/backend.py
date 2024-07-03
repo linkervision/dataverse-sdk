@@ -8,7 +8,7 @@ import requests
 from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
-from ..exceptions.client import BadRequest
+from ..exceptions.client import BadRequest, DataverseExceptionBase
 
 logger = logging.getLogger(__name__)
 
@@ -81,27 +81,20 @@ class BackendAPI:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
 
-        if resp.status_code == 401 or resp.status_code == 403:
-            logger.info(f"[{parent_func}] request forbidden.")
-            logger.info(f"[{parent_func}] start to refresh access token.")
-            self.login(email=self.email, password=self.password)
-            logger.info(f"[{parent_func}] access token refreshed.")
-            return self.send_request(
-                url=url,
-                method=method,
-                attempts=attempts + 1,
-                max_attempts=max_attempts,
-                **kwargs,
-            )
+        if resp.status_code == 401:
+            logger.error(f"[{parent_func}] request forbidden.")
+            resp_data = resp.json()
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp_data)
+
+        if resp.status_code == 403:
+            logger.error(f"[{parent_func}] got permission denied")
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if resp.status_code == 400:
-            raise BadRequest(resp.json())
+            raise BadRequest(status_code=resp.status_code, **resp.json())
 
         if not 200 <= resp.status_code <= 299:
-            raise Exception(
-                f"[{parent_func}] request failed (kwargs: {kwargs})"
-                f", status code: {resp.status_code}, response detail: {resp.__dict__}"
-            )
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
         return resp
 
     def login(self, email: str, password: str):
