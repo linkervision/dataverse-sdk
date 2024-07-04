@@ -15,3 +15,9 @@ class DataverseExceptionBase(Exception):
         self.status_code = status_code
         self.detail = detail
         self.error = error
+
+
+class AsyncThirdPartyAPIException(Exception):
+    def __init__(self, detail: str = None, status_code: int = None, **args):
+        self.status_code = status_code
+        self.detail = detail

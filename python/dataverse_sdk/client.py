@@ -9,7 +9,11 @@ from pydantic import ValidationError
 from .apis.backend import BackendAPI
 from .connections import add_connection, get_connection
 from .constants import DataverseHost
-from .exceptions.client import ClientConnectionError, DataverseExceptionBase
+from .exceptions.client import (
+    AsyncThirdPartyAPIException,
+    ClientConnectionError,
+    DataverseExceptionBase,
+)
 from .schemas.api import (
     AttributeAPISchema,
     DatasetAPISchema,
@@ -1090,8 +1094,8 @@ class AsyncThirdPartyAPI:
             logging.exception("async send request error")
 
         if not 200 <= resp.status_code <= 299:
-            raise Exception(
-                f"status code: {resp.status_code}, response detail: {resp.content}"
+            raise AsyncThirdPartyAPIException(
+                status_code=resp.status_code, detail=resp.content
             )
 
         return resp
