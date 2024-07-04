@@ -43,17 +43,10 @@ class BackendAPI:
         self,
         url: str,
         method: str,
-        attempts: int = 1,
-        max_attempts: int = 5,
         data: Optional[Union[str, dict]] = None,
         timeout: int = 3000,
         **kwargs,
     ):
-        if attempts > max_attempts:
-            msg = "Exceeds max attempts."
-            logger.error(msg)
-            raise Exception(msg)
-
         if (
             isinstance(data, dict)
             and kwargs.get("headers", {}).get("Content-Type") == "application/json"
@@ -81,13 +74,8 @@ class BackendAPI:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
 
-        if resp.status_code == 401:
+        if resp.status_code in (401, 403, 404):
             logger.exception(f"[{parent_func}] request forbidden.")
-            resp_data = resp.json()
-            raise DataverseExceptionBase(status_code=resp.status_code, **resp_data)
-
-        if resp.status_code == 403:
-            logger.exception(f"[{parent_func}] got permission denied")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if resp.status_code == 400:

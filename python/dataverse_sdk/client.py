@@ -106,7 +106,7 @@ class DataverseClient:
                 access_token=access_token,
             )
         except DataverseExceptionBase:
-            logging.exception("Got api error from Dataverse")
+            logging.exception("Initial Client Error")
             raise
         except Exception as e:
             raise ClientConnectionError(f"Failed to initialize the api client: {e}")

@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class ClientConnectionError(Exception):
     pass
 
@@ -5,10 +8,10 @@ class ClientConnectionError(Exception):
 class DataverseExceptionBase(Exception):
     def __init__(
         self,
-        type: str = None,
-        detail: str = None,
-        error: str = None,
-        status_code: int = None,
+        status_code: Optional[int] = None,
+        type: Optional[str] = None,
+        detail: Optional[str] = None,
+        error: Optional[str | dict] = None,
         **args
     ):
         self.type = type
@@ -18,6 +21,8 @@ class DataverseExceptionBase(Exception):
 
 
 class AsyncThirdPartyAPIException(Exception):
-    def __init__(self, detail: str = None, status_code: int = None, **args):
+    def __init__(
+        self, status_code: Optional[int] = None, detail: Optional[str] = "", **args
+    ):
         self.status_code = status_code
         self.detail = detail
