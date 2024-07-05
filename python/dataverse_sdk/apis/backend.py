@@ -8,7 +8,7 @@ import requests
 from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
-from ..exceptions.client import BadRequest
+from ..exceptions.client import DataverseExceptionBase
 
 logger = logging.getLogger(__name__)
 
@@ -43,17 +43,10 @@ class BackendAPI:
         self,
         url: str,
         method: str,
-        attempts: int = 1,
-        max_attempts: int = 5,
         data: Optional[Union[str, dict]] = None,
         timeout: int = 3000,
         **kwargs,
     ):
-        if attempts > max_attempts:
-            msg = "Exceeds max attempts."
-            logger.error(msg)
-            raise Exception(msg)
-
         if (
             isinstance(data, dict)
             and kwargs.get("headers", {}).get("Content-Type") == "application/json"
@@ -81,27 +74,16 @@ class BackendAPI:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
 
-        if resp.status_code == 401 or resp.status_code == 403:
-            logger.info(f"[{parent_func}] request forbidden.")
-            logger.info(f"[{parent_func}] start to refresh access token.")
-            self.login(email=self.email, password=self.password)
-            logger.info(f"[{parent_func}] access token refreshed.")
-            return self.send_request(
-                url=url,
-                method=method,
-                attempts=attempts + 1,
-                max_attempts=max_attempts,
-                **kwargs,
-            )
+        if resp.status_code in (401, 403, 404):
+            logger.exception(f"[{parent_func}] request forbidden.")
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if resp.status_code == 400:
-            raise BadRequest(resp.json())
+            logger.exception(f"[{parent_func}] got bad request")
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if not 200 <= resp.status_code <= 299:
-            raise Exception(
-                f"[{parent_func}] request failed (kwargs: {kwargs})"
-                f", status code: {resp.status_code}, response detail: {resp.__dict__}"
-            )
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
         return resp
 
     def login(self, email: str, password: str):
