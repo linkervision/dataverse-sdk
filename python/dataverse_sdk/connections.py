@@ -48,7 +48,9 @@ class Connections:
         try:
             return self._conns[alias]
         except KeyError:
-            raise KeyError("You must create the connection in advance.")
+            raise KeyError(
+                f"You must create the connection with the given alias {alias} in advance."
+            )
 
 
 connections = Connections()

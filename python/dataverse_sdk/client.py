@@ -939,6 +939,9 @@ class DataverseClient:
                 api, raw_dataset_data
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
+            raw_dataset_data[
+                "data_source"
+            ] = DataSource.LOCAL  # update to local before sending to BE
         dataset_data = api.create_dataset(**raw_dataset_data)
         dataset_data.update(
             {
