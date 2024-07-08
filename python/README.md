@@ -49,7 +49,7 @@ assert client3 is get_connection(client3.alias)
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| host        | str  | 	＊--    | the host url of the dataverse site    |
+| host        | str  | 	＊--    | the host url of the dataverse site (with curation port)   |
 | email  | str | ＊--  |  the email account of your dataverse workspace |
 | password  | str | ＊--  |  the password of your dataverse workspace  |
 | service_id  | str | ＊--   |  The service id of the dataverse you want to connect |
@@ -336,7 +336,7 @@ dataset = project.create_dataset(**dataset_data)
 
 ```Python
 dataset_data2 = {
-    "name": "Dataset LOCAL",
+    "name": "dataset-local-upload",
     "data_source": DataSource.LOCAL,
     "storage_url": "",
     "container_name": "",
@@ -353,6 +353,10 @@ dataset2 = project.create_dataset(**dataset_data2)
 
 ```
 
+Your could also use the script for importing dataset from local
+```
+python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+```
 <br>
 
 ### Get Dataset
