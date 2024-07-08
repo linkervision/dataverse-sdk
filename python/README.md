@@ -31,25 +31,25 @@ from dataverse_sdk.connections import get_connection
 client = DataverseClient(
     host=DataverseHost.PRODUCTION, email="XXX", password="***", service_id="xxxx-xxxx-xx-xxx", alias="default", force = False
 )
-assert client is get_connection()
+assert client is get_connection("default")
 
 # Should provide different alias if you are trying to connect to different workspaces
 client2 = DataverseClient(
     host=DataverseHost.PRODUCTION, email="account-2", password="***", service_id="xxxx-xxxx-xx-xxx", alias="client2", force = False
 )
-assert client2 is get_connection()
+assert client2 is get_connection(client2.alias)
 
 client3 = DataverseClient(
     host=DataverseHost.PRODUCTION, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx"
 )
-assert client2 is get_connection()
+assert client3 is get_connection(client3.alias)
 ```
 
 * Input arguments:
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| host        | str  | 	＊--    | the host url of the dataverse site    |
+| host        | str  | 	＊--    | the host url of the dataverse site (with curation port)   |
 | email  | str | ＊--  |  the email account of your dataverse workspace |
 | password  | str | ＊--  |  the password of your dataverse workspace  |
 | service_id  | str | ＊--   |  The service id of the dataverse you want to connect |
@@ -304,7 +304,7 @@ dataset = project.create_dataset(**dataset_data)
 
 ```
 
-* Input arguments for creating dataset from cloud storage:
+* Input arguments for creating dataset from `cloud storage`:
 
 | Argument name      | Type/Options   | Default | Description   |
 | :---                 |     :---    |     :---  |          :--- |
@@ -332,7 +332,32 @@ dataset = project.create_dataset(**dataset_data)
 
 <br>
 
+#### Use `create_dataset` to import dataset from `LOCAL`
 
+```Python
+dataset_data2 = {
+    "name": "dataset-local-upload",
+    "data_source": DataSource.LOCAL,
+    "storage_url": "",
+    "container_name": "",
+    "data_folder": "/YOUR/TARGET/LOCAL/FOLDER",
+    "sensors": project.sensors,
+    "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
+    "annotation_format": AnnotationFormat.VISION_AI,
+    "annotations": ["groundtruth"],
+    "sequential": False,
+    "generate_metadata": False,
+    "auto_tagging": []
+}
+dataset2 = project.create_dataset(**dataset_data2)
+
+```
+
+Your could also use the script for importing dataset from local
+```
+python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+```
+<br>
 
 ### Get Dataset
 

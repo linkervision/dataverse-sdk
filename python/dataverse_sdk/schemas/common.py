@@ -51,4 +51,4 @@ class DatasetStatus(str, Enum, metaclass=BaseEnumMeta):
 class DataSource(str, Enum, metaclass=BaseEnumMeta):
     Azure = "azure"
     AWS = "aws"
-    SDK = "sdk"
+    LOCAL = "local"

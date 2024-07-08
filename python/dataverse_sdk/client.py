@@ -934,7 +934,7 @@ class DataverseClient:
                 f"Something wrong when composing the final dataset data: {e}"
             )
 
-        if data_source == DataSource.SDK:
+        if data_source == DataSource.LOCAL:
             create_dataset_uuid = DataverseClient.upload_files_from_local(
                 api, raw_dataset_data
             )
@@ -1013,7 +1013,7 @@ class DataverseClient:
                 resp = api.generate_presigned_url(
                     file_paths=filtered_paths,
                     create_dataset_uuid=create_dataset_uuid,
-                    data_source=DataSource.SDK,
+                    data_source=DataSource.LOCAL,
                 )
                 url_infos: list[dict] = resp["url_info"]
                 create_dataset_uuid = resp["dataset_info"]["create_dataset_uuid"]
