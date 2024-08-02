@@ -1084,7 +1084,7 @@ class AsyncThirdPartyAPI:
     )
 
     def __init__(self):
-        self.client = AsyncClient(transport=self.transport, timeout=Timeout(5))
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
 
     async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
         try:
