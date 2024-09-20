@@ -307,6 +307,20 @@ class DataverseClient:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
+    def update_alias(self, project_id: int, alias_list: list):
+        try:
+            resp: dict = self._api_client.update_alias(
+                project_id=project_id, alias_list=alias_list
+            )
+        except DataverseExceptionBase as api_error:
+            logging.exception(
+                f"Got api error from Dataverse: {api_error.detail}, {api_error.error}"
+            )
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to edit the project alias: {e}")
+        return resp
+
     @staticmethod
     def add_project_tag(
         project_id: int,

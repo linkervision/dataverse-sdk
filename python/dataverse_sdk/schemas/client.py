@@ -97,15 +97,15 @@ class Ontology(BaseModel):
             OntologyClass(
                 id=cls_["id"],
                 name=cls_["name"],
-                color=cls_["color"],
-                rank=cls_["rank"],
-                attributes=cls_["attributes"],
+                color=cls_.get("color", "#234567"),
+                rank=cls_.get("rank"),
+                attributes=cls_.get("attributes"),
             )
             for cls_ in ontology_data["classes"]
         ]
         return cls(
             id=ontology_data["id"],
-            name=ontology_data["name"],
+            name=ontology_data.get("name", ""),
             image_type=ontology_data["image_type"],
             pcd_type=ontology_data["pcd_type"],
             classes=classes,
@@ -139,7 +139,7 @@ class Project(BaseModel):
             id=project_data["id"],
             name=project_data["name"],
             description=project_data["description"],
-            ego_car=project_data["ego_car"],
+            ego_car=project_data.get("ego_car"),
             ontology=ontology,
             sensors=sensors,
             project_tag=project_tag,

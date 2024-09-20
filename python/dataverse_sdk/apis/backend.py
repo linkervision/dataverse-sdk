@@ -73,7 +73,6 @@ class BackendAPI:
         except (requests.exceptions.RequestException, Exception) as e:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
-
         if resp.status_code in (401, 403, 404):
             logger.exception(f"[{parent_func}] request forbidden.")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
@@ -191,6 +190,19 @@ class BackendAPI:
             headers=self.headers,
         )
         return resp.json()["results"]
+
+    def update_alias(
+        self,
+        project_id: int,
+        alias_list: list,
+    ) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/{project_id}/bulk-upsert-alias/",
+            method="post",
+            headers=self.headers,
+            data=alias_list,
+        )
+        return resp.json()
 
     def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
         kwargs["project"] = project_id
