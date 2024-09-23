@@ -81,6 +81,10 @@ class BackendAPI:
             logger.exception(f"[{parent_func}] got bad request")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
+        if resp.status_code == 500:
+            logger.exception(f"[{parent_func}] got api error")
+            raise DataverseExceptionBase(status_code=resp.status_code)
+
         if not 200 <= resp.status_code <= 299:
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
         return resp
@@ -200,9 +204,9 @@ class BackendAPI:
             url=f"{self.host}/api/projects/{project_id}/bulk-upsert-alias/",
             method="post",
             headers=self.headers,
-            data=alias_list,
+            json=alias_list,
         )
-        return resp.json()
+        return resp
 
     def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
         kwargs["project"] = project_id

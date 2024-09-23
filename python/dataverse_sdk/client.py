@@ -309,7 +309,7 @@ class DataverseClient:
 
     def update_alias(self, project_id: int, alias_list: list):
         try:
-            resp: dict = self._api_client.update_alias(
+            resp = self._api_client.update_alias(
                 project_id=project_id, alias_list=alias_list
             )
         except DataverseExceptionBase as api_error:
