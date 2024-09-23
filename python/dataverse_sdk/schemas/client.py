@@ -18,6 +18,7 @@ from .common import (
 class AttributeOption(BaseModel):
     id: Optional[int] = None
     value: Union[str, float, int, bool]
+    aliases: Optional[list] = None
 
 
 class Attribute(BaseModel):
@@ -25,6 +26,7 @@ class Attribute(BaseModel):
     name: str
     options: Optional[list[AttributeOption]] = None
     type: AttributeType
+    aliases: Optional[list] = None
 
     class Config:
         use_enum_values = True
@@ -69,6 +71,7 @@ class OntologyClass(BaseModel):
     color: str
     rank: Optional[int] = None
     attributes: Optional[list[Attribute]] = None
+    aliases: Optional[list] = None
 
     @validator("color", each_item=True)
     def color_validator(cls, value):

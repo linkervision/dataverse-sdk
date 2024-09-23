@@ -13,6 +13,7 @@ from .exceptions.client import (
     AsyncThirdPartyAPIException,
     ClientConnectionError,
     DataverseExceptionBase,
+    InvalidProcessError,
 )
 from .schemas.api import (
     AttributeAPISchema,
@@ -307,14 +308,89 @@ class DataverseClient:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
-    def update_alias(self, project_id: int, alias_list: list):
+    def generate_alias_map(self, project_id: int, alias_file_path: str = "./alias.csv"):
+        project = self.get_project(project_id=project_id)
+
+        alias_mapping = []
+        for ontology_class in project.ontology.classes:
+            alias_mapping.append(
+                [ontology_class.id, "ontology_class", ontology_class.name, ""]
+            )
+            if ontology_class.attributes:
+                for attr in ontology_class.attributes:
+                    alias_mapping.append(
+                        [
+                            attr.id,
+                            "attribute",
+                            f"{ontology_class.name}--{attr.name}",
+                            "",
+                        ]
+                    )
+                    if attr.options:
+                        for option in attr.options:
+                            alias_mapping.append(
+                                [
+                                    option.id,
+                                    "option",
+                                    f"{ontology_class.name}--{attr.name}--{option.value}",
+                                    "",
+                                ]
+                            )
+        # output alias mapping to csv
+        import csv
+
+        # field names
+        fields = ["ID", "type", "class--attribute--option", "alias"]
+
+        with open(alias_file_path, "w") as f:
+            # using csv.writer method from CSV package
+            write = csv.writer(f)
+
+            write.writerow(fields)
+            write.writerows(alias_mapping)
+        logging.info(f"Alias file has been saved as {alias_file_path}")
+        return alias_file_path
+
+    def update_alias(self, project_id: int, alias_file_path: str):
+        project = self.get_project(project_id=project_id)
+        project_ontology_ids = {
+            "ontology_class": set(),
+            "attribute": set(),
+            "option": set(),
+        }
+        for ontology_class in project.ontology.classes:
+            project_ontology_ids["ontology_class"].add(ontology_class.id)
+            for attr in ontology_class.attributes:
+                project_ontology_ids["attribute"].add(attr.id)
+                for option in attr.options:
+                    project_ontology_ids["option"].add(option.id)
+
+        import csv
+
+        alias_list = []
+        try:
+            with open(alias_file_path, newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    if row["alias"]:
+                        print(row)
+                        if int(row["ID"]) in project_ontology_ids[row["type"]]:
+                            alias_list.append(
+                                {row["type"]: int(row["ID"]), "name": row["alias"]}
+                            )
+        except FileNotFoundError as file_not_found:
+            raise InvalidProcessError(f"File Not Found: {file_not_found}")
+
+        if not alias_list:
+            raise InvalidProcessError("No valid alias for updating")
+
         try:
             resp = self._api_client.update_alias(
                 project_id=project_id, alias_list=alias_list
             )
         except DataverseExceptionBase as api_error:
             logging.exception(
-                f"Got api error from Dataverse: {api_error.detail}, {api_error.error}"
+                f"Got [{api_error.status_code}] api error from Dataverse: {api_error.error}"
             )
             raise
         except Exception as e:
