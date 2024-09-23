@@ -275,6 +275,21 @@ client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes, clien
 project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
 
+
+#### Update Ontology Alias
+
+1. Get the csv file of alias map for your project
+```Python
+client.generate_alias_map(project_id=123, alias_file_path="./alias.csv")
+```
+
+2. Fill the alias in the csv file and save (DO NOT modify other fields)
+
+3. Update alias for your project with the alias file path
+```Python
+client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv" )
+```
+
 <br>
 
 ### Create Dataset
