@@ -64,12 +64,14 @@ Once you've initialized a DataverseClient, you can interact with Dataverse from 
 
 ## Examples
 
-The following sections provide examples for the most common DataVerse tasksm including:
+The following sections provide examples for the most common DataVerse tasks including:
 
 * [Get User](#get-user)
 * [List Projects](#list-projects)
 * [Create Project](#create-project)
 * [Get Project](#get-project)
+* [Edit Project](#edit-project)
+* [Update Alias](#update-ontology-alias)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
 * [List Models](#list-models)
@@ -276,7 +278,7 @@ project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
 
 
-#### Update Ontology Alias
+### Update Ontology Alias
 
 1. Get the csv file of alias map for your project
 ```Python
