@@ -209,6 +209,15 @@ class Project(BaseModel):
         )
         return model_data
 
+    def get_convert_record(self, convert_record_id: int):
+        from ..client import DataverseClient
+
+        convert_record_data = DataverseClient.get_convert_record(
+            convert_record_id=convert_record_id,
+            client_alias=self.client_alias,
+        )
+        return convert_record_data
+
     def create_dataset(
         self,
         name: str,
@@ -342,6 +351,7 @@ class MLModel(BaseModel):
     updated_at: str
     project: Project
     classes: list
+    model_records: list = []
     triton_model_name: str
     description: Optional[str] = None
 
@@ -376,6 +386,7 @@ class MLModel(BaseModel):
             name=model_data["name"],
             project=project,
             classes=classes,
+            model_records=model_data.get("model_records", []),
             updated_at=model_data["updated_at"],
             triton_model_name=model_data["triton_model_name"],
             client_alias=client_alias,
@@ -416,3 +427,13 @@ class MLModel(BaseModel):
             timeout=timeout,
             client_alias=self.client_alias,
         )
+
+
+class ConvertRecord(BaseModel):
+    id: Optional[int] = None
+    name: str
+    client_alias: str
+    configuration: dict
+
+    class Config:
+        extra = "allow"

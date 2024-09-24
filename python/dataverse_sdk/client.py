@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections import deque
 from typing import Optional
 
@@ -23,6 +24,7 @@ from .schemas.api import (
     ProjectTagAPISchema,
 )
 from .schemas.client import (
+    ConvertRecord,
     Dataset,
     DataSource,
     MLModel,
@@ -285,7 +287,9 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data, client_alias=client_alias)
 
-    def get_project(self, project_id: int, client_alias: Optional[str] = None):
+    def get_project(
+        self, project_id: int, client_alias: Optional[str] = None
+    ) -> Project:
         """Get project detail by project-id
 
         Parameters
@@ -308,7 +312,28 @@ class DataverseClient:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
-    def generate_alias_map(self, project_id: int, alias_file_path: str = "./alias.csv"):
+    def generate_alias_map(
+        self, project_id: int, alias_file_path: str = "./alias.csv"
+    ) -> str:
+        """Generate alias map
+
+        Parameters
+        ----------
+        project_id : int
+        alias_file_path : str, optional
+            file_path for saving alias.csv, by default "./alias.csv"
+
+        Returns
+        -------
+        alias_file_path: str
+        """
+
+        file_extension = os.path.splitext(alias_file_path)[1]
+        if file_extension != ".csv":
+            raise InvalidProcessError(
+                f"Invalid path: {alias_file_path}! Should provide file path with .csv extension"
+            )
+
         project = self.get_project(project_id=project_id)
 
         alias_mapping = []
@@ -352,6 +377,11 @@ class DataverseClient:
         return alias_file_path
 
     def update_alias(self, project_id: int, alias_file_path: str):
+        file_extension = os.path.splitext(alias_file_path)[1]
+        if file_extension != ".csv":
+            raise InvalidProcessError(
+                f"Invalid path: {alias_file_path}! Should provide file path with .csv extension"
+            )
         project = self.get_project(project_id=project_id)
         project_ontology_ids = {
             "ontology_class": set(),
@@ -388,6 +418,7 @@ class DataverseClient:
             resp = self._api_client.update_alias(
                 project_id=project_id, alias_list=alias_list
             )
+            logging.info("Alias is updated.")
         except DataverseExceptionBase as api_error:
             logging.exception(
                 f"Got [{api_error.status_code}] api error from Dataverse: {api_error.error}"
@@ -395,7 +426,7 @@ class DataverseClient:
             raise
         except Exception as e:
             raise ClientConnectionError(f"Failed to edit the project alias: {e}")
-        return resp
+        return resp.json()
 
     @staticmethod
     def add_project_tag(
@@ -739,6 +770,31 @@ class DataverseClient:
             )
         model_data.update({"id": model_id, "project": project})
         return MLModel.create(model_data, client_alias=client_alias)
+
+    @staticmethod
+    def get_convert_record(
+        convert_record_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ):
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            convert_record: dict = api.get_convert_record(
+                convert_record_id=convert_record_id
+            )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the model: {e}")
+        return ConvertRecord(
+            id=convert_record_id,
+            name=convert_record["name"],
+            configuration=convert_record.get("configuration", {}),
+            client_alias=client_alias,
+        )
 
     @staticmethod
     def get_label_file(

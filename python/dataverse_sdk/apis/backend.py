@@ -226,6 +226,14 @@ class BackendAPI:
         )
         return resp.json()
 
+    def get_convert_record(self, convert_record_id: int) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/convert_record/{convert_record_id}/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
     def get_ml_model_labels(
         self, model_id: int, timeout: int = 3000
     ) -> requests.models.Response:
