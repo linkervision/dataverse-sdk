@@ -68,19 +68,30 @@ class Sensor(BaseModel):
 class OntologyClass(BaseModel):
     id: Optional[int] = None
     name: str
-    color: str
-    rank: Optional[int] = None
+    color: Optional[str] = "#cc39f4"
+    rank: Optional[int] = 1
     attributes: Optional[list[Attribute]] = None
     aliases: Optional[list] = None
 
-    @validator("color", each_item=True)
+    class Config:
+        validate_assignment = True
+
+    @validator("color", pre=True, always=True)
     def color_validator(cls, value):
+        if not value:
+            value = "#cc39f4"
         if not value.startswith("#") or not re.search(
             r"\b[a-zA-Z0-9]{6}\b", value.lstrip("#")
         ):
             raise ValueError(
                 f"Color field needs starts with `#` and has 6 digits behind it, get : {value}"
             )
+        return value
+
+    @validator("rank", pre=True, always=True)
+    def rank_validator(cls, value):
+        if not value:
+            value = 1
         return value
 
 
@@ -100,7 +111,7 @@ class Ontology(BaseModel):
             OntologyClass(
                 id=cls_["id"],
                 name=cls_["name"],
-                color=cls_.get("color", "#234567"),
+                color=cls_.get("color"),
                 rank=cls_.get("rank"),
                 attributes=cls_.get("attributes"),
             )
