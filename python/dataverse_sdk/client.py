@@ -776,17 +776,14 @@ class DataverseClient:
         convert_record_id: int,
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
-    ):
-        """_summary_
+    ) -> ConvertRecord:
+        """Get model convert record
 
         Parameters
         ----------
         convert_record_id : int
-            _description_
         client : Optional[&quot;DataverseClient&quot;], optional
-            _description_, by default None
         client_alias : Optional[str], optional
-            _description_, by default None
 
         Returns
         -------
@@ -858,47 +855,6 @@ class DataverseClient:
             raise
         except Exception:
             logging.exception("Failed to get model label file")
-            return False, save_path
-
-    @staticmethod
-    def get_triton_model_file(
-        model_id: int,
-        save_path: str = "./model.zip",
-        timeout: int = 3000,
-        client: Optional["DataverseClient"] = None,
-        client_alias: Optional[str] = None,
-    ) -> tuple[bool, str]:
-        """Download the triton model file (which is a zip file)
-
-        Parameters
-        ----------
-        model_id : int
-        save_path : str, optional
-            local path for saving the triton model file, by default './model.zip'
-        timeout : int, optional
-            maximum timeout of the request, by default 3000
-        client : Optional[&quot;DataverseClient&quot;], optional
-            client class, by default None
-        client_alias: Optional[str], by default None (should be provided if client is None)
-
-        Returns
-        -------
-        (status, save_path): tuple[bool, str]
-            the first item means whether the download success or not
-            the second item shows the save_path
-        """
-        api, client_alias = DataverseClient._get_api_client(
-            client=client, client_alias=client_alias
-        )
-        try:
-            resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
-            download_file_from_response(response=resp, save_path=save_path)
-            return True, save_path
-        except DataverseExceptionBase:
-            logging.exception("Got api error from Dataverse")
-            raise
-        except Exception:
-            logging.exception("Failed to get triton model file")
             return False, save_path
 
     @staticmethod
