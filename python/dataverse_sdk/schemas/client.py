@@ -392,36 +392,12 @@ class MLModel(BaseModel):
             client_alias=client_alias,
         )
 
-    def get_label_file(
-        self, save_path: str = "./labels.txt", timeout: int = 3000
-    ) -> tuple[bool, str]:
-        from ..client import DataverseClient
-
-        return DataverseClient.get_label_file(
-            model_id=self.id,
-            save_path=save_path,
-            timeout=timeout,
-            client_alias=self.client_alias,
-        )
-
     def get_triton_model_file(
         self, save_path: str = "./model.zip", timeout: int = 3000
     ) -> tuple[bool, str]:
         from ..client import DataverseClient
 
         return DataverseClient.get_triton_model_file(
-            model_id=self.id,
-            save_path=save_path,
-            timeout=timeout,
-            client_alias=self.client_alias,
-        )
-
-    def get_onnx_model_file(
-        self, save_path: str = "./model.onnx", timeout: int = 3000
-    ) -> tuple[bool, str]:
-        from ..client import DataverseClient
-
-        return DataverseClient.get_onnx_model_file(
             model_id=self.id,
             save_path=save_path,
             timeout=timeout,
@@ -437,3 +413,33 @@ class ConvertRecord(BaseModel):
 
     class Config:
         extra = "allow"
+
+    def get_label_file(
+        self, save_path: str = "./labels.txt", timeout: int = 3000
+    ) -> tuple[bool, str]:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_label_file(
+            convert_record_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
+        )
+
+    def get_convert_model_file(
+        self,
+        triton_format: bool = True,
+        save_path: str = "./triton.zip",
+        timeout: int = 3000,
+        permission: str = "",
+    ) -> tuple[bool, str]:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_convert_model_file(
+            convert_record_id=self.id,
+            save_path=save_path,
+            triton_format=triton_format,
+            timeout=timeout,
+            permission=permission,
+            client_alias=self.client_alias,
+        )

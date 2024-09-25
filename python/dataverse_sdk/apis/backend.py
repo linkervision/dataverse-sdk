@@ -234,11 +234,11 @@ class BackendAPI:
         )
         return resp.json()
 
-    def get_ml_model_labels(
-        self, model_id: int, timeout: int = 3000
+    def get_convert_model_labels(
+        self, convert_record_id: int, timeout: int = 3000
     ) -> requests.models.Response:
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/{model_id}/labels/",
+            url=f"{self.host}/api/convert_record/{convert_record_id}/label/",
             method="get",
             headers=self.headers,
             stream=True,
@@ -246,14 +246,22 @@ class BackendAPI:
         )
         return resp
 
-    def get_ml_model_file(
-        self, model_id: int, timeout: int = 3000, model_format: str = "triton", **kwargs
+    def get_convert_model_file(
+        self,
+        convert_record_id: int,
+        timeout: int = 3000,
+        triton_format: bool = True,
+        permission: str = "",
+        **kwargs,
     ) -> requests.models.Response:
-        kwargs["model_format"] = model_format
+        headers = self.headers.copy()
+        kwargs["triton"] = triton_format
+        if permission:
+            headers["X-Request-Source"] = permission
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/{model_id}/model/?{urlencode(kwargs)}",
+            url=f"{self.host}/api/convert_record/{convert_record_id}/model-observ/?{urlencode(kwargs)}",
             method="get",
-            headers=self.headers,
+            headers=headers,
             stream=True,
             timeout=timeout,
         )

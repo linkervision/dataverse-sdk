@@ -777,6 +777,27 @@ class DataverseClient:
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
     ):
+        """_summary_
+
+        Parameters
+        ----------
+        convert_record_id : int
+            _description_
+        client : Optional[&quot;DataverseClient&quot;], optional
+            _description_, by default None
+        client_alias : Optional[str], optional
+            _description_, by default None
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ClientConnectionError
+            _description_
+        """
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
@@ -798,7 +819,7 @@ class DataverseClient:
 
     @staticmethod
     def get_label_file(
-        model_id: int,
+        convert_record_id: int,
         save_path: str = "./labels.txt",
         timeout: int = 3000,
         client: Optional["DataverseClient"] = None,
@@ -808,7 +829,7 @@ class DataverseClient:
 
         Parameters
         ----------
-        model_id : int
+        convert_record_id : int
         save_path : str, optional
             local path for saving the label_file, by default './labels.txt'
         timeout : int, optional
@@ -827,7 +848,9 @@ class DataverseClient:
             client=client, client_alias=client_alias
         )
         try:
-            resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
+            resp = api.get_convert_model_labels(
+                convert_record_id=convert_record_id, timeout=timeout
+            )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
         except DataverseExceptionBase:
@@ -879,20 +902,23 @@ class DataverseClient:
             return False, save_path
 
     @staticmethod
-    def get_onnx_model_file(
-        model_id: int,
-        save_path: str = "./model.onnx",
+    def get_convert_model_file(
+        convert_record_id: int,
+        save_path: str = "./triton.zip",
+        triton_format: bool = True,
         timeout: int = 3000,
+        permission: str = "",
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
     ) -> tuple[bool, str]:
-        """Download the onnx model file
+        """Download convert model file
 
         Parameters
         ----------
-        model_id : int
+        convert_record_id : int
         save_path : str, optional
             local path for saving the onnx model file, by default './model.onnx'
+        triton_format: bool, default=True
         timeout : int, optional
             maximum timeout of the request, by default 3000
         client : Optional['DataverseClient'], optional
@@ -909,8 +935,11 @@ class DataverseClient:
             client=client, client_alias=client_alias
         )
         try:
-            resp = api.get_ml_model_file(
-                model_id=model_id, timeout=timeout, model_format="onnx"
+            resp = api.get_convert_model_file(
+                convert_record_id=convert_record_id,
+                triton_format=triton_format,
+                timeout=timeout,
+                permission=permission,
             )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
