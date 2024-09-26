@@ -361,6 +361,28 @@ class DataverseClient:
                                     "",
                                 ]
                             )
+
+        # add project tags attributes/option to alias map
+        for attr in project.project_tag.attributes:
+            alias_mapping.append(
+                [
+                    attr.id,
+                    "attribute",
+                    f"**tagging--{attr.name}",
+                    "",
+                ]
+            )
+            if attr.options:
+                for option in attr.options:
+                    alias_mapping.append(
+                        [
+                            option.id,
+                            "option",
+                            f"**tagging--{attr.name}--{option.value}",
+                            "",
+                        ]
+                    )
+
         # output alias mapping to csv
         import csv
 
