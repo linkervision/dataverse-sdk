@@ -73,7 +73,6 @@ class BackendAPI:
         except (requests.exceptions.RequestException, Exception) as e:
             logger.error(f"Unexpected exception, err: {repr(e)}")
             raise
-
         if resp.status_code in (401, 403, 404):
             logger.exception(f"[{parent_func}] request forbidden.")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
@@ -81,6 +80,10 @@ class BackendAPI:
         if resp.status_code == 400:
             logger.exception(f"[{parent_func}] got bad request")
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
+
+        if resp.status_code == 500:
+            logger.exception(f"[{parent_func}] got api error")
+            raise DataverseExceptionBase(status_code=resp.status_code)
 
         if not 200 <= resp.status_code <= 299:
             raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
@@ -192,6 +195,19 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def update_alias(
+        self,
+        project_id: int,
+        alias_list: list,
+    ) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/{project_id}/bulk-upsert-alias/",
+            method="post",
+            headers=self.headers,
+            json=alias_list,
+        )
+        return resp
+
     def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
         kwargs["project"] = project_id
         kwargs["type"] = type
@@ -210,11 +226,19 @@ class BackendAPI:
         )
         return resp.json()
 
-    def get_ml_model_labels(
-        self, model_id: int, timeout: int = 3000
+    def get_convert_record(self, convert_record_id: int) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/convert_record/{convert_record_id}/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
+    def get_convert_model_labels(
+        self, convert_record_id: int, timeout: int = 3000
     ) -> requests.models.Response:
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/{model_id}/labels/",
+            url=f"{self.host}/api/convert_record/{convert_record_id}/label/",
             method="get",
             headers=self.headers,
             stream=True,
@@ -222,14 +246,22 @@ class BackendAPI:
         )
         return resp
 
-    def get_ml_model_file(
-        self, model_id: int, timeout: int = 3000, model_format: str = "triton", **kwargs
+    def get_convert_model_file(
+        self,
+        convert_record_id: int,
+        timeout: int = 3000,
+        triton_format: bool = True,
+        permission: str = "",
+        **kwargs,
     ) -> requests.models.Response:
-        kwargs["model_format"] = model_format
+        headers = self.headers.copy()
+        kwargs["triton"] = triton_format
+        if permission:
+            headers["X-Request-Source"] = permission
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/{model_id}/model/?{urlencode(kwargs)}",
+            url=f"{self.host}/api/convert_record/{convert_record_id}/model-observ/?{urlencode(kwargs)}",
             method="get",
-            headers=self.headers,
+            headers=headers,
             stream=True,
             timeout=timeout,
         )

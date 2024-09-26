@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections import deque
 from typing import Optional
 
@@ -13,6 +14,7 @@ from .exceptions.client import (
     AsyncThirdPartyAPIException,
     ClientConnectionError,
     DataverseExceptionBase,
+    InvalidProcessError,
 )
 from .schemas.api import (
     AttributeAPISchema,
@@ -22,6 +24,7 @@ from .schemas.api import (
     ProjectTagAPISchema,
 )
 from .schemas.client import (
+    ConvertRecord,
     Dataset,
     DataSource,
     MLModel,
@@ -284,7 +287,9 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the project: {e}")
         return Project.create(project_data, client_alias=client_alias)
 
-    def get_project(self, project_id: int, client_alias: Optional[str] = None):
+    def get_project(
+        self, project_id: int, client_alias: Optional[str] = None
+    ) -> Project:
         """Get project detail by project-id
 
         Parameters
@@ -306,6 +311,153 @@ class DataverseClient:
         if client_alias is None:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
+
+    def generate_alias_map(
+        self, project_id: int, alias_file_path: str = "./alias.csv"
+    ) -> str:
+        """Generate alias map
+
+        Parameters
+        ----------
+        project_id : int
+        alias_file_path : str, optional
+            file_path for saving alias.csv, by default "./alias.csv"
+
+        Returns
+        -------
+        alias_file_path: str
+        """
+
+        file_extension = os.path.splitext(alias_file_path)[1]
+        if file_extension != ".csv":
+            raise InvalidProcessError(
+                f"Invalid path: {alias_file_path}! Should provide file path with .csv extension"
+            )
+
+        project = self.get_project(project_id=project_id)
+
+        alias_mapping = []
+        for ontology_class in project.ontology.classes:
+            alias_mapping.append(
+                [ontology_class.id, "ontology_class", ontology_class.name, ""]
+            )
+            if ontology_class.attributes:
+                for attr in ontology_class.attributes:
+                    alias_mapping.append(
+                        [
+                            attr.id,
+                            "attribute",
+                            f"{ontology_class.name}--{attr.name}",
+                            "",
+                        ]
+                    )
+                    if attr.options:
+                        for option in attr.options:
+                            alias_mapping.append(
+                                [
+                                    option.id,
+                                    "option",
+                                    f"{ontology_class.name}--{attr.name}--{option.value}",
+                                    "",
+                                ]
+                            )
+
+        # add project tags attributes/option to alias map
+        for attr in project.project_tag.attributes:
+            alias_mapping.append(
+                [
+                    attr.id,
+                    "attribute",
+                    f"**tagging--{attr.name}",
+                    "",
+                ]
+            )
+            if attr.options:
+                for option in attr.options:
+                    alias_mapping.append(
+                        [
+                            option.id,
+                            "option",
+                            f"**tagging--{attr.name}--{option.value}",
+                            "",
+                        ]
+                    )
+
+        # output alias mapping to csv
+        import csv
+
+        # field names
+        fields = ["ID", "type", "class--attribute--option", "alias"]
+
+        with open(alias_file_path, "w") as f:
+            # using csv.writer method from CSV package
+            write = csv.writer(f)
+
+            write.writerow(fields)
+            write.writerows(alias_mapping)
+        logging.info(f"Alias file has been saved as {alias_file_path}")
+        return alias_file_path
+
+    def update_alias(self, project_id: int, alias_file_path: str):
+        file_extension = os.path.splitext(alias_file_path)[1]
+        if file_extension != ".csv":
+            raise InvalidProcessError(
+                f"Invalid path: {alias_file_path}! Should provide file path with .csv extension"
+            )
+        project = self.get_project(project_id=project_id)
+        project_ontology_ids = {
+            "ontology_class": set(),
+            "attribute": set(),
+            "option": set(),
+        }
+        for ontology_class in project.ontology.classes:
+            project_ontology_ids["ontology_class"].add(ontology_class.id)
+            for attr in ontology_class.attributes:
+                project_ontology_ids["attribute"].add(attr.id)
+                for option in attr.options:
+                    project_ontology_ids["option"].add(option.id)
+        for attr in project.project_tag.attributes:
+            project_ontology_ids["attribute"].add(attr.id)
+            for option in attr.options:
+                project_ontology_ids["option"].add(option.id)
+
+        import csv
+
+        alias_list = []
+        try:
+            with open(alias_file_path, newline="") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    if row["alias"]:
+                        if int(row["ID"]) in project_ontology_ids[row["type"]]:
+                            alias_list.append(
+                                {row["type"]: int(row["ID"]), "name": row["alias"]}
+                            )
+                            project_ontology_ids[row["type"]].remove(int(row["ID"]))
+                        else:
+                            print(
+                                f"The ID {int(row['ID'])}, {row['alias']}, is not belong to {row['type']} \
+of this project OR has been added before"
+                            )
+        except FileNotFoundError as file_not_found:
+            raise InvalidProcessError(f"File Not Found: {file_not_found}")
+
+        if not alias_list:
+            raise InvalidProcessError("No valid alias for updating")
+
+        try:
+            resp = self._api_client.update_alias(
+                project_id=project_id, alias_list=alias_list
+            )
+            logging.info("Alias is updated.")
+        except DataverseExceptionBase as api_error:
+            logging.exception(
+                f"Got [{api_error.status_code}] api error from Dataverse: {api_error.error}"
+            )
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to edit the project alias: {e}")
+        return resp.json()
 
     @staticmethod
     def add_project_tag(
@@ -651,8 +803,49 @@ class DataverseClient:
         return MLModel.create(model_data, client_alias=client_alias)
 
     @staticmethod
+    def get_convert_record(
+        convert_record_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> ConvertRecord:
+        """Get model convert record
+
+        Parameters
+        ----------
+        convert_record_id : int
+        client : Optional[&quot;DataverseClient&quot;], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        ConvertRecord
+
+        Raises
+        ------
+        ClientConnectionError
+        """
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            convert_record: dict = api.get_convert_record(
+                convert_record_id=convert_record_id
+            )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the model: {e}")
+        return ConvertRecord(
+            id=convert_record_id,
+            name=convert_record["name"],
+            configuration=convert_record.get("configuration", {}),
+            client_alias=client_alias,
+        )
+
+    @staticmethod
     def get_label_file(
-        model_id: int,
+        convert_record_id: int,
         save_path: str = "./labels.txt",
         timeout: int = 3000,
         client: Optional["DataverseClient"] = None,
@@ -662,7 +855,7 @@ class DataverseClient:
 
         Parameters
         ----------
-        model_id : int
+        convert_record_id : int
         save_path : str, optional
             local path for saving the label_file, by default './labels.txt'
         timeout : int, optional
@@ -681,7 +874,9 @@ class DataverseClient:
             client=client, client_alias=client_alias
         )
         try:
-            resp = api.get_ml_model_labels(model_id=model_id, timeout=timeout)
+            resp = api.get_convert_model_labels(
+                convert_record_id=convert_record_id, timeout=timeout
+            )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path
         except DataverseExceptionBase:
@@ -692,61 +887,23 @@ class DataverseClient:
             return False, save_path
 
     @staticmethod
-    def get_triton_model_file(
-        model_id: int,
-        save_path: str = "./model.zip",
+    def get_convert_model_file(
+        convert_record_id: int,
+        save_path: str = "./triton.zip",
+        triton_format: bool = True,
         timeout: int = 3000,
+        permission: str = "",
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
     ) -> tuple[bool, str]:
-        """Download the triton model file (which is a zip file)
+        """Download convert model file
 
         Parameters
         ----------
-        model_id : int
+        convert_record_id : int
         save_path : str, optional
-            local path for saving the triton model file, by default './model.zip'
-        timeout : int, optional
-            maximum timeout of the request, by default 3000
-        client : Optional[&quot;DataverseClient&quot;], optional
-            client class, by default None
-        client_alias: Optional[str], by default None (should be provided if client is None)
-
-        Returns
-        -------
-        (status, save_path): tuple[bool, str]
-            the first item means whether the download success or not
-            the second item shows the save_path
-        """
-        api, client_alias = DataverseClient._get_api_client(
-            client=client, client_alias=client_alias
-        )
-        try:
-            resp = api.get_ml_model_file(model_id=model_id, timeout=timeout)
-            download_file_from_response(response=resp, save_path=save_path)
-            return True, save_path
-        except DataverseExceptionBase:
-            logging.exception("Got api error from Dataverse")
-            raise
-        except Exception:
-            logging.exception("Failed to get triton model file")
-            return False, save_path
-
-    @staticmethod
-    def get_onnx_model_file(
-        model_id: int,
-        save_path: str = "./model.onnx",
-        timeout: int = 3000,
-        client: Optional["DataverseClient"] = None,
-        client_alias: Optional[str] = None,
-    ) -> tuple[bool, str]:
-        """Download the onnx model file
-
-        Parameters
-        ----------
-        model_id : int
-        save_path : str, optional
-            local path for saving the onnx model file, by default './model.onnx'
+            local path for saving the model file, by default './triton.zip'
+        triton_format: bool, default=True
         timeout : int, optional
             maximum timeout of the request, by default 3000
         client : Optional['DataverseClient'], optional
@@ -763,8 +920,11 @@ class DataverseClient:
             client=client, client_alias=client_alias
         )
         try:
-            resp = api.get_ml_model_file(
-                model_id=model_id, timeout=timeout, model_format="onnx"
+            resp = api.get_convert_model_file(
+                convert_record_id=convert_record_id,
+                triton_format=triton_format,
+                timeout=timeout,
+                permission=permission,
             )
             download_file_from_response(response=resp, save_path=save_path)
             return True, save_path

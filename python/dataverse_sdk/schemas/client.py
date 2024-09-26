@@ -18,6 +18,7 @@ from .common import (
 class AttributeOption(BaseModel):
     id: Optional[int] = None
     value: Union[str, float, int, bool]
+    aliases: Optional[list] = None
 
 
 class Attribute(BaseModel):
@@ -25,6 +26,7 @@ class Attribute(BaseModel):
     name: str
     options: Optional[list[AttributeOption]] = None
     type: AttributeType
+    aliases: Optional[list] = None
 
     class Config:
         use_enum_values = True
@@ -66,18 +68,30 @@ class Sensor(BaseModel):
 class OntologyClass(BaseModel):
     id: Optional[int] = None
     name: str
-    color: str
-    rank: Optional[int] = None
+    color: Optional[str] = "#cc39f4"
+    rank: Optional[int] = 1
     attributes: Optional[list[Attribute]] = None
+    aliases: Optional[list] = None
 
-    @validator("color", each_item=True)
+    class Config:
+        validate_assignment = True
+
+    @validator("color", pre=True, always=True)
     def color_validator(cls, value):
+        if not value:
+            value = "#cc39f4"
         if not value.startswith("#") or not re.search(
             r"\b[a-zA-Z0-9]{6}\b", value.lstrip("#")
         ):
             raise ValueError(
                 f"Color field needs starts with `#` and has 6 digits behind it, get : {value}"
             )
+        return value
+
+    @validator("rank", pre=True, always=True)
+    def rank_validator(cls, value):
+        if not value:
+            value = 1
         return value
 
 
@@ -97,15 +111,15 @@ class Ontology(BaseModel):
             OntologyClass(
                 id=cls_["id"],
                 name=cls_["name"],
-                color=cls_["color"],
-                rank=cls_["rank"],
-                attributes=cls_["attributes"],
+                color=cls_.get("color"),
+                rank=cls_.get("rank"),
+                attributes=cls_.get("attributes"),
             )
             for cls_ in ontology_data["classes"]
         ]
         return cls(
             id=ontology_data["id"],
-            name=ontology_data["name"],
+            name=ontology_data.get("name", ""),
             image_type=ontology_data["image_type"],
             pcd_type=ontology_data["pcd_type"],
             classes=classes,
@@ -139,7 +153,7 @@ class Project(BaseModel):
             id=project_data["id"],
             name=project_data["name"],
             description=project_data["description"],
-            ego_car=project_data["ego_car"],
+            ego_car=project_data.get("ego_car"),
             ontology=ontology,
             sensors=sensors,
             project_tag=project_tag,
@@ -205,6 +219,15 @@ class Project(BaseModel):
             model_id=model_id, project=self, client_alias=self.client_alias
         )
         return model_data
+
+    def get_convert_record(self, convert_record_id: int):
+        from ..client import DataverseClient
+
+        convert_record_data = DataverseClient.get_convert_record(
+            convert_record_id=convert_record_id,
+            client_alias=self.client_alias,
+        )
+        return convert_record_data
 
     def create_dataset(
         self,
@@ -332,6 +355,46 @@ class Dataset(BaseModel):
         extra = "allow"
 
 
+class ConvertRecord(BaseModel):
+    id: Optional[int] = None
+    name: str
+    client_alias: str
+    configuration: dict
+
+    class Config:
+        extra = "allow"
+
+    def get_label_file(
+        self, save_path: str = "./labels.txt", timeout: int = 3000
+    ) -> tuple[bool, str]:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_label_file(
+            convert_record_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
+        )
+
+    def get_convert_model_file(
+        self,
+        triton_format: bool = True,
+        save_path: str = "./triton.zip",
+        timeout: int = 3000,
+        permission: str = "",
+    ) -> tuple[bool, str]:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_convert_model_file(
+            convert_record_id=self.id,
+            save_path=save_path,
+            triton_format=triton_format,
+            timeout=timeout,
+            permission=permission,
+            client_alias=self.client_alias,
+        )
+
+
 class MLModel(BaseModel):
     id: Optional[int] = None
     name: str
@@ -339,6 +402,7 @@ class MLModel(BaseModel):
     updated_at: str
     project: Project
     classes: list
+    model_records: list = []
     triton_model_name: str
     description: Optional[str] = None
 
@@ -373,43 +437,15 @@ class MLModel(BaseModel):
             name=model_data["name"],
             project=project,
             classes=classes,
+            model_records=model_data.get("model_records", []),
             updated_at=model_data["updated_at"],
             triton_model_name=model_data["triton_model_name"],
             client_alias=client_alias,
         )
 
-    def get_label_file(
-        self, save_path: str = "./labels.txt", timeout: int = 3000
-    ) -> tuple[bool, str]:
+    def get_convert_record(self, convert_record_id: int) -> ConvertRecord:
         from ..client import DataverseClient
 
-        return DataverseClient.get_label_file(
-            model_id=self.id,
-            save_path=save_path,
-            timeout=timeout,
-            client_alias=self.client_alias,
-        )
-
-    def get_triton_model_file(
-        self, save_path: str = "./model.zip", timeout: int = 3000
-    ) -> tuple[bool, str]:
-        from ..client import DataverseClient
-
-        return DataverseClient.get_triton_model_file(
-            model_id=self.id,
-            save_path=save_path,
-            timeout=timeout,
-            client_alias=self.client_alias,
-        )
-
-    def get_onnx_model_file(
-        self, save_path: str = "./model.onnx", timeout: int = 3000
-    ) -> tuple[bool, str]:
-        from ..client import DataverseClient
-
-        return DataverseClient.get_onnx_model_file(
-            model_id=self.id,
-            save_path=save_path,
-            timeout=timeout,
-            client_alias=self.client_alias,
+        return DataverseClient.get_convert_record(
+            convert_record_id=convert_record_id, client_alias=self.client_alias
         )

@@ -64,12 +64,14 @@ Once you've initialized a DataverseClient, you can interact with Dataverse from 
 
 ## Examples
 
-The following sections provide examples for the most common DataVerse tasksm including:
+The following sections provide examples for the most common DataVerse tasks including:
 
 * [Get User](#get-user)
 * [List Projects](#list-projects)
 * [Create Project](#create-project)
 * [Get Project](#get-project)
+* [Edit Project](#edit-project)
+* [Update Alias](#update-ontology-alias)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
 * [List Models](#list-models)
@@ -275,6 +277,21 @@ client.edit_ontology_classes(project_id=24, ontology_classes=edit_classes, clien
 project.edit_ontology_classes(ontology_classes=edit_classes)
 ```
 
+
+### Update Ontology Alias
+
+1. Get the csv file of alias map for your project
+```Python
+client.generate_alias_map(project_id=123, alias_file_path="./alias.csv")
+```
+
+2. Fill the alias in the csv file and save (DO NOT modify other fields)
+
+3. Update alias for your project with the alias file path
+```Python
+client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv" )
+```
+
 <br>
 
 ### Create Dataset
@@ -387,11 +404,11 @@ The `get_model` method will get the model detail info by the given model-id
 model = client.get_model(model_id=30, client_alias=client.alias)
 model = project.get_model(model_id=30)
 ```
-From the given model, we could get the label file / triton model file / onnx model file by the commands below.
+From the given model, we could get the model convert records as below
 ```Python
-status, label_file_path = model.get_label_file(save_path="./labels.txt", timeout=6000)
-status, triton_model_path = model.get_triton_model_file(save_path="./model.zip", timeout=6000)
-status, onnx_model_path = model.get_onnx_model_file(save_path="./model.onnx", timeout=6000)
+model_record = client.get_convert_record(convert_record_id=1, client_alias=client.alias)
+OR
+model_record = model.get_convert_record(convert_record_id=1)
 ```
 <br>
 

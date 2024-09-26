@@ -1,6 +1,10 @@
 from typing import Optional
 
 
+class InvalidProcessError(Exception):
+    pass
+
+
 class ClientConnectionError(Exception):
     pass
 
@@ -12,7 +16,7 @@ class DataverseExceptionBase(Exception):
         type: Optional[str] = None,
         detail: Optional[str] = None,
         error: Optional[str | dict] = None,
-        **args
+        **args,
     ):
         self.type = type
         self.status_code = status_code
