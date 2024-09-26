@@ -234,15 +234,6 @@ class BackendAPI:
         )
         return resp.json()
 
-    def list_convert_records(self, ml_model_id: int, **kwargs) -> list:
-        kwargs["project"] = ml_model_id
-        resp = self.send_request(
-            url=f"{self.host}/api/convert_records/?{urlencode(kwargs)}",
-            method="get",
-            headers=self.headers,
-        )
-        return resp.json()["results"]
-
     def get_convert_model_labels(
         self, convert_record_id: int, timeout: int = 3000
     ) -> requests.models.Response:
