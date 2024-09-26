@@ -403,7 +403,6 @@ class DataverseClient:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     if row["alias"]:
-                        print(row)
                         if int(row["ID"]) in project_ontology_ids[row["type"]]:
                             alias_list.append(
                                 {row["type"]: int(row["ID"]), "name": row["alias"]}
