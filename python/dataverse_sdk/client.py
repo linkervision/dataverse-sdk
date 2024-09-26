@@ -787,13 +787,11 @@ class DataverseClient:
 
         Returns
         -------
-        _type_
-            _description_
+        ConvertRecord
 
         Raises
         ------
         ClientConnectionError
-            _description_
         """
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
@@ -873,7 +871,7 @@ class DataverseClient:
         ----------
         convert_record_id : int
         save_path : str, optional
-            local path for saving the onnx model file, by default './model.onnx'
+            local path for saving the model file, by default './triton.zip'
         triton_format: bool, default=True
         timeout : int, optional
             maximum timeout of the request, by default 3000
