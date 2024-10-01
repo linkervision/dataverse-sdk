@@ -1122,6 +1122,7 @@ of this project OR has been added before"
         # raw_dataset_data.get("annotation_folder"),
         # raw_dataset_data.get("calibration_folder"),
         # raw_dataset_data.get("lidar_folder"),
+        # TODO: check folder structure
         file_paths = DataverseClient._find_all_paths(data_folder)
         upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
             DataverseClient.run_generate_presigned_urls(
