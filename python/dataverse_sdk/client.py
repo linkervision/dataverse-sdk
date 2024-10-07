@@ -428,17 +428,16 @@ class DataverseClient:
             with open(alias_file_path, newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
-                    if row["alias"]:
-                        if int(row["ID"]) in project_ontology_ids[row["type"]]:
-                            alias_list.append(
-                                {row["type"]: int(row["ID"]), "name": row["alias"]}
-                            )
-                            project_ontology_ids[row["type"]].remove(int(row["ID"]))
-                        else:
-                            print(
-                                f"The ID {int(row['ID'])}, {row['alias']}, is not belong to {row['type']} \
+                    if int(row["ID"]) in project_ontology_ids[row["type"]]:
+                        alias_list.append(
+                            {row["type"]: int(row["ID"]), "name": row["alias"]}
+                        )
+                        project_ontology_ids[row["type"]].remove(int(row["ID"]))
+                    else:
+                        print(
+                            f"The ID {int(row['ID'])}, {row['alias']}, is not belong to {row['type']} \
 of this project OR has been added before"
-                            )
+                        )
         except FileNotFoundError as file_not_found:
             raise InvalidProcessError(f"File Not Found: {file_not_found}")
 
