@@ -839,6 +839,8 @@ of this project OR has been added before"
             id=convert_record_id,
             name=convert_record["name"],
             configuration=convert_record.get("configuration", {}),
+            status=convert_record["status"],
+            trait=convert_record.get("trait", {}),
             client_alias=client_alias,
         )
 
