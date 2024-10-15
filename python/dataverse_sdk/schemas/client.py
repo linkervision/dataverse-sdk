@@ -360,6 +360,8 @@ class ConvertRecord(BaseModel):
     name: str
     client_alias: str
     configuration: dict
+    status: str
+    trait: dict
 
     class Config:
         extra = "allow"
