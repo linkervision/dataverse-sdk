@@ -1124,6 +1124,17 @@ of this project OR has been added before"
         # raw_dataset_data.get("calibration_folder"),
         # raw_dataset_data.get("lidar_folder"),
         # TODO: check folder structure
+        required_data = DataverseClient._get_format_folders(
+            annotation_format=raw_dataset_data["annotation_format"]
+        )
+        if required_data:
+            for required_folder_or_file in required_data:
+                path = os.path.join(data_folder, required_folder_or_file)
+                if not os.path.exists(path):
+                    raise DataverseExceptionBase(
+                        detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}"
+                    )
+
         file_paths = DataverseClient._find_all_paths(data_folder)
         upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
             DataverseClient.run_generate_presigned_urls(
@@ -1238,6 +1249,25 @@ of this project OR has been added before"
         for path in paths:
             all_filepaths.extend(get_filepaths(path))
         return all_filepaths
+
+    @staticmethod
+    def _get_format_folders(annotation_format: AnnotationFormat) -> list[str]:
+        if annotation_format == AnnotationFormat.KITTI:
+            return ["calib", "image_2", "label_2", "velodyne"]
+        elif annotation_format == AnnotationFormat.COCO:
+            return ["images", "annotations/labels.json"]
+        elif annotation_format == AnnotationFormat.YOLO:
+            return ["images/", "labels/", "classes.txt"]
+        elif annotation_format in (
+            AnnotationFormat.VISION_AI,
+            AnnotationFormat.BDDP,
+            AnnotationFormat.IMAGE,
+        ):
+            return []
+        else:
+            raise DataverseExceptionBase(
+                detail=f"the format {AnnotationFormat} is not supported for local upload"
+            )
 
 
 class AsyncThirdPartyAPI:
