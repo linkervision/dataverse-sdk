@@ -406,20 +406,22 @@ class DataverseClient:
             )
         project = self.get_project(project_id=project_id)
         project_ontology_ids = {
-            "ontology_class": set(),
-            "attribute": set(),
-            "option": set(),
+            "ontology_class": {},
+            "attribute": {},
+            "option": {},
         }
         for ontology_class in project.ontology.classes:
-            project_ontology_ids["ontology_class"].add(ontology_class.id)
+            project_ontology_ids["ontology_class"][
+                ontology_class.id
+            ] = ontology_class.aliases
             for attr in ontology_class.attributes:
-                project_ontology_ids["attribute"].add(attr.id)
+                project_ontology_ids["attribute"][attr.id] = attr.aliases
                 for option in attr.options:
-                    project_ontology_ids["option"].add(option.id)
+                    project_ontology_ids["option"][option.id] = option.aliases
         for attr in project.project_tag.attributes:
-            project_ontology_ids["attribute"].add(attr.id)
+            project_ontology_ids["attribute"][attr.id] = attr.aliases
             for option in attr.options:
-                project_ontology_ids["option"].add(option.id)
+                project_ontology_ids["option"][option.id] = option.aliases
 
         import csv
 
@@ -429,6 +431,12 @@ class DataverseClient:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     if int(row["ID"]) in project_ontology_ids[row["type"]]:
+                        if (
+                            not project_ontology_ids[row["type"]][int(row["ID"])]
+                            and not row["alias"]
+                        ):
+                            # ignore alias for both before-update and after-update are empty
+                            continue
                         alias_list.append(
                             {row["type"]: int(row["ID"]), "name": row["alias"]}
                         )
