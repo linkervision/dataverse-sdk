@@ -1117,13 +1117,7 @@ of this project OR has been added before"
     def upload_files_from_local(api: BackendAPI, raw_dataset_data: dict) -> dict:
         loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
-        # TODO: support more format
-        # Current only support scanning data_folder
-        # meaning , support Visionai format
-        # raw_dataset_data.get("annotation_folder"),
-        # raw_dataset_data.get("calibration_folder"),
-        # raw_dataset_data.get("lidar_folder"),
-        # TODO: check folder structure
+        # check folder structure
         required_data = DataverseClient._get_format_folders(
             annotation_format=raw_dataset_data["annotation_format"]
         )
@@ -1132,7 +1126,8 @@ of this project OR has been added before"
                 path = os.path.join(data_folder, required_folder_or_file)
                 if not os.path.exists(path):
                     raise DataverseExceptionBase(
-                        detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}"
+                        type="",
+                        detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}",
                     )
 
         file_paths = DataverseClient._find_all_paths(data_folder)

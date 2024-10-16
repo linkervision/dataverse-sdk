@@ -332,7 +332,7 @@ dataset = project.create_dataset(**dataset_data)
 | data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
 | sensors  | list[Sensor] | ＊-- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
 | type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
-| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.IMAGE | ＊-- |  the format of your annotation data  |
+| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE | ＊-- |  the format of your annotation data  |
 | annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
 | sequential | bool | False | data is sequential or not   |
 | render_pcd | bool | False | render pcd preview image or not |
