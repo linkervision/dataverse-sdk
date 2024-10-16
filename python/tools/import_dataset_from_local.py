@@ -55,7 +55,7 @@ def import_dataset_from_local(
     try:
         dataset = project.create_dataset(**dataset_data)
     except DataverseExceptionBase as e:
-        logging.exception(e.status_code, e.type, e.error, e.detail)
+        logging.exception(f"Prepare dataset fail: {e.detail}")
         raise
     except Exception as e:
         logging.exception(f"Create dataset fail: {e}")

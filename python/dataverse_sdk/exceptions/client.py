@@ -13,9 +13,9 @@ class DataverseExceptionBase(Exception):
     def __init__(
         self,
         status_code: Optional[int] = None,
-        type: Optional[str] = None,
-        detail: Optional[str] = None,
-        error: Optional[str | dict] = None,
+        type: Optional[str] = "",
+        detail: Optional[str] = "",
+        error: Optional[str | dict] = "",
         **args,
     ):
         self.type = type
