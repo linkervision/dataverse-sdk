@@ -50,6 +50,8 @@ def import_dataset_from_local(
         "annotation_format": annotation_format,
         "sequential": sequential,
     }
+    if dataset_type == DatasetType.ANNOTATED_DATA:
+        dataset_data["annotations"] = ["groundtruth"]
     try:
         dataset = project.create_dataset(**dataset_data)
     except DataverseExceptionBase as e:
