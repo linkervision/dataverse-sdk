@@ -440,7 +440,7 @@ class DataverseClient:
                         alias_list.append(
                             {row["type"]: int(row["ID"]), "name": row["alias"]}
                         )
-                        project_ontology_ids[row["type"]].remove(int(row["ID"]))
+                        project_ontology_ids[row["type"]].pop(int(row["ID"]))
                     else:
                         print(
                             f"The ID {int(row['ID'])}, {row['alias']}, is not belong to {row['type']} \
