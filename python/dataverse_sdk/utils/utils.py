@@ -4,12 +4,12 @@ from os.path import isfile, join
 import requests
 
 IMAGE_SUPPORTED_FORMAT = {
-    ".jpeg",
-    ".jpg",
-    ".png",
-    ".bmp",
+    "jpeg",
+    "jpg",
+    "png",
+    "bmp",
 }
-CUBOID_SUPPORTED_FORMAT = {".pcd"}
+CUBOID_SUPPORTED_FORMAT = {"pcd"}
 
 
 def get_filepaths(path: str) -> list[str]:
