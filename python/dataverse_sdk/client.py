@@ -406,20 +406,22 @@ class DataverseClient:
             )
         project = self.get_project(project_id=project_id)
         project_ontology_ids = {
-            "ontology_class": set(),
-            "attribute": set(),
-            "option": set(),
+            "ontology_class": {},
+            "attribute": {},
+            "option": {},
         }
         for ontology_class in project.ontology.classes:
-            project_ontology_ids["ontology_class"].add(ontology_class.id)
+            project_ontology_ids["ontology_class"][
+                ontology_class.id
+            ] = ontology_class.aliases
             for attr in ontology_class.attributes:
-                project_ontology_ids["attribute"].add(attr.id)
+                project_ontology_ids["attribute"][attr.id] = attr.aliases
                 for option in attr.options:
-                    project_ontology_ids["option"].add(option.id)
+                    project_ontology_ids["option"][option.id] = option.aliases
         for attr in project.project_tag.attributes:
-            project_ontology_ids["attribute"].add(attr.id)
+            project_ontology_ids["attribute"][attr.id] = attr.aliases
             for option in attr.options:
-                project_ontology_ids["option"].add(option.id)
+                project_ontology_ids["option"][option.id] = option.aliases
 
         import csv
 
@@ -429,10 +431,16 @@ class DataverseClient:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
                     if int(row["ID"]) in project_ontology_ids[row["type"]]:
+                        if (
+                            not project_ontology_ids[row["type"]][int(row["ID"])]
+                            and not row["alias"]
+                        ):
+                            # ignore alias for both before-update and after-update are empty
+                            continue
                         alias_list.append(
                             {row["type"]: int(row["ID"]), "name": row["alias"]}
                         )
-                        project_ontology_ids[row["type"]].remove(int(row["ID"]))
+                        project_ontology_ids[row["type"]].pop(int(row["ID"]))
                     else:
                         print(
                             f"The ID {int(row['ID'])}, {row['alias']}, is not belong to {row['type']} \
@@ -1117,12 +1125,19 @@ of this project OR has been added before"
     def upload_files_from_local(api: BackendAPI, raw_dataset_data: dict) -> dict:
         loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
-        # TODO: support more format
-        # Current only support scanning data_folder
-        # meaning , support Visionai format
-        # raw_dataset_data.get("annotation_folder"),
-        # raw_dataset_data.get("calibration_folder"),
-        # raw_dataset_data.get("lidar_folder"),
+        # check folder structure
+        required_data = DataverseClient._get_format_folders(
+            annotation_format=raw_dataset_data["annotation_format"]
+        )
+        if required_data:
+            for required_folder_or_file in required_data:
+                path = os.path.join(data_folder, required_folder_or_file)
+                if not os.path.exists(path):
+                    raise DataverseExceptionBase(
+                        type="",
+                        detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}",
+                    )
+
         file_paths = DataverseClient._find_all_paths(data_folder)
         upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
             DataverseClient.run_generate_presigned_urls(
@@ -1237,6 +1252,25 @@ of this project OR has been added before"
         for path in paths:
             all_filepaths.extend(get_filepaths(path))
         return all_filepaths
+
+    @staticmethod
+    def _get_format_folders(annotation_format: AnnotationFormat) -> list[str]:
+        if annotation_format == AnnotationFormat.KITTI:
+            return ["calib", "image_2", "label_2", "velodyne"]
+        elif annotation_format == AnnotationFormat.COCO:
+            return ["images", "annotations/labels.json"]
+        elif annotation_format == AnnotationFormat.YOLO:
+            return ["images/", "labels/", "classes.txt"]
+        elif annotation_format in (
+            AnnotationFormat.VISION_AI,
+            AnnotationFormat.BDDP,
+            AnnotationFormat.IMAGE,
+        ):
+            return []
+        else:
+            raise DataverseExceptionBase(
+                detail=f"the format {AnnotationFormat} is not supported for local upload"
+            )
 
 
 class AsyncThirdPartyAPI:

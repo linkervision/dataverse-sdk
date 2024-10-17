@@ -114,6 +114,7 @@ class Ontology(BaseModel):
                 color=cls_.get("color"),
                 rank=cls_.get("rank"),
                 attributes=cls_.get("attributes"),
+                aliases=cls_.get("aliases"),
             )
             for cls_ in ontology_data["classes"]
         ]
