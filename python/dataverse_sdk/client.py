@@ -338,48 +338,62 @@ class DataverseClient:
 
         alias_mapping = []
         for ontology_class in project.ontology.classes:
+            class_alias = (
+                ontology_class.aliases[0]["name"] if ontology_class.aliases else ""
+            )
             alias_mapping.append(
-                [ontology_class.id, "ontology_class", ontology_class.name, ""]
+                [
+                    ontology_class.id,
+                    "ontology_class",
+                    ontology_class.name,
+                    class_alias,
+                ]
             )
             if ontology_class.attributes:
                 for attr in ontology_class.attributes:
+                    attr_alias = attr.aliases[0]["name"] if attr.aliases else ""
                     alias_mapping.append(
                         [
                             attr.id,
                             "attribute",
                             f"{ontology_class.name}--{attr.name}",
-                            "",
+                            attr_alias,
                         ]
                     )
                     if attr.options:
                         for option in attr.options:
+                            option_alias = (
+                                option.aliases[0]["name"] if option.aliases else ""
+                            )
                             alias_mapping.append(
                                 [
                                     option.id,
                                     "option",
                                     f"{ontology_class.name}--{attr.name}--{option.value}",
-                                    "",
+                                    option_alias,
                                 ]
                             )
 
         # add project tags attributes/option to alias map
         for attr in project.project_tag.attributes:
+            attr_alias = attr.aliases[0]["name"] if attr.aliases else ""
             alias_mapping.append(
                 [
                     attr.id,
                     "attribute",
                     f"**tagging--{attr.name}",
-                    "",
+                    attr_alias,
                 ]
             )
             if attr.options:
                 for option in attr.options:
+                    option_alias = option.aliases[0]["name"] if option.aliases else ""
                     alias_mapping.append(
                         [
                             option.id,
                             "option",
                             f"**tagging--{attr.name}--{option.value}",
-                            "",
+                            option_alias,
                         ]
                     )
 
@@ -436,6 +450,12 @@ class DataverseClient:
                             and not row["alias"]
                         ):
                             # ignore alias for both before-update and after-update are empty
+                            continue
+                        if (
+                            row["alias"]
+                            in project_ontology_ids[row["type"]][int(row["ID"])]
+                        ):
+                            # ignore alias is same as current setting
                             continue
                         alias_list.append(
                             {row["type"]: int(row["ID"]), "name": row["alias"]}
