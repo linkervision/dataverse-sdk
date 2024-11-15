@@ -1125,7 +1125,7 @@ of this project OR has been added before"
 
         if data_source == DataSource.LOCAL:
             create_dataset_uuid = DataverseClient.upload_files_from_local(
-                api, raw_dataset_data
+                api, raw_dataset_data, sensors
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
         dataset_data = api.create_dataset(**raw_dataset_data)
@@ -1142,12 +1142,18 @@ of this project OR has been added before"
         return Dataset(**dataset_data, client_alias=client_alias)
 
     @staticmethod
-    def upload_files_from_local(api: BackendAPI, raw_dataset_data: dict) -> dict:
+    def upload_files_from_local(
+        api: BackendAPI, raw_dataset_data: dict, sensors: list
+    ) -> dict:
         loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
+        dataset_type = raw_dataset_data["type"]
+
         # check folder structure
         required_data = DataverseClient._get_format_folders(
-            annotation_format=raw_dataset_data["annotation_format"]
+            annotation_format=raw_dataset_data["annotation_format"],
+            dataset_type=dataset_type,
+            sensors=sensors,
         )
         if required_data:
             for required_folder_or_file in required_data:
@@ -1274,9 +1280,22 @@ of this project OR has been added before"
         return all_filepaths
 
     @staticmethod
-    def _get_format_folders(annotation_format: AnnotationFormat) -> list[str]:
+    def _get_format_folders(
+        annotation_format: AnnotationFormat, dataset_type: DatasetType, sensors: list
+    ) -> list[str]:
         if annotation_format == AnnotationFormat.KITTI:
-            return ["calib", "image_2", "label_2", "velodyne"]
+            if dataset_type == DatasetType.RAW_DATA:
+                return []
+            elif len(sensors) == 1:
+                if sensors[0].type == SensorType.LIDAR:  # one-lidar case
+                    return ["label_2", "velodyne"]
+                else:
+                    raise DataverseExceptionBase(
+                        detail=f"single camera with the {annotation_format} format is not supported for local upload"
+                    )
+            else:
+                return ["calib", "image_2", "label_2", "velodyne"]
+
         elif annotation_format == AnnotationFormat.COCO:
             return ["images", "annotations/labels.json"]
         elif annotation_format == AnnotationFormat.YOLO:
@@ -1289,7 +1308,7 @@ of this project OR has been added before"
             return []
         else:
             raise DataverseExceptionBase(
-                detail=f"the format {AnnotationFormat} is not supported for local upload"
+                detail=f"the format {annotation_format} is not supported for local upload"
             )
 
 
