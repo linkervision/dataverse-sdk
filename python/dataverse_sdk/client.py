@@ -32,6 +32,7 @@ from .schemas.client import (
     OntologyClass,
     Project,
     ProjectTag,
+    QuestionClass,
     Sensor,
 )
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
@@ -173,7 +174,10 @@ class DataverseClient:
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
-
+        if ontology.image_type == OntologyImageType.VQA:
+            raise InvalidProcessError(
+                "Could not create VQA project by this function, please try..."
+            )
         raw_ontology_data: dict = ontology.dict(exclude_none=True)
         classes_data_list: list[dict] = []
         rank = 1
@@ -221,6 +225,29 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data=project_data, client_alias=self.alias)
+
+    def create_vqa_projects(
+        self,
+        name: str,
+        sensor_name: str,
+        ontology_name: str,
+        question_answer: list[QuestionClass],
+        description: Optional[str] = None,
+    ):
+        try:
+            vqa_project = self._api_client.create_vqa_project(
+                name=name,
+                sensor_name=sensor_name,
+                ontolog_name=ontology_name,
+                question_answer=question_answer,  # validate?
+                description=description,
+            )
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the projects: {e}")
+        return vqa_project
 
     def list_projects(
         self,

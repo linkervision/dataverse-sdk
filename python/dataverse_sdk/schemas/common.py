@@ -18,6 +18,7 @@ class OntologyImageType(str, Enum, metaclass=BaseEnumMeta):
     POINT = "point"
     POLYGON = "polygon"
     POLYLINE = "polyline"
+    VQA = "vqa"
 
 
 class OntologyPcdType(str, Enum, metaclass=BaseEnumMeta):
