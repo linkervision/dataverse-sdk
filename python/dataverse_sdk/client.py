@@ -22,8 +22,11 @@ from .schemas.api import (
     OntologyAPISchema,
     ProjectAPISchema,
     ProjectTagAPISchema,
+    UpdateQuestionAPISchema,
+    VQAProjectAPISchema,
 )
 from .schemas.client import (
+    AttributeType,
     ConvertRecord,
     Dataset,
     DataSource,
@@ -34,6 +37,7 @@ from .schemas.client import (
     ProjectTag,
     QuestionClass,
     Sensor,
+    UpdateQuestionClass,
 )
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
 from .utils.utils import download_file_from_response, get_filepaths
@@ -176,7 +180,7 @@ class DataverseClient:
         """
         if ontology.image_type == OntologyImageType.VQA:
             raise InvalidProcessError(
-                "Could not create VQA project by this function, please try..."
+                "Could not create VQA project by this function, please use create_vqa_project"
             )
         raw_ontology_data: dict = ontology.dict(exclude_none=True)
         classes_data_list: list[dict] = []
@@ -226,7 +230,7 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to create the project: {e}")
         return Project.create(project_data=project_data, client_alias=self.alias)
 
-    def create_vqa_projects(
+    def create_vqa_project(
         self,
         name: str,
         sensor_name: str,
@@ -235,13 +239,104 @@ class DataverseClient:
         description: Optional[str] = None,
     ):
         try:
-            vqa_project = self._api_client.create_vqa_project(
+            vqa_project_data = VQAProjectAPISchema(
                 name=name,
                 sensor_name=sensor_name,
                 ontolog_name=ontology_name,
-                question_answer=question_answer,  # validate?
+                question_answer=question_answer,
                 description=description,
             )
+        except ValidationError as e:
+            raise ValidationError(
+                f"Something wrong when composing the vqa project data: {e}"
+            )
+        try:
+            vqa_project = self._api_client.create_vqa_project(**vqa_project_data)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the projects: {e}")
+        return vqa_project
+
+    def edit_vqa_ontology(
+        self,
+        project_id: int,
+        ontology_name: Optional[str] = None,
+        create: list[QuestionClass] = None,
+        update: list[UpdateQuestionAPISchema] = None,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+        project: Optional["Project"] = None,
+    ):
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        if project is None:
+            project = DataverseClient.get_client_project(
+                project_id=project_id, client_alias=client_alias
+            )
+        if project.ontology.image_type != OntologyImageType.VQA:
+            raise InvalidProcessError("The project type is not VQA!")
+        edit_vqa_data = {}
+        if ontology_name:
+            edit_vqa_data["ontology_name"] = ontology_name
+        if create:
+            current_question_rank = set()
+            for question in project.ontology.classes:
+                current_question_rank.add(question.rank)
+            create_questions = []
+            for new_question in create:
+                new_question = QuestionClass(new_question)
+                if new_question.rank in current_question_rank:
+                    raise ValidationError(
+                        f"The question rank id of {new_question} is duplicated."
+                    )
+                create_questions.append(new_question.dict(exclude_none=True))
+
+            edit_vqa_data["create"] = create_questions
+        if update:
+            current_question_classes = {}
+            for question in project.ontology.classes:
+                current_question_classes[question.rank] = question
+            update_questions = []
+            for update_question in update:
+                update_question = UpdateQuestionClass(**update_question)
+                if update_question.rank not in current_question_classes:
+                    raise ValidationError(
+                        f"The question rank of {update_question} is not in current vqa project"
+                    )
+                if not update_question.question and not update_question.options:
+                    continue
+                update_question_data = {}
+                if update_question.question:
+                    update_question_data[
+                        "extended_class_id"
+                    ] = current_question_classes[update_question.rank].extended_class.id
+                    update_question_data["question"] = update_question.question
+                if update_question.options:
+                    if (
+                        current_question_classes[update_question.rank]
+                        .attributes[0]
+                        .type
+                        != AttributeType.OPTION
+                    ):
+                        raise ValidationError(
+                            f"The answer type for Question{update_question.rank}  is not option"
+                        )
+                    update_question_data["attribute_id"] = (
+                        current_question_classes[update_question.rank].attributes[0].id
+                    )
+                    update_question_data["options"] = update_question.options
+                update_questions.append(UpdateQuestionAPISchema(**update_question_data))
+
+            edit_vqa_data["update"] = update_questions
+        if not edit_vqa_data:
+            raise InvalidProcessError(
+                "Please specify at least one item for editing vqa ontology"
+            )
+        try:
+            vqa_project = api.edit_vqa_ontology(project_id=project_id, **edit_vqa_data)
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
@@ -549,6 +644,8 @@ of this project OR has been added before"
             project = DataverseClient.get_client_project(
                 project_id=project_id, client_alias=client_alias
             )
+        if project.ontology.image_type == OntologyImageType.VQA:
+            raise InvalidProcessError("Could not add project_tag for VQA project")
 
         raw_project_tag: dict = project_tag.dict(exclude_none=True)
         # new project tag attributes to be creaeted
@@ -607,6 +704,8 @@ of this project OR has been added before"
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
             )
+        if project.ontology.image_type == OntologyImageType.VQA:
+            raise InvalidProcessError("Could not edit project_tag for VQA project")
 
         raw_project_tag: dict = project_tag.dict(exclude_none=True)
         # old project tag attributes to be extended
@@ -664,6 +763,8 @@ of this project OR has been added before"
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
             )
+        if project.ontology.image_type == OntologyImageType.VQA:
+            raise InvalidProcessError("Could not add ontology_classes for VQA project")
         # new ontology classes to be creaeted
         new_classes_data = []
         for ontology_class in ontology_classes:
@@ -729,6 +830,8 @@ of this project OR has been added before"
             project = DataverseClient.get_client_project(
                 project_id=project_id, client=client, client_alias=client_alias
             )
+        if project.ontology.image_type == OntologyImageType.VQA:
+            raise InvalidProcessError("Could not edit ontology_classes for VQA project")
         # ontology classes to be edited
         patched_classes_data = []
         for ontology_class in ontology_classes:

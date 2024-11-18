@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
-from .client import AnnotationFormat, DatasetType, DataSource
+from .client import AnnotationFormat, DatasetType, DataSource, QuestionClass
 from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
 
 
@@ -84,6 +84,31 @@ class ProjectAPISchema(BaseModel):
     ontology_data: OntologyAPISchema
     sensor_data: list[SensorAPISchema]
     project_tag_data: ProjectTagAPISchema
+
+
+class VQAProjectAPISchema(BaseModel):
+    name: str
+    sensor_name: str
+    ontolog_name: str
+    question_answer: list[QuestionClass]
+    description: Optional[str] = None
+
+    @validator("question_answer", pre=True, always=True)
+    def question_answer_validator(cls, value):
+        question_rank_set = set()
+        for question in value:
+            if question.rank in question_rank_set:
+                raise f"The question rank id of {question} is duplicated."
+            else:
+                question_rank_set.add(question.rank)
+        return value
+
+
+class UpdateQuestionAPISchema(BaseModel):
+    extented_class_id: Optional[int]
+    question: Optional[str]
+    attribute_id: Optional[int]
+    options: Optional[list]
 
 
 class DatasetAPISchema(BaseModel):

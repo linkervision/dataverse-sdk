@@ -95,7 +95,7 @@ class QuestionClass(BaseModel):
     class_name: str
     question: str
     color: Optional[str] = "#cc39f4"
-    rank: Optional[int] = None
+    rank: int
     answer_name: Optional[str] = "answer"
     answer_type: AttributeType
     answer_option: Optional[list] = []
@@ -114,6 +114,21 @@ class QuestionClass(BaseModel):
                 f"Color field needs starts with `#` and has 6 digits behind it, get : {value}"
             )
         return value
+
+    @validator("answer_type")
+    def answer_type_validator(cls, value, values, **kwargs):
+        if value == AttributeType.OPTION and not values.get("answer_option"):
+            raise ValueError(
+                "Need to assign value for `answer_option` "
+                + "if the Answer type is option"
+            )
+        return value
+
+
+class UpdateQuestionClass(BaseModel):
+    rank: int
+    question: Optional[str]
+    options: Optional[list]
 
 
 class Ontology(BaseModel):
