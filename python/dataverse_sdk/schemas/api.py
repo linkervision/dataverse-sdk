@@ -118,10 +118,10 @@ class VQAProjectAPISchema(BaseModel):
 
 
 class UpdateQuestionAPISchema(BaseModel):
-    extented_class_id: Optional[int]
-    question: Optional[str]
-    attribute_id: Optional[int]
-    options: Optional[list]
+    extended_class_id: Optional[int] = None
+    question: Optional[str] = None
+    attribute_id: Optional[int] = None
+    options: Optional[list] = None
 
 
 class DatasetAPISchema(BaseModel):

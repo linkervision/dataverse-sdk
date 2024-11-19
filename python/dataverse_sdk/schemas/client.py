@@ -244,6 +244,24 @@ class Project(BaseModel):
         )
         return project
 
+    def edit_vqa_ontology(
+        self,
+        ontology_name: str = "",
+        create: Optional[list[QuestionClass]] = None,
+        update: Optional[list] = None,
+    ):
+        from ..client import DataverseClient
+
+        project = DataverseClient.edit_vqa_ontology(
+            ontology_name=ontology_name,
+            create=create,
+            update=update,
+            project_id=self.id,
+            project=self,
+            client_alias=self.client_alias,
+        )
+        return project
+
     def list_models(self) -> list:
         from ..client import DataverseClient
 

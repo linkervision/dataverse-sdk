@@ -11,6 +11,7 @@ from .apis.backend import BackendAPI
 from .connections import add_connection, get_connection
 from .constants import DataverseHost
 from .exceptions.client import (
+    APIValidationError,
     AsyncThirdPartyAPIException,
     ClientConnectionError,
     DataverseExceptionBase,
@@ -173,7 +174,7 @@ class DataverseClient:
 
         Raises
         ------
-        ValidationError
+        APIValidationError
             raise exception if there is any error occurs when composing the request body.
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
@@ -217,7 +218,7 @@ class DataverseClient:
                 description=description,
             ).dict(exclude_none=True)
         except ValidationError as e:
-            raise ValidationError(
+            raise APIValidationError(
                 f"Something wrong when composing the final project data: {e}"
             )
 
@@ -237,7 +238,32 @@ class DataverseClient:
         ontology_name: str,
         question_answer: list[QuestionClass],
         description: Optional[str] = None,
-    ):
+    ) -> dict:
+        """Create VQA project
+
+        Parameters
+        ----------
+        name : str
+            project name
+        sensor_name : str
+            camera sensor name
+        ontology_name : str
+        question_answer : list[QuestionClass]
+            list of QuestionClass for specifying question and answer_type
+        description : Optional[str], optional
+
+        Returns
+        -------
+        dict
+            {"id": project_id}
+
+        Raises
+        ------
+        APIValidationError
+            the parameters does not meet the requirements
+        ClientConnectionError
+
+        """
         try:
             vqa_project_data = VQAProjectAPISchema(
                 name=name,
@@ -247,7 +273,7 @@ class DataverseClient:
                 description=description,
             ).dict(exclude_none=True)
         except ValidationError as e:
-            raise ValidationError(
+            raise APIValidationError(
                 f"Something wrong when composing the vqa project data: {e}"
             )
         try:
@@ -259,16 +285,41 @@ class DataverseClient:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
         return vqa_project
 
+    @staticmethod
     def edit_vqa_ontology(
-        self,
         project_id: int,
-        ontology_name: Optional[str] = None,
-        create: list[QuestionClass] = None,
-        update: list[UpdateQuestionAPISchema] = None,
+        ontology_name: str = "",
+        create: Optional[list[QuestionClass]] = None,
+        update: Optional[list[dict]] = None,
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
-    ):
+    ) -> dict:
+        """Edit VQA ontology
+
+        Parameters
+        ----------
+        project_id : int
+        ontology_name : str, optional
+        create : list[QuestionClass], optional
+        update : list[dict], optional
+        client : Optional[&quot;DataverseClient&quot;], optional
+        client_alias : Optional[str], optional
+        project : Optional[&quot;Project&quot;], optional
+
+        Returns
+        -------
+        dict
+            {"id": project_id}
+
+        Raises
+        ------
+        InvalidProcessError
+            The project is not VQA image type
+        APIValidationError
+            The parameters is not meet the api requirements
+        ClientConnectionError
+        """
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
@@ -287,9 +338,8 @@ class DataverseClient:
                 current_question_rank.add(question.rank)
             create_questions = []
             for new_question in create:
-                new_question = QuestionClass(new_question)
                 if new_question.rank in current_question_rank:
-                    raise ValidationError(
+                    raise APIValidationError(
                         f"The question rank id of {new_question} is duplicated."
                     )
                 create_questions.append(new_question.dict(exclude_none=True))
@@ -303,17 +353,21 @@ class DataverseClient:
             for update_question in update:
                 update_question = UpdateQuestionClass(**update_question)
                 if update_question.rank not in current_question_classes:
-                    raise ValidationError(
+                    raise APIValidationError(
                         f"The question rank of {update_question} is not in current vqa project"
                     )
                 if not update_question.question and not update_question.options:
                     continue
                 update_question_data = {}
+                # edit question string contents
                 if update_question.question:
                     update_question_data[
                         "extended_class_id"
-                    ] = current_question_classes[update_question.rank].extended_class.id
+                    ] = current_question_classes[update_question.rank].extended_class[
+                        "id"
+                    ]
                     update_question_data["question"] = update_question.question
+                # add question options
                 if update_question.options:
                     if (
                         current_question_classes[update_question.rank]
@@ -321,7 +375,7 @@ class DataverseClient:
                         .type
                         != AttributeType.OPTION
                     ):
-                        raise ValidationError(
+                        raise APIValidationError(
                             f"The answer type for Question{update_question.rank}  is not option"
                         )
                     update_question_data["attribute_id"] = (
@@ -336,16 +390,18 @@ class DataverseClient:
 
             edit_vqa_data["update"] = update_questions
         if not edit_vqa_data:
-            raise InvalidProcessError(
+            raise APIValidationError(
                 "Please specify at least one item for editing vqa ontology"
             )
         try:
-            vqa_project = api.edit_vqa_ontology(project_id=project_id, **edit_vqa_data)
+            vqa_project = api.edit_vqa_ontology(
+                project_id=project_id, edit_vqa_data=edit_vqa_data
+            )
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
         except Exception as e:
-            raise ClientConnectionError(f"Failed to get the projects: {e}")
+            raise ClientConnectionError(f"Failed to edit the VQA project: {e}")
         return vqa_project
 
     def list_projects(
@@ -437,6 +493,51 @@ class DataverseClient:
         if client_alias is None:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
+
+    def get_question_list(
+        self,
+        project_id: int,
+        output_file_path: str = "questions.json",
+    ) -> list:
+        """Get question list for VQA project
+
+        Parameters
+        ----------
+        project_id : int
+        output_file_path : str, optional
+            the json file path, by default "questions.json"
+
+        Returns
+        -------
+        list
+            the output question list
+
+        Raises
+        ------
+        InvalidProcessError
+
+        """
+        file_extension = os.path.splitext(output_file_path)[1]
+        if file_extension != ".json":
+            raise InvalidProcessError(
+                f"Invalid path: {output_file_path}! Should provide file path with .json extension"
+            )
+        project = self.get_project(project_id=project_id)
+        if project.ontology.image_type != OntologyImageType.VQA:
+            raise InvalidProcessError("The project type is not VQA!")
+        output_list = []
+        for question in project.ontology.classes:
+            output_list.append(
+                {
+                    "question_id": question.rank,
+                    "question": question.extended_class["question"],
+                }
+            )
+        import json
+
+        with open(output_file_path, "w", newline="") as jsonfile:
+            json.dump(output_list, jsonfile)
+        return output_list
 
     def generate_alias_map(
         self, project_id: int, alias_file_path: str = "./alias.csv"
@@ -1211,7 +1312,7 @@ of this project OR has been added before"
         Raises
         ------
         ValueError
-        ValidationError
+        APIValidationError
             raise exception if there is any error occurs when composing request body.
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
@@ -1253,7 +1354,7 @@ of this project OR has been added before"
                 **kwargs,
             ).dict(exclude_none=True)
         except ValidationError as e:
-            raise ValidationError(
+            raise APIValidationError(
                 f"Something wrong when composing the final dataset data: {e}"
             )
 
