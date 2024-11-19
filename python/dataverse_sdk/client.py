@@ -188,7 +188,7 @@ class DataverseClient:
         # remove `id` field in OntologyClass and Attribute
         for cls_ in raw_ontology_data.pop("classes", []):
             cls_.pop("id", None)
-            if rank not in cls_:
+            if "rank" not in cls_:
                 cls_["rank"] = rank
                 rank += 1
             if not (obj_attrs := cls_.pop("attributes", None)):
@@ -242,10 +242,10 @@ class DataverseClient:
             vqa_project_data = VQAProjectAPISchema(
                 name=name,
                 sensor_name=sensor_name,
-                ontolog_name=ontology_name,
+                ontology_name=ontology_name,
                 question_answer=question_answer,
                 description=description,
-            )
+            ).dict(exclude_none=True)
         except ValidationError as e:
             raise ValidationError(
                 f"Something wrong when composing the vqa project data: {e}"
@@ -328,7 +328,11 @@ class DataverseClient:
                         current_question_classes[update_question.rank].attributes[0].id
                     )
                     update_question_data["options"] = update_question.options
-                update_questions.append(UpdateQuestionAPISchema(**update_question_data))
+                update_questions.append(
+                    UpdateQuestionAPISchema(**update_question_data).dict(
+                        exclude_none=True
+                    )
+                )
 
             edit_vqa_data["update"] = update_questions
         if not edit_vqa_data:

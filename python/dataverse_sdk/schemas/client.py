@@ -97,11 +97,12 @@ class QuestionClass(BaseModel):
     color: Optional[str] = "#cc39f4"
     rank: int
     answer_name: Optional[str] = "answer"
+    answer_options: Optional[list] = None
     answer_type: AttributeType
-    answer_option: Optional[list] = []
 
     class Config:
         validate_assignment = True
+        use_enum_values = True
 
     @validator("color", pre=True, always=True)
     def color_validator(cls, value):
@@ -117,9 +118,9 @@ class QuestionClass(BaseModel):
 
     @validator("answer_type")
     def answer_type_validator(cls, value, values, **kwargs):
-        if value == AttributeType.OPTION and not values.get("answer_option"):
+        if value == AttributeType.OPTION and not values.get("answer_options"):
             raise ValueError(
-                "Need to assign value for `answer_option` "
+                f"* {values} Need to assign value for `answer_options` "
                 + "if the Answer type is option"
             )
         return value
@@ -163,16 +164,6 @@ class Ontology(BaseModel):
             pcd_type=ontology_data["pcd_type"],
             classes=classes,
         )
-
-    @validator("classes", pre=True, always=True)
-    def classes_rank_validator(cls, value):
-        rank_set = set()
-        for class_ in value:
-            if class_.rank not in rank_set:
-                rank_set.add(class_.rank)
-            else:
-                raise ValueError("Duplicated classes rank value")
-        return value
 
 
 class Project(BaseModel):

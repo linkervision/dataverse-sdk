@@ -75,6 +75,16 @@ class OntologyAPISchema(BaseModel):
     class Config:
         use_enum_values = True
 
+    @validator("ontology_classes_data", pre=True, always=True)
+    def ontology_classes_data_validator(cls, value):
+        rank_set = set()
+        for class_ in value:
+            if class_["rank"] not in rank_set:
+                rank_set.add(class_["rank"])
+            else:
+                raise ValueError("Duplicated classes rank value")
+        return value
+
 
 class ProjectAPISchema(BaseModel):
     id: Optional[int] = None
@@ -89,16 +99,19 @@ class ProjectAPISchema(BaseModel):
 class VQAProjectAPISchema(BaseModel):
     name: str
     sensor_name: str
-    ontolog_name: str
+    ontology_name: str
     question_answer: list[QuestionClass]
     description: Optional[str] = None
+
+    class Config:
+        use_enum_values = True
 
     @validator("question_answer", pre=True, always=True)
     def question_answer_validator(cls, value):
         question_rank_set = set()
         for question in value:
             if question.rank in question_rank_set:
-                raise f"The question rank id of {question} is duplicated."
+                raise ValueError(f"The question rank id of {question} is duplicated.")
             else:
                 question_rank_set.add(question.rank)
         return value
