@@ -76,6 +76,11 @@ The following sections provide examples for the most common DataVerse tasks incl
 * [Get Dataset](#get-dataset)
 * [List Models](#list-models)
 * [Get and Download Model](#get-model)
+* [Create VQA Project](#create-vqa-project)
+* [Edit VQA Ontology](#edit-vqa-ontology)
+* [Get Question List](#get-question-list)
+
+
 
 ### Get User
 
@@ -411,6 +416,72 @@ OR
 model_record = model.get_convert_record(convert_record_id=1)
 ```
 <br>
+
+### Create VQA Project
+
+The `create_vqa_project` method will create project on the connected site with the defined questions/answer_type.
+
+* Example Usage:
+```Python
+# 1) Create question class with question and answer type pair
+question_answer = [ QuestionClass(class_name="question1", rank=1, question="Is any person found in the picture?",
+                    answer_type="boolean"),
+                    QuestionClass(class_name="question2", rank=2, question="What is the blob color of traffic light?",   answer_type="option",answer_options=["red","yello","green"])
+                   ]
+```
+
+```Python
+# 2) Create your VQA project as below
+project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", ontology_name="vqa-ontology" question_answer=question_answer)
+```
+
+* Input arguments for creating project:
+
+| Argument name      | Type/Options   | Default   | Description   |
+| :---                 |     :---    |     :---  |          :--- |
+| name        | str  | *--    | name of your project    |
+| sensor_name | str | *-- |  the camera sensor name  |
+| ontology_name | str |  *--  |  the ontology name |
+| question_answer|  list[QuestionClass] |  *--  |  your question/answer_type  |
+| description  | str | None | your project description  |
+
+`＊--`: required argument without default
+
+
+<br>
+
+
+### Edit VQA Ontology
+** Note:
+1. Can not edit question answer type
+2. Can not update with existing answer options
+3. Can not add question with existing rank id
+
+```Python
+create_questions = [QuestionClass(class_name="question3", rank=3, question="Age?",answer_type="number")]
+update_questions = [{"rank": 2, "question": "What is the blob color of traffic light?(the closet one)", "options":["black"] }]
+
+#should provide client_alias if calling from client
+client.edit_vqa_ontology(project_id=24,  ontology_name="ontology-new-name",
+                                         create=create_questions,
+                                         update=update_questions,
+                                         client_alias=client.alias)
+#OR
+project.edit_vqa_ontology(project_id=24, ontology_name="ontology-new-name",
+                                         create=create_questions,
+                                         update=update_questions)
+```
+
+### Get Question List
+
+The function below could help you get the question list of VQA project
+(which could help you to prepare the annotated data)
+```Python
+output = client.get_question_list(project_id=107, output_file_path="./question.json" )
+
+```
+
+
 
 ## Troubleshooting
 
