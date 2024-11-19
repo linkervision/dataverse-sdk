@@ -1532,9 +1532,11 @@ of this project OR has been added before"
                 return ["calib", "image_2", "label_2", "velodyne"]
 
         elif annotation_format == AnnotationFormat.COCO:
-            return ["images", "annotations/labels.json"]
+            return ["images/", "annotations/labels.json"]
         elif annotation_format == AnnotationFormat.YOLO:
             return ["images/", "labels/", "classes.txt"]
+        elif annotation_format == AnnotationFormat.VLM:
+            return ["images/", "annotations/"]
         elif annotation_format in (
             AnnotationFormat.VISION_AI,
             AnnotationFormat.BDDP,

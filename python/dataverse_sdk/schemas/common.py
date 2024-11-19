@@ -37,6 +37,7 @@ class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     IMAGE = "image"
     KITTI = "kitti"
     YOLO = "yolo"
+    VLM = "vlm"
 
 
 class DatasetType(str, Enum, metaclass=BaseEnumMeta):
