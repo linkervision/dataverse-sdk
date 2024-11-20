@@ -286,6 +286,44 @@ class DataverseClient:
         return vqa_project
 
     @staticmethod
+    def _validate_edit_vqa_ontology(
+        project: Project,
+        create: Optional[list[QuestionClass]] = None,
+        update: Optional[list[dict]] = None,
+    ):
+        if project.ontology.image_type != OntologyImageType.VQA:
+            raise InvalidProcessError("The project type is not VQA!")
+        if create:
+            current_question_rank = {
+                question.rank for question in project.ontology.classes
+            }
+            for new_question in create:
+                if new_question.rank in current_question_rank:
+                    raise APIValidationError(
+                        f"The question rank id of {new_question} is duplicated."
+                    )
+        if update:
+            current_question_classes = {q.rank: q for q in project.ontology.classes}
+            for update_question in update:
+                update_question = UpdateQuestionClass(**update_question)
+                if update_question.rank not in current_question_classes:
+                    raise APIValidationError(
+                        f"The question rank of {update_question} is not in current vqa project"
+                    )
+                if not update_question.question and not update_question.options:
+                    continue
+                if update_question.options:
+                    if (
+                        current_question_classes[update_question.rank]
+                        .attributes[0]
+                        .type
+                        != AttributeType.OPTION
+                    ):
+                        raise APIValidationError(
+                            f"The answer type for Question{update_question.rank}  is not option"
+                        )
+
+    @staticmethod
     def edit_vqa_ontology(
         project_id: int,
         ontology_name: str = "",
@@ -327,67 +365,47 @@ class DataverseClient:
             project = DataverseClient.get_client_project(
                 project_id=project_id, client_alias=client_alias
             )
-        if project.ontology.image_type != OntologyImageType.VQA:
-            raise InvalidProcessError("The project type is not VQA!")
+        # validating the edit vqa data
+        DataverseClient._validate_edit_vqa_ontology(
+            project=project, create=create, update=update
+        )
+        # prepare the edit vqa data
         edit_vqa_data = {}
         if ontology_name:
             edit_vqa_data["ontology_name"] = ontology_name
         if create:
-            current_question_rank = set()
-            for question in project.ontology.classes:
-                current_question_rank.add(question.rank)
-            create_questions = []
-            for new_question in create:
-                if new_question.rank in current_question_rank:
-                    raise APIValidationError(
-                        f"The question rank id of {new_question} is duplicated."
-                    )
-                create_questions.append(new_question.dict(exclude_none=True))
-
-            edit_vqa_data["create"] = create_questions
+            edit_vqa_data["create"] = [q.dict(exclude_none=True) for q in create]
         if update:
-            current_question_classes = {}
-            for question in project.ontology.classes:
-                current_question_classes[question.rank] = question
+            question_table = {
+                q.rank: {
+                    "extended_class_id": q.extended_class["id"],
+                    "attribute_id": q.attributes[0].id,
+                }
+                for q in project.ontology.classes
+            }
             update_questions = []
             for update_question in update:
                 update_question = UpdateQuestionClass(**update_question)
-                if update_question.rank not in current_question_classes:
-                    raise APIValidationError(
-                        f"The question rank of {update_question} is not in current vqa project"
-                    )
                 if not update_question.question and not update_question.options:
                     continue
                 update_question_data = {}
                 # edit question string contents
                 if update_question.question:
-                    update_question_data[
-                        "extended_class_id"
-                    ] = current_question_classes[update_question.rank].extended_class[
-                        "id"
-                    ]
+                    update_question_data["extended_class_id"] = question_table[
+                        update_question.rank
+                    ]["extended_class_id"]
                     update_question_data["question"] = update_question.question
                 # add question options
                 if update_question.options:
-                    if (
-                        current_question_classes[update_question.rank]
-                        .attributes[0]
-                        .type
-                        != AttributeType.OPTION
-                    ):
-                        raise APIValidationError(
-                            f"The answer type for Question{update_question.rank}  is not option"
-                        )
-                    update_question_data["attribute_id"] = (
-                        current_question_classes[update_question.rank].attributes[0].id
-                    )
+                    update_question_data["attribute_id"] = question_table[
+                        update_question.rank
+                    ]["attribute_id"]
                     update_question_data["options"] = update_question.options
                 update_questions.append(
                     UpdateQuestionAPISchema(**update_question_data).dict(
                         exclude_none=True
                     )
                 )
-
             edit_vqa_data["update"] = update_questions
         if not edit_vqa_data:
             raise APIValidationError(
