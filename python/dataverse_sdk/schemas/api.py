@@ -77,12 +77,8 @@ class OntologyAPISchema(BaseModel):
 
     @validator("ontology_classes_data", pre=True, always=True)
     def ontology_classes_data_validator(cls, value):
-        rank_set = set()
-        for class_ in value:
-            if class_["rank"] not in rank_set:
-                rank_set.add(class_["rank"])
-            else:
-                raise ValueError("Duplicated classes rank value")
+        if len({v["rank"] for v in value}) != len(value):
+            raise ValueError("Duplicated classes rank value")
         return value
 
 
@@ -108,12 +104,8 @@ class VQAProjectAPISchema(BaseModel):
 
     @validator("question_answer", pre=True, always=True)
     def question_answer_validator(cls, value):
-        question_rank_set = set()
-        for question in value:
-            if question.rank in question_rank_set:
-                raise ValueError(f"The question rank id of {question} is duplicated.")
-            else:
-                question_rank_set.add(question.rank)
+        if len({v.rank for v in value}) != len(value):
+            raise ValueError("The question rank id of is duplicated.")
         return value
 
 
