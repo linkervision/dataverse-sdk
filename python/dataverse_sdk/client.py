@@ -322,6 +322,17 @@ class DataverseClient:
                         raise APIValidationError(
                             f"The answer type for Question{update_question.rank}  is not option"
                         )
+                    current_option_set = {
+                        op.value
+                        for op in current_question_classes[update_question.rank]
+                        .attributes[0]
+                        .options
+                    }
+                    for option in update_question.options:
+                        if option in current_option_set:
+                            raise APIValidationError(
+                                f"The option {option} is already existing in Question{update_question.rank}"
+                            )
 
     @staticmethod
     def edit_vqa_ontology(
