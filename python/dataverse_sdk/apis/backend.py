@@ -142,6 +142,37 @@ class BackendAPI:
         )
         return resp.json()
 
+    def create_vqa_project(
+        self,
+        name: str,
+        sensor_name: str,
+        ontology_name: str,
+        question_answer: list,
+        description: Optional[str] = None,
+    ):
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/vqa/",
+            method="post",
+            headers=self.headers,
+            data={
+                "name": name,
+                "sensor_name": sensor_name,
+                "ontology_name": ontology_name,
+                "question_answer": question_answer,
+                "description": description,
+            },
+        )
+        return resp.json()
+
+    def edit_vqa_ontology(self, project_id: int, edit_vqa_data: dict):
+        resp = self.send_request(
+            url=f"{self.host}/api/projects/{project_id}/update-or-create-vqa-ontology/",
+            method="post",
+            headers=self.headers,
+            data=edit_vqa_data,
+        )
+        return resp.json()
+
     def edit_project(
         self,
         project_id: int,

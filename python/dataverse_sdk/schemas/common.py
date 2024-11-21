@@ -18,6 +18,7 @@ class OntologyImageType(str, Enum, metaclass=BaseEnumMeta):
     POINT = "point"
     POLYGON = "polygon"
     POLYLINE = "polyline"
+    VQA = "vqa"
 
 
 class OntologyPcdType(str, Enum, metaclass=BaseEnumMeta):
@@ -36,6 +37,7 @@ class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     IMAGE = "image"
     KITTI = "kitti"
     YOLO = "yolo"
+    VLM = "vlm"
 
 
 class DatasetType(str, Enum, metaclass=BaseEnumMeta):

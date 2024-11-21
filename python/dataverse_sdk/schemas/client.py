@@ -69,9 +69,10 @@ class OntologyClass(BaseModel):
     id: Optional[int] = None
     name: str
     color: Optional[str] = "#cc39f4"
-    rank: Optional[int] = 1
+    rank: Optional[int] = None
     attributes: Optional[list[Attribute]] = None
     aliases: Optional[list] = None
+    extended_class: Optional[dict] = None
 
     class Config:
         validate_assignment = True
@@ -88,11 +89,47 @@ class OntologyClass(BaseModel):
             )
         return value
 
-    @validator("rank", pre=True, always=True)
-    def rank_validator(cls, value):
+
+class QuestionClass(BaseModel):
+    id: Optional[int] = None
+    class_name: str
+    question: str
+    color: Optional[str] = "#cc39f4"
+    rank: int
+    answer_name: Optional[str] = "answer"
+    answer_options: Optional[list] = None
+    answer_type: AttributeType
+
+    class Config:
+        validate_assignment = True
+        use_enum_values = True
+
+    @validator("color", pre=True, always=True)
+    def color_validator(cls, value):
         if not value:
-            value = 1
+            value = "#cc39f4"
+        if not value.startswith("#") or not re.search(
+            r"\b[a-zA-Z0-9]{6}\b", value.lstrip("#")
+        ):
+            raise ValueError(
+                f"Color field needs starts with `#` and has 6 digits behind it, get : {value}"
+            )
         return value
+
+    @validator("answer_type")
+    def answer_type_validator(cls, value, values, **kwargs):
+        if value == AttributeType.OPTION and not values.get("answer_options"):
+            raise ValueError(
+                f"* {values} Need to assign value for `answer_options` "
+                + "if the Answer type is option"
+            )
+        return value
+
+
+class UpdateQuestionClass(BaseModel):
+    rank: int
+    question: Optional[str]
+    options: Optional[list]
 
 
 class Ontology(BaseModel):
@@ -115,9 +152,11 @@ class Ontology(BaseModel):
                 rank=cls_.get("rank"),
                 attributes=cls_.get("attributes"),
                 aliases=cls_.get("aliases"),
+                extended_class=cls_.get("extended_class"),
             )
             for cls_ in ontology_data["classes"]
         ]
+
         return cls(
             id=ontology_data["id"],
             name=ontology_data.get("name", ""),
@@ -201,6 +240,24 @@ class Project(BaseModel):
             ontology_classes=ontology_classes,
             project=self,
             project_id=self.id,
+            client_alias=self.client_alias,
+        )
+        return project
+
+    def edit_vqa_ontology(
+        self,
+        ontology_name: str = "",
+        create: Optional[list[QuestionClass]] = None,
+        update: Optional[list] = None,
+    ):
+        from ..client import DataverseClient
+
+        project = DataverseClient.edit_vqa_ontology(
+            ontology_name=ontology_name,
+            create=create,
+            update=update,
+            project_id=self.id,
+            project=self,
             client_alias=self.client_alias,
         )
         return project

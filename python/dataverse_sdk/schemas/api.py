@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, validator
 
-from .client import AnnotationFormat, DatasetType, DataSource
+from .client import AnnotationFormat, DatasetType, DataSource, QuestionClass
 from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
 
 
@@ -75,6 +75,12 @@ class OntologyAPISchema(BaseModel):
     class Config:
         use_enum_values = True
 
+    @validator("ontology_classes_data", pre=True, always=True)
+    def ontology_classes_data_validator(cls, value):
+        if len({v["rank"] for v in value}) != len(value):
+            raise ValueError("Duplicated classes rank value")
+        return value
+
 
 class ProjectAPISchema(BaseModel):
     id: Optional[int] = None
@@ -84,6 +90,30 @@ class ProjectAPISchema(BaseModel):
     ontology_data: OntologyAPISchema
     sensor_data: list[SensorAPISchema]
     project_tag_data: ProjectTagAPISchema
+
+
+class VQAProjectAPISchema(BaseModel):
+    name: str
+    sensor_name: str
+    ontology_name: str
+    question_answer: list[QuestionClass]
+    description: Optional[str] = None
+
+    class Config:
+        use_enum_values = True
+
+    @validator("question_answer", pre=True, always=True)
+    def question_answer_validator(cls, value):
+        if len({v.rank for v in value}) != len(value):
+            raise ValueError("The question rank id of is duplicated.")
+        return value
+
+
+class UpdateQuestionAPISchema(BaseModel):
+    extended_class_id: Optional[int] = None
+    question: Optional[str] = None
+    attribute_id: Optional[int] = None
+    options: Optional[list] = None
 
 
 class DatasetAPISchema(BaseModel):

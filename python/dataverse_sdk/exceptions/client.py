@@ -5,6 +5,10 @@ class InvalidProcessError(Exception):
     pass
 
 
+class APIValidationError(Exception):
+    pass
+
+
 class ClientConnectionError(Exception):
     pass
 

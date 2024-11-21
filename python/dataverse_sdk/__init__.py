@@ -9,6 +9,7 @@ from .schemas.client import (
     OntologyClass,
     Project,
     ProjectTag,
+    QuestionClass,
     Sensor,
 )
 from .schemas.common import (
@@ -42,4 +43,5 @@ __all__ = [
     "DatasetType",
     "DatasetStatus",
     "DataSource",
+    "QuestionClass",
 ]
