@@ -899,18 +899,25 @@ of this project OR has been added before"
             )
         if project.ontology.image_type == OntologyImageType.VQA:
             raise InvalidProcessError("Could not add ontology_classes for VQA project")
-        # new ontology classes to be creaeted
+        project_classes_rank_set = {r.rank for r in project.ontology.classes}
+
+        # new ontology classes to be created
         new_classes_data = []
         for ontology_class in ontology_classes:
             raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
             attribute_data: list = parse_attribute(
                 raw_ontology_class.get("attributes", [])
             )
+            if ontology_class.rank in project_classes_rank_set:
+                raise InvalidProcessError(
+                    f"Class rank of {ontology_class} is duplicated to current classes."
+                )
             new_classes_data.append(
                 {
                     "name": ontology_class.name,
                     "color": ontology_class.color,
                     "attribute_data": attribute_data,
+                    "rank": ontology_class.rank,
                 }
             )
         ontology_data = {"new_classes_data": new_classes_data}
