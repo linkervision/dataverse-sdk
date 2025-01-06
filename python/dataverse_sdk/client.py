@@ -1187,6 +1187,31 @@ of this project OR has been added before"
             return False, save_path
 
     @staticmethod
+    def get_onnx_model_file(
+        convert_record_id: int,
+        save_path: str = "./model.onnx",
+        timeout: int = 3000,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> tuple[bool, str]:
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            resp = api.get_convert_onnx_model(
+                convert_record_id=convert_record_id,
+                timeout=timeout,
+            )
+            download_file_from_response(response=resp, save_path=save_path)
+            return True, save_path
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception:
+            logging.exception("Failed to get the onnx model file")
+            return False, save_path
+
+    @staticmethod
     def get_convert_model_file(
         convert_record_id: int,
         save_path: str = "./triton.zip",
@@ -1232,7 +1257,7 @@ of this project OR has been added before"
             logging.exception("Got api error from Dataverse")
             raise
         except Exception:
-            logging.exception("Failed to get onnx model file")
+            logging.exception("Failed to get the convert model file")
             return False, save_path
 
     def get_dataset(self, dataset_id: int, client_alias: Optional[str] = None):

@@ -277,6 +277,18 @@ class BackendAPI:
         )
         return resp
 
+    def get_convert_onnx_model(
+        self, convert_record_id: int, timeout: int = 3000
+    ) -> requests.models.Response:
+        resp = self.send_request(
+            url=f"{self.host}/api/convert_record/{convert_record_id}/model/",
+            method="get",
+            headers=self.headers,
+            stream=True,
+            timeout=timeout,
+        )
+        return resp
+
     def get_convert_model_file(
         self,
         convert_record_id: int,
