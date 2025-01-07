@@ -417,6 +417,15 @@ model_record = model.get_convert_record(convert_record_id=1)
 ```
 <br>
 
+* If the converted model format is onnx, you could download the model as below.
+```Python
+# Get the target convert record, and download labels.txt and model.onnx
+model_record = model.get_convert_record(convert_record_id=5)
+status, label_file_path = model_record.get_label_file(save_path="./labels.txt", timeout=6000)
+status, onnx_model_path = model_record.get_onnx_model_file(save_path="./model.onnx", timeout=6000)
+```
+
+
 ### Create VQA Project
 
 The `create_vqa_project` method will create project on the connected site with the defined questions/answer_type.

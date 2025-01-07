@@ -436,6 +436,20 @@ class ConvertRecord(BaseModel):
             client_alias=self.client_alias,
         )
 
+    def get_onnx_model_file(
+        self, save_path: str = "./model.onnx", timeout: int = 3000
+    ) -> tuple[bool, str]:
+        if self.configuration["format"] != "onnx":
+            raise ValueError("The converted model format is not onnx")
+        from ..client import DataverseClient
+
+        return DataverseClient.get_onnx_model_file(
+            convert_record_id=self.id,
+            save_path=save_path,
+            timeout=timeout,
+            client_alias=self.client_alias,
+        )
+
     def get_convert_model_file(
         self,
         triton_format: bool = True,
