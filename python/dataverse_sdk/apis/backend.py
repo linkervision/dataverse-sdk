@@ -226,6 +226,15 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def list_dataslices(self, project_id: int, **kwargs) -> list:
+        kwargs["project"] = project_id
+        resp = self.send_request(
+            url=f"{self.host}/api/dataslices/basic/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
     def update_alias(
         self,
         project_id: int,
