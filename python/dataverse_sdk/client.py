@@ -575,8 +575,10 @@ class DataverseClient:
         dataslice_data = self.get_dataslice(dataslice_id=dataslice_id)
         is_vqa = dataslice_data.annotation_type == "vqa"
         if not annotation_name:
+            # use default groundtruth name if annotation name is not provided
             annotation_name = "groundtruth" if is_vqa else "(gt)"
         if not export_format:
+            # only allow export vlm format for vqa project and export visionai for other projects
             export_format = "vlm" if is_vqa else "visionai"
         logging.info(
             f"Export Dataslice-{dataslice_id} with annotaiton_name:{annotation_name} in {export_format} format"

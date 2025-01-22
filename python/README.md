@@ -405,7 +405,9 @@ dataslice_data = client.get_dataslice(dataslice_id=504)
 
 ### Export Dataslice and Download
 ```Python
+# Trigger export and get export record id
 export_record = client.export_dataslice(dataslice_id=504)
+# Use export record id to download export data
 client.download_export_dataslice_data(dataslice_id=504, export_record_id=export_record["export_record_id"])
 
 ```
