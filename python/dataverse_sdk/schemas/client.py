@@ -421,6 +421,20 @@ class Dataset(BaseModel):
         extra = "allow"
 
 
+class Dataslice(BaseModel):
+    id: Optional[int] = None
+    project: Project
+    name: str
+    status: str
+    annotation_type: str
+    type: str
+    file_count: Optional[int] = None
+    export_records: Optional[list] = None
+
+    class Config:
+        extra = "allow"
+
+
 class ConvertRecord(BaseModel):
     id: Optional[int] = None
     name: str

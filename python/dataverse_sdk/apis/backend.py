@@ -235,6 +235,14 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def get_dataslice(self, dataslice_id: int) -> list:
+        resp = self.send_request(
+            url=f"{self.host}/api/dataslices/{dataslice_id}/",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
     def update_alias(
         self,
         project_id: int,
@@ -247,6 +255,26 @@ class BackendAPI:
             json=alias_list,
         )
         return resp
+
+    def export_dataslice(
+        self,
+        dataslice_id: int,
+        export_format: str,
+        annotation_name: str,
+        is_sequential: bool = False,
+    ) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/dataslices/{dataslice_id}/export/",
+            method="post",
+            headers=self.headers,
+            data={
+                "is_sequential": is_sequential,
+                "export_format": export_format,
+                "export_to": "direct_download",
+                "annotation_name": annotation_name,
+            },
+        )
+        return resp.json()
 
     def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
         kwargs["project"] = project_id
