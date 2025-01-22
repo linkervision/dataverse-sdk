@@ -2,6 +2,7 @@ from os import listdir
 from os.path import isfile, join
 
 import requests
+from tqdm import tqdm
 
 IMAGE_SUPPORTED_FORMAT = {
     "jpeg",
@@ -53,14 +54,19 @@ def download_file_from_url(url: str, save_path: str):
 
         # Get the total file size from headers (if available)
         total_size = int(response.headers.get("content-length", 0))
-        print(f"**** Total Size: {total_size}")
 
-        # Write the file in chunks to avoid using too much memory
-        with open(save_path, "wb") as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:  # Filter out keep-alive chunks
-                    file.write(chunk)
-        print(f"File downloaded successfully and saved to: {save_path}")
+        # Initialize tqdm progress bar
+        with tqdm(
+            total=total_size, unit="B", unit_scale=True, desc="Downloading"
+        ) as progress_bar:
+            # Write the file in chunks to avoid using too much memory
+            with open(save_path, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:  # Filter out keep-alive chunks
+                        file.write(chunk)
+                        progress_bar.update(len(chunk))  # Update progress bar
+
+        print(f"\nFile downloaded successfully and saved to: {save_path}")
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred while downloading the file: {e}")

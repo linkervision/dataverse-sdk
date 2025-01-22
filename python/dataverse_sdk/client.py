@@ -597,7 +597,7 @@ class DataverseClient:
 
     def download_export_dataslice_data(
         self, dataslice_id: int, export_record_id: int, save_path: str = "./export.zip"
-    ) -> None:
+    ) -> bool:
         export_record_exist = False
         dataslice_data = self.get_dataslice(dataslice_id=dataslice_id)
         for record in dataslice_data.export_records:
@@ -608,6 +608,7 @@ class DataverseClient:
                     and record["status"] == "complete"
                 ):
                     download_file_from_url(url=record["url"], save_path=save_path)
+                    return True
                 else:
                     print(
                         f"dataslice-{dataslice_id} with export_record_id {export_record_id} is not ready for download"
@@ -617,6 +618,7 @@ class DataverseClient:
             raise ValueError(
                 f"Can not find dataslice-{dataslice_id} with export_record_id {export_record_id}"
             )
+        return False
 
     def get_question_list(
         self,

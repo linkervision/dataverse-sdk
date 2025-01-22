@@ -9,7 +9,7 @@ from dataverse_sdk.schemas.client import Project
 from dataverse_sdk.schemas.common import AnnotationFormat, DatasetType, DataSource
 
 
-def import_dataset_from_local(
+def import_vqa_dataset_from_local(
     host: str,
     email: str,
     password: str,
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         annotation_format = AnnotationFormat.VLM
     else:
         annotation_format = AnnotationFormat.IMAGE
-    import_dataset_from_local(
+    import_vqa_dataset_from_local(
         host=args.host,
         email=args.email,
         password=args.password,
