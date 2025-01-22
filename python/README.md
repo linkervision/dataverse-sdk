@@ -74,6 +74,8 @@ The following sections provide examples for the most common DataVerse tasks incl
 * [Update Alias](#update-ontology-alias)
 * [Create Dataset](#create-dataset)
 * [Get Dataset](#get-dataset)
+* [List Dataslices](#list-and-get-dataslices)
+* [Export Dataslice](#export-dataslice-and-download)
 * [List Models](#list-models)
 * [Get and Download Model](#get-model)
 * [Create VQA Project](#create-vqa-project)
@@ -390,6 +392,25 @@ dataset = client.get_dataset(dataset_id=5)
 ```
 <br>
 
+
+### List and Get Dataslices
+```Python
+# list dataslices with project_id
+client.list_dataslices(project_id=101, client_alias=client.alias)
+
+# Get target dataslice data
+dataslice_data = client.get_dataslice(dataslice_id=504)
+
+```
+
+### Export Dataslice and Download
+```Python
+export_record = client.export_dataslice(dataslice_id=504)
+client.download_export_dataslice_data(dataslice_id=504, export_record_id=export_record["export_record_id"])
+
+```
+
+
 ### List Models
 The `list_models` method will list all the models in the given project
 
@@ -492,14 +513,23 @@ output = client.get_question_list(project_id=107, output_file_path="./question.j
 
 
 
-## Troubleshooting
+## Quick Tools
 
+### Import Your Local Dataset
+```
+python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+```
 
-## Next steps
+### Import VQA Local Dataset
+```
+python tools/import_vqa_dataset.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -type {raw_data OR annotated_data}
 
+```
 
-## Contributing
-
+### Export Dataslice and download files
+```
+python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/dataverse/curation  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
+```
 
 
 ## Links to language repos
