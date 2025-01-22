@@ -1,5 +1,4 @@
 import argparse
-import logging
 import time
 
 from dataverse_sdk import DataverseClient
@@ -32,11 +31,13 @@ def export_dataslice_to_local(
     while True:
         # download the export data by export record id
         download: bool = client.download_export_dataslice_data(
-            dataslice_id=dataslice_id, export_record_id=export_record_id
+            dataslice_id=dataslice_id,
+            export_record_id=export_record_id,
+            save_path=save_path,
         )
         if download:
             break
-        logging.info("-----")
+        print("--------")
         time.sleep(60)
 
 

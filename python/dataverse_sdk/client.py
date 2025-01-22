@@ -610,9 +610,10 @@ class DataverseClient:
                     download_file_from_url(url=record["url"], save_path=save_path)
                     return True
                 else:
-                    print(
-                        f"dataslice-{dataslice_id} with export_record_id {export_record_id} is not ready for download"
-                    )
+                    if record["status"] == "fail":
+                        raise ValueError(
+                            f"export fail for dataslice-{dataslice_id} with export_record_id {export_record_id}"
+                        )
                 break
         if not export_record_exist:
             raise ValueError(
@@ -1727,11 +1728,11 @@ of this project OR has been added before"
 
 class AsyncThirdPartyAPI:
     transport = AsyncHTTPTransport(
-        retries=5,
+        retries=10,
     )
 
     def __init__(self):
-        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(100))
 
     async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
         try:
