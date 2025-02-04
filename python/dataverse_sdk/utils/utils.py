@@ -56,15 +56,14 @@ def download_file_from_url(url: str, save_path: str):
         total_size = int(response.headers.get("content-length", 0))
 
         # Initialize tqdm progress bar
-        with tqdm(
+        with open(save_path, "wb") as file, tqdm(
             total=total_size, unit="B", unit_scale=True, desc="Downloading"
         ) as progress_bar:
             # Write the file in chunks to avoid using too much memory
-            with open(save_path, "wb") as file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:  # Filter out keep-alive chunks
-                        file.write(chunk)
-                        progress_bar.update(len(chunk))  # Update progress bar
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:  # Filter out keep-alive chunks
+                    file.write(chunk)
+                    progress_bar.update(len(chunk))  # Update progress bar
 
         print(f"\nFile downloaded successfully and saved to: {save_path}")
 

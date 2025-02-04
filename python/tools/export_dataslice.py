@@ -37,7 +37,7 @@ def export_dataslice_to_local(
         )
         if download:
             break
-        print("--------")
+        print("-------- Wait for download process --------")
         time.sleep(60)
 
 
