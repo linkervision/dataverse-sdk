@@ -30,6 +30,7 @@ from .schemas.client import (
     AttributeType,
     ConvertRecord,
     Dataset,
+    Dataslice,
     DataSource,
     MLModel,
     Ontology,
@@ -41,7 +42,11 @@ from .schemas.client import (
     UpdateQuestionClass,
 )
 from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
-from .utils.utils import download_file_from_response, get_filepaths
+from .utils.utils import (
+    download_file_from_response,
+    download_file_from_url,
+    get_filepaths,
+)
 
 
 def parse_attribute(attr_list: list) -> list:
@@ -523,6 +528,101 @@ class DataverseClient:
             client_alias = self.alias
         return self.get_client_project(project_id=project_id, client_alias=client_alias)
 
+    def get_dataslice(
+        self,
+        dataslice_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> Dataslice:
+        if client_alias is None:
+            client_alias = self.alias
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            dataslice_data: dict = api.get_dataslice(dataslice_id=dataslice_id)
+        except DataverseExceptionBase as e:
+            logging.exception(f"Got api error from Dataverse: {e}")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataslice: {e}")
+        return Dataslice(
+            id=dataslice_data["id"],
+            name=dataslice_data["name"],
+            type=dataslice_data["type"],
+            annotation_type=dataslice_data["annotation_type"],
+            status=dataslice_data["status"],
+            project=Project(**dataslice_data["project"], client_alias=self.alias),
+            export_records=dataslice_data["export_records"],
+        )
+
+    def export_dataslice(
+        self,
+        dataslice_id: int,
+        annotation_name: str = "",
+        export_format: str = "",
+        is_sequential: bool = False,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> dict:
+        if client_alias is None:
+            client_alias = self.alias
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        dataslice_data = self.get_dataslice(dataslice_id=dataslice_id)
+        is_vqa = dataslice_data.annotation_type == "vqa"
+        if not annotation_name:
+            # use default groundtruth name if annotation name is not provided
+            annotation_name = "groundtruth" if is_vqa else "(gt)"
+        if not export_format:
+            # only allow export vlm format for vqa project and export visionai for other projects
+            export_format = "vlm" if is_vqa else "visionai"
+        logging.info(
+            f"Export Dataslice-{dataslice_id} with annotaiton_name:{annotation_name} in {export_format} format"
+        )
+        try:
+            export_record: dict = api.export_dataslice(
+                dataslice_id=dataslice_id,
+                annotation_name=annotation_name,
+                export_format=export_format,
+                is_sequential=is_sequential,
+            )
+        except DataverseExceptionBase as e:
+            logging.exception(f"Got api error from Dataverse: {e}")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataslice: {e}")
+        return export_record
+
+    def download_export_dataslice_data(
+        self, dataslice_id: int, export_record_id: int, save_path: str = "./export.zip"
+    ) -> bool:
+        export_record_exist = False
+        dataslice_data = self.get_dataslice(dataslice_id=dataslice_id)
+        for record in dataslice_data.export_records:
+            if record["id"] == export_record_id:
+                export_record_exist = True
+                if (
+                    record["destination"] == "direct_download"
+                    and record["status"] == "complete"
+                ):
+                    download_file_from_url(url=record["url"], save_path=save_path)
+                    return True
+                else:
+                    if record["status"] == "fail":
+                        raise ValueError(
+                            f"export fail for dataslice-{dataslice_id} with export_record_id {export_record_id}"
+                        )
+                break
+        if not export_record_exist:
+            raise ValueError(
+                f"Can not find dataslice-{dataslice_id} with export_record_id {export_record_id}"
+            )
+        return False
+
     def get_question_list(
         self,
         project_id: int,
@@ -996,6 +1096,24 @@ of this project OR has been added before"
                 f"Failed to edit ontology classes, please check your data: {e}"
             )
         return project_data
+
+    @staticmethod
+    def list_dataslices(
+        project_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> list:
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            dataslice_list: list = api.list_dataslices(project_id=project_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the models: {e}")
+        return dataslice_list
 
     @staticmethod
     def list_models(
@@ -1612,11 +1730,11 @@ of this project OR has been added before"
 
 class AsyncThirdPartyAPI:
     transport = AsyncHTTPTransport(
-        retries=5,
+        retries=10,
     )
 
     def __init__(self):
-        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(100))
 
     async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
         try:

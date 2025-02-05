@@ -262,6 +262,14 @@ class Project(BaseModel):
         )
         return project
 
+    def list_dataslices(self) -> list:
+        from ..client import DataverseClient
+
+        dataslice_list: list = DataverseClient.list_dataslices(
+            project_id=self.id, client_alias=self.client_alias
+        )
+        return dataslice_list
+
     def list_models(self) -> list:
         from ..client import DataverseClient
 
@@ -408,6 +416,20 @@ class Dataset(BaseModel):
     container_name: Optional[str] = None
     storage_url: Optional[str] = None
     client_alias: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+
+class Dataslice(BaseModel):
+    id: Optional[int] = None
+    project: Project
+    name: str
+    status: str
+    annotation_type: str
+    type: str
+    file_count: Optional[int] = None
+    export_records: Optional[list] = None
 
     class Config:
         extra = "allow"
