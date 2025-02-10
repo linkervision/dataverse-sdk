@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import os
+from asyncio import Semaphore
 from collections import deque
 from typing import Optional
 
+from aiofiles import open as aio_open
 from httpx import AsyncClient, AsyncHTTPTransport, Response, Timeout
 from pydantic import ValidationError
+from tqdm.asyncio import tqdm_asyncio
 
 from .apis.backend import BackendAPI
 from .connections import add_connection, get_connection
@@ -47,6 +50,8 @@ from .utils.utils import (
     download_file_from_url,
     get_filepaths,
 )
+
+MAX_CONCURRENT_FILES = 100
 
 
 def parse_attribute(attr_list: list) -> list:
@@ -1603,7 +1608,7 @@ of this project OR has been added before"
     async def run_generate_presigned_urls(
         file_paths: list, api: BackendAPI, data_folder: str
     ) -> tuple[deque, str, list[str]]:
-        max_retry_count, batch_size = 3, 50
+        max_retry_count, batch_size = 3, 500
 
         failed_urls = []
         upload_task_queue = deque()
@@ -1644,46 +1649,59 @@ of this project OR has been added before"
                 raise
             except Exception:
                 generate_url_queue.append((batched_file_paths, retry_count + 1))
+
         return upload_task_queue, create_dataset_uuid, failed_urls
 
     @staticmethod
     async def run_upload_tasks(upload_task_queue: deque) -> list[str]:
         tasks = []
         client = AsyncThirdPartyAPI()
+        semaphore = Semaphore(MAX_CONCURRENT_FILES)
+        total_files = sum(len(paths) for paths, _ in upload_task_queue)
+        progress_bar = tqdm_asyncio(
+            total=total_files, desc="Uploading files", unit="file"
+        )
         for batched_file_paths, upload_file_infos in upload_task_queue:
 
-            async def f(
+            async def upload_batch(
                 paths: list[str],
                 upload_infos: list[dict],
                 async_client: AsyncThirdPartyAPI,
             ) -> list[str]:
                 failed_urls = []
-                for path, info in zip(paths, upload_infos):
-                    try:
-                        with open(path, "rb") as file:
-                            await async_client.upload_file(
-                                method=info["method"],
-                                target_url=info["url"],
-                                file=file.read(),
-                                content_type=info["content_type"],
-                            )
-                    except Exception as e:
-                        logging.exception(e)
-                        failed_urls.append(path)
+
+                async def upload_file(path: str, info: dict):
+                    async with semaphore:
+                        try:
+                            async with aio_open(path, "rb") as file:
+                                file_content = await file.read()
+                                await async_client.upload_file(
+                                    method=info["method"],
+                                    target_url=info["url"],
+                                    file=file_content,
+                                    content_type=info["content_type"],
+                                )
+                        except Exception as e:
+                            logging.exception(e)
+                            failed_urls.append(path)
+                        finally:
+                            progress_bar.update(1)
+
+                upload_tasks = [
+                    upload_file(path, info) for path, info in zip(paths, upload_infos)
+                ]
+
+                await asyncio.gather(*upload_tasks)
 
                 return failed_urls
 
-            tasks.append(
-                f(
-                    paths=batched_file_paths,
-                    upload_infos=upload_file_infos,
-                    async_client=client,
-                )
-            )
+            tasks.append(upload_batch(batched_file_paths, upload_file_infos, client))
 
         failed_urls = []
-        for results in await asyncio.gather(*tasks):
+        for results in await tqdm_asyncio.gather(*tasks):
             failed_urls.extend(results)
+
+        progress_bar.close()
         return failed_urls
 
     @staticmethod
