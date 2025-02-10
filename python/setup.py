@@ -15,7 +15,7 @@ setup(
     author=AUTHOR,
     url="",
     description=DESC,
-    install_requires=["pydantic==1.*", "requests", "httpx>=0.23.0", "tqdm"],
+    install_requires=["pydantic==1.*", "requests", "httpx>=0.23.0", "tqdm", "aiofiles"],
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=["Programming Language :: Python :: 3"],
