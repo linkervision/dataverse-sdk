@@ -3,14 +3,15 @@ import logging
 import os
 from asyncio import Semaphore
 from collections import deque
-from typing import Optional
+from typing import Optional, Union
+from uuid import uuid4
 
 from aiofiles import open as aio_open
 from httpx import AsyncClient, AsyncHTTPTransport, Response, Timeout
 from pydantic import ValidationError
 from tqdm.asyncio import tqdm_asyncio
 
-from .apis.backend import BackendAPI
+from .apis.backend import AsyncBackendAPI, BackendAPI
 from .connections import add_connection, get_connection
 from .constants import DataverseHost
 from .exceptions.client import (
@@ -100,6 +101,7 @@ class DataverseClient:
             raise ValueError("Invalid dataverse host, is the host available?")
         self.host = host
         self._api_client = None
+        self._async_api_client = None
         self.alias = alias
         self._init_api_client(
             email=email,
@@ -124,6 +126,13 @@ class DataverseClient:
                 service_id=service_id,
                 access_token=access_token,
             )
+            self._async_api_client = AsyncBackendAPI(
+                host=self.host,
+                email=email,
+                password=password,
+                service_id=service_id,
+                access_token=access_token,
+            )
         except DataverseExceptionBase:
             logging.exception("Initial Client Error")
             raise
@@ -132,8 +141,10 @@ class DataverseClient:
 
     @staticmethod
     def _get_api_client(
-        client: Optional["DataverseClient"] = None, client_alias: Optional[str] = None
-    ) -> tuple[BackendAPI, str]:
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+        is_async: Optional[bool] = False,
+    ) -> tuple[Union[BackendAPI, AsyncBackendAPI], str]:
         if client is None:
             if client_alias is None:
                 raise ValueError(
@@ -142,7 +153,11 @@ class DataverseClient:
             client = DataverseClient.get_client(client_alias)
         else:
             client_alias = client.alias
-        api = client._api_client
+
+        if is_async:
+            api = client._async_api_client
+        else:
+            api = client._api_client
         return api, client_alias
 
     @staticmethod
@@ -1510,8 +1525,11 @@ of this project OR has been added before"
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        api, client_alias = DataverseClient._get_api_client(
-            client=client, client_alias=client_alias
+        api, client_alia = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias, is_async=False
+        )
+        async_api, client_alia = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias, is_async=True
         )
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
@@ -1544,7 +1562,7 @@ of this project OR has been added before"
 
         if data_source == DataSource.LOCAL:
             create_dataset_uuid = DataverseClient.upload_files_from_local(
-                api, raw_dataset_data, sensors
+                async_api, raw_dataset_data, sensors
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
         dataset_data = api.create_dataset(**raw_dataset_data)
@@ -1562,7 +1580,7 @@ of this project OR has been added before"
 
     @staticmethod
     def upload_files_from_local(
-        api: BackendAPI, raw_dataset_data: dict, sensors: list
+        async_api: AsyncBackendAPI, raw_dataset_data: dict, sensors: list
     ) -> dict:
         loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
@@ -1586,7 +1604,7 @@ of this project OR has been added before"
         file_paths = DataverseClient._find_all_paths(data_folder)
         upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
             DataverseClient.run_generate_presigned_urls(
-                file_paths=file_paths, api=api, data_folder=data_folder
+                file_paths=file_paths, api=async_api, data_folder=data_folder
             )
         )
         if failed_urls:
@@ -1606,49 +1624,58 @@ of this project OR has been added before"
 
     @staticmethod
     async def run_generate_presigned_urls(
-        file_paths: list, api: BackendAPI, data_folder: str
+        file_paths: list, api: AsyncBackendAPI, data_folder: str
     ) -> tuple[deque, str, list[str]]:
-        max_retry_count, batch_size = 3, 500
+        max_retry_count, batch_size, max_concurrent_api_calls = 3, 500, 10
+        semaphore = asyncio.Semaphore(max_concurrent_api_calls)
 
         failed_urls = []
         upload_task_queue = deque()
 
-        # TODO: convert the following code to async tasks loop
-        generate_url_queue = deque()
-        for i in range(0, len(file_paths), batch_size):
-            generate_url_queue.append((file_paths[i : i + batch_size], 0))
+        create_dataset_uuid: str = str(uuid4())
 
-        create_dataset_uuid: str = None
-        while len(generate_url_queue) != 0:
-            batched_file_paths, retry_count = generate_url_queue.popleft()
+        async def generate_presigned_url_task(
+            batched_file_paths: list[str], retry_count: int = 0
+        ):
+            nonlocal create_dataset_uuid
+
             if retry_count >= max_retry_count:
                 failed_urls.extend(batched_file_paths)
+                return
 
-            # NOTE: This is extremely slow to do it over here
-            # this replaces the full file path to relative file path
+            # Convert absolute file paths to relative paths
             # i.e <long data folder path>/data/image.jpg -> /data/image.jpg
             filtered_paths = [
                 path.replace(data_folder, "") for path in batched_file_paths
             ]
-            try:
-                resp = api.generate_presigned_url(
-                    file_paths=filtered_paths,
-                    create_dataset_uuid=create_dataset_uuid,
-                    data_source=DataSource.LOCAL,
-                )
-                url_infos: list[dict] = resp["url_info"]
-                create_dataset_uuid = resp["dataset_info"]["create_dataset_uuid"]
+            async with semaphore:
+                try:
+                    resp = await api.generate_presigned_url(
+                        file_paths=filtered_paths,
+                        create_dataset_uuid=create_dataset_uuid,
+                        data_source=DataSource.LOCAL,
+                    )
+                    url_infos: list[dict] = resp["url_info"]
+                    create_dataset_uuid = resp["dataset_info"]["create_dataset_uuid"]
+                    upload_task_queue.append((batched_file_paths, url_infos))
+                except KeyError:
+                    logging.exception("API schema changed?")
+                    raise
+                except DataverseExceptionBase:
+                    logging.exception("Dataverse API error")
+                    raise
+                except Exception as e:
+                    logging.warning(f"Retrying batch due to error: {e}")
+                    await generate_presigned_url_task(
+                        batched_file_paths, retry_count + 1
+                    )
 
-                upload_task_queue.append((batched_file_paths, url_infos))
+        tasks = [
+            generate_presigned_url_task(file_paths[i : i + batch_size], 0)
+            for i in range(0, len(file_paths), batch_size)
+        ]
 
-            except KeyError:
-                logging.exception("Is api schema changed?")
-                raise
-            except DataverseExceptionBase:
-                logging.exception("Got api error from Dataverse")
-                raise
-            except Exception:
-                generate_url_queue.append((batched_file_paths, retry_count + 1))
+        await asyncio.gather(*tasks, return_exceptions=True)
 
         return upload_task_queue, create_dataset_uuid, failed_urls
 
