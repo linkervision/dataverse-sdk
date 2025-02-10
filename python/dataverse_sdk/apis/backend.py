@@ -493,7 +493,7 @@ class AsyncBackendAPI:
                 method=method, url=url, data=data, timeout=timeout, **kwargs
             )
             response.raise_for_status()
-            return response.json()  # Return parsed JSON response
+            return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
             raise
@@ -552,7 +552,6 @@ class AsyncBackendAPI:
         return resp
 
     def sync_login(self, email: str, password: str):
-        """Performs synchronous login to obtain the access token."""
         if email and password:
             resp = self.sync_send_request(
                 url=f"{self.host}/auth/users/jwt/",
@@ -568,12 +567,10 @@ class AsyncBackendAPI:
             raise ValueError("Invalid credentials: Email and password required.")
 
     def set_auth(self, access_token: str) -> None:
-        """Sets the authentication token."""
         self.access_token = access_token
         self.headers["Authorization"] = f"Bearer {access_token}"
 
     async def get_user(self) -> dict:
-        """Fetches user information asynchronously."""
         return await self.async_send_request(
             url=f"{self.host}/auth/users/me/",
             method="GET",
@@ -586,7 +583,6 @@ class AsyncBackendAPI:
         create_dataset_uuid: Optional[str],
         data_source: str,
     ) -> dict:
-        """Asynchronously generates presigned URLs for file uploads."""
         payload = {"filenames": file_paths, "data_source": data_source}
         if create_dataset_uuid:
             payload["create_dataset_uuid"] = create_dataset_uuid
@@ -603,17 +599,13 @@ class AsyncBackendAPI:
             resp = await self.client.get(
                 url=f"{self.host}/api/projects/{project_id}/",
                 headers=self.headers,
-                timeout=30,  # Set timeout
+                timeout=30,
             )
-            resp.raise_for_status()  # Raise error for 4xx/5xx responses
-            return resp.json()  # Return parsed JSON response
+            resp.raise_for_status()
+            return resp.json()
         except httpx.HTTPStatusError as e:
             print(f"HTTP error: {e.response.status_code} - {e.response.text}")
             return None
         except Exception as e:
             print(f"Request failed: {str(e)}")
             return None
-
-    async def close(self):
-        """Closes the async HTTP client."""
-        await self.client.aclose()
