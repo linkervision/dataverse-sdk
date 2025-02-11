@@ -1,5 +1,5 @@
-from os import listdir
-from os.path import isfile, join
+from pathlib import Path
+from typing import Set
 
 import requests
 from tqdm import tqdm
@@ -13,18 +13,21 @@ IMAGE_SUPPORTED_FORMAT = {
 CUBOID_SUPPORTED_FORMAT = {"pcd"}
 
 
-def get_filepaths(path: str) -> list[str]:
-    dirs: list[str] = listdir(path)
+def get_filepaths(directory: str) -> list[str]:
+    SUPPORTED_FORMATS: Set[str] = (
+        IMAGE_SUPPORTED_FORMAT | CUBOID_SUPPORTED_FORMAT | {"txt", "json"}
+    )
+
+    directory = Path(directory)
     all_files = []
-    for dir_ in dirs:
-        new_path = join(path, dir_)
-        if isfile(new_path):
-            if new_path.split(".")[
-                -1
-            ] in IMAGE_SUPPORTED_FORMAT | CUBOID_SUPPORTED_FORMAT | {"txt", "json"}:
-                all_files.append(new_path)
-        else:
-            all_files.extend(get_filepaths(new_path))
+
+    for file_path in directory.rglob("*"):
+        if (
+            file_path.is_file()
+            and file_path.suffix.lower().lstrip(".") in SUPPORTED_FORMATS
+        ):
+            all_files.append(str(file_path))
+
     return all_files
 
 
