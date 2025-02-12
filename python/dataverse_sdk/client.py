@@ -78,7 +78,6 @@ class DataverseClient:
         alias: str = "default",
         force: bool = False,
         access_token: str = "",
-        data_source: Optional[DataSource] = None,
     ) -> None:
         """
         Instantiate a Dataverse client.
@@ -92,18 +91,11 @@ class DataverseClient:
         alias: str
         force: bool, whether replace the connection if alias exists, default is False
         access_token: str, optional, will try to use access_token to do authentication
-        data_source: Optional[DataSource], optional, additional source information
 
         Raises
         ------
         ValueError
         """
-        if host not in DataverseHost:
-            if data_source != DataSource.LOCAL:
-                raise ValueError(
-                    "Import data source must be LOCAL if host is not in DataverseHost."
-                )
-
         self.host = host
         self._api_client = None
         self.alias = alias
@@ -157,6 +149,9 @@ class DataverseClient:
             return get_connection(alias)
         except KeyError:
             raise
+
+    def get_host(self):
+        return self.host
 
     def get_user(self):
         return self._api_client.get_user()
@@ -1519,6 +1514,14 @@ of this project OR has been added before"
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
+
+        host = api.get_host()
+        if data_source != DataSource.LOCAL:
+            if host not in DataverseHost:
+                raise ValueError(
+                    "Import data source must be LOCAL if host is not in DataverseHost."
+                )
+
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:

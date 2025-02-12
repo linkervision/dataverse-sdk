@@ -31,7 +31,6 @@ def import_dataset_from_local(
         password=password,
         service_id=service_id,
         alias=alias,
-        data_source=DataSource.LOCAL,
     )
 
     project: Project = client.get_project(project_id=project_id)

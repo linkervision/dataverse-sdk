@@ -39,6 +39,9 @@ class BackendAPI:
         self.password = password
         self.login(email=email, password=password)
 
+    def get_host(self):
+        return self.host
+
     def send_request(
         self,
         url: str,
