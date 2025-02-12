@@ -96,8 +96,6 @@ class DataverseClient:
         ------
         ValueError
         """
-        if host not in DataverseHost:
-            raise ValueError("Invalid dataverse host, is the host available?")
         self.host = host
         self._api_client = None
         self.alias = alias
@@ -151,6 +149,9 @@ class DataverseClient:
             return get_connection(alias)
         except KeyError:
             raise
+
+    def get_host(self):
+        return self.host
 
     def get_user(self):
         return self._api_client.get_user()
@@ -1513,6 +1514,14 @@ of this project OR has been added before"
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
+
+        host = api.get_host()
+        if data_source != DataSource.LOCAL:
+            if host not in DataverseHost:
+                raise ValueError(
+                    "Import data source must be LOCAL if host is not in DataverseHost."
+                )
+
         sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:
