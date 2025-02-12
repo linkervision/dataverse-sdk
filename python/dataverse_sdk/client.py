@@ -78,6 +78,7 @@ class DataverseClient:
         alias: str = "default",
         force: bool = False,
         access_token: str = "",
+        data_source: Optional[DataSource] = None,
     ) -> None:
         """
         Instantiate a Dataverse client.
@@ -91,13 +92,18 @@ class DataverseClient:
         alias: str
         force: bool, whether replace the connection if alias exists, default is False
         access_token: str, optional, will try to use access_token to do authentication
+        data_source: Optional[DataSource], optional, additional source information
 
         Raises
         ------
         ValueError
         """
         if host not in DataverseHost:
-            raise ValueError("Invalid dataverse host, is the host available?")
+            if data_source != DataSource.LOCAL:
+                raise ValueError(
+                    "Import data source must be LOCAL if host is not in DataverseHost."
+                )
+
         self.host = host
         self._api_client = None
         self.alias = alias
