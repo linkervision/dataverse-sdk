@@ -1526,10 +1526,10 @@ of this project OR has been added before"
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        api, client_alia = DataverseClient._get_api_client(
+        api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=False
         )
-        async_api, client_alia = DataverseClient._get_api_client(
+        async_api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=True
         )
 
@@ -1738,6 +1738,7 @@ of this project OR has been added before"
             failed_urls.extend(results)
 
         progress_bar.close()
+        await client.close_client()  # Properly close the client
         return failed_urls
 
     @staticmethod
@@ -1813,3 +1814,6 @@ class AsyncThirdPartyAPI:
             content=file,
             headers={"Content-Type": content_type},
         )
+
+    async def close_client(self):
+        await self.client.aclose()
