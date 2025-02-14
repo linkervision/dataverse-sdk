@@ -4,7 +4,9 @@ import logging
 from typing import Optional, Union
 from urllib.parse import urlencode
 
+import httpx
 import requests
+from httpx import AsyncClient, Response, Timeout
 from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
@@ -448,3 +450,165 @@ class BackendAPI:
             data=kwargs,
         )
         return resp.json()
+
+
+class AsyncBackendAPI:
+    def __init__(
+        self,
+        host: str,
+        email: str,
+        password: str,
+        service_id: str,
+        access_token: str = "",
+    ):
+        self.host = host
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-Request-Service-Id": service_id,
+        }
+        self.access_token = access_token
+        self.email = email
+        self.password = password
+
+        self.client = AsyncClient(timeout=Timeout(30))
+        self.sync_login(email=email, password=password)
+
+    async def async_send_request(
+        self,
+        url: str,
+        method: str,
+        data: Optional[Union[str, dict]] = None,
+        timeout: int = 30,
+        **kwargs,
+    ) -> dict:
+        """
+        Asynchronous version of `send_request` that sends HTTP requests.
+        """
+
+        if (
+            isinstance(data, dict)
+            and kwargs.get("headers", {}).get("Content-Type") == "application/json"
+        ):
+            data = json.dumps(data)
+
+        try:
+            response: Response = await self.client.request(
+                method=method, url=url, data=data, timeout=timeout, **kwargs
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
+            raise
+        except httpx.TimeoutException:
+            logger.warning(f"Request timeout: {method} {url}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Request error: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected exception: {repr(e)}")
+            raise
+
+    def sync_send_request(
+        self,
+        url: str,
+        method: str,
+        data: Optional[Union[str, dict]] = None,
+        timeout: int = 30,
+        headers: Optional[dict] = None,
+        **kwargs,
+    ):
+        """
+        Synchronous version of `send_request` for login and authentication.
+        """
+        if (
+            isinstance(data, dict)
+            and headers
+            and headers.get("Content-Type") == "application/json"
+        ):
+            data = json.dumps(data)
+
+        parent_func = inspect.stack()[2][3]
+        try:
+            with sessions.Session() as session:
+                resp = session.request(
+                    method=method,
+                    url=url,
+                    data=data,
+                    timeout=timeout,
+                    headers=self.headers,
+                    **kwargs,
+                )
+                resp.raise_for_status()
+        except requests.exceptions.Timeout:
+            logger.warning(f"Request timeout: {method} {url}")
+            raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error: {repr(e)}")
+            raise
+
+        if resp.status_code in (401, 403, 404):
+            logger.exception(f"[{parent_func}] request forbidden.")
+            raise Exception(f"Forbidden: {resp.status_code}")
+
+        return resp
+
+    def sync_login(self, email: str, password: str):
+        if email and password:
+            resp = self.sync_send_request(
+                url=f"{self.host}/auth/users/jwt/",
+                method="POST",
+                data={"email": email, "password": password},
+                headers={"Content-Type": "application/json"},
+            )
+            json_data = resp.json()
+            self.set_auth(access_token=json_data["access_token"])
+        elif self.access_token:
+            self.set_auth(access_token=self.access_token)
+        else:
+            raise ValueError("Invalid credentials: Email and password required.")
+
+    def set_auth(self, access_token: str) -> None:
+        self.access_token = access_token
+        self.headers["Authorization"] = f"Bearer {access_token}"
+
+    async def get_user(self) -> dict:
+        return await self.async_send_request(
+            url=f"{self.host}/auth/users/me/",
+            method="GET",
+            headers=self.headers,
+        )
+
+    async def generate_presigned_url(
+        self,
+        file_paths: list[str],
+        create_dataset_uuid: Optional[str],
+        data_source: str,
+    ) -> dict:
+        payload = {"filenames": file_paths, "data_source": data_source}
+        if create_dataset_uuid:
+            payload["create_dataset_uuid"] = create_dataset_uuid
+
+        return await self.async_send_request(
+            url=f"{self.host}/api/datasets/upload-file-information/",
+            method="POST",
+            headers=self.headers,
+            json=payload,
+        )
+
+    async def get_project(self, project_id: str) -> dict:
+        try:
+            resp = await self.client.get(
+                url=f"{self.host}/api/projects/{project_id}/",
+                headers=self.headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            print(f"HTTP error: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            print(f"Request failed: {str(e)}")
+            return None
