@@ -122,8 +122,8 @@ class QuestionClass(BaseModel):
 
 class UpdateQuestionClass(BaseModel):
     rank: int
-    question: Optional[str]
-    options: Optional[list]
+    question: Optional[str] = None
+    options: Optional[list] = None
 
 
 class Ontology(BaseModel):
