@@ -1,7 +1,7 @@
 import re
 from typing import Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from .client import AnnotationFormat, DatasetType, DataSource, QuestionClass
 from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
@@ -18,12 +18,11 @@ class AttributeAPISchema(BaseModel):
     option_data: Optional[list[Union[str, bool, int, float]]] = None
     type: AttributeType
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
-    @validator("type")
-    def option_data_validator(cls, value, values, **kwargs):
-        if value == AttributeType.OPTION and not values.get("option_data"):
+    @field_validator("type")
+    def option_data_validator(cls, value, info):
+        if value == AttributeType.OPTION and not info.data.get("option_data"):
             raise ValueError(
                 "Need to assign value for `option_data` "
                 + "if the Attribute type is option"
@@ -34,8 +33,7 @@ class AttributeAPISchema(BaseModel):
 class ProjectTagAPISchema(BaseModel):
     attribute_data: Optional[list[AttributeAPISchema]] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class SensorAPISchema(BaseModel):
@@ -43,8 +41,7 @@ class SensorAPISchema(BaseModel):
     name: str
     type: SensorType
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class OntologyClassAPISchema(BaseModel):
@@ -54,7 +51,7 @@ class OntologyClassAPISchema(BaseModel):
     rank: int
     attribute_data: Optional[list[AttributeAPISchema]] = None
 
-    @validator("color", each_item=True)
+    @field_validator("color", mode="before")
     def color_validator(cls, value):
         if not value.startswith("#") or not re.search(
             r"\b[a-zA-Z0-9]{6}\b", value.lstrip("#")
@@ -72,10 +69,9 @@ class OntologyAPISchema(BaseModel):
     pcd_type: Optional[OntologyPcdType] = None
     ontology_classes_data: Optional[list[OntologyClassAPISchema]] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
-    @validator("ontology_classes_data", pre=True, always=True)
+    @field_validator("ontology_classes_data", mode="before")
     def ontology_classes_data_validator(cls, value):
         if len({v["rank"] for v in value}) != len(value):
             raise ValueError("Duplicated classes rank value")
@@ -99,10 +95,9 @@ class VQAProjectAPISchema(BaseModel):
     question_answer: list[QuestionClass]
     description: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
-    @validator("question_answer", pre=True, always=True)
+    @field_validator("question_answer", mode="before")
     def question_answer_validator(cls, value):
         if len({v.rank for v in value}) != len(value):
             raise ValueError("The question rank id of is duplicated.")
@@ -130,13 +125,12 @@ class DatasetAPISchema(BaseModel):
     sequential: bool = False
     generate_metadata: bool = False
     auto_tagging: list[str] = []
-    render_pcd: bool = False
+    render_pcd: Optional[bool] = None
     description: Optional[str] = None
     calibration_folder: Optional[str] = None
     annotation_file: Optional[str] = None
     annotation_folder: Optional[str] = None
     lidar_folder: Optional[str] = None
-    render_pcd: Optional[str] = None
     annotations: Optional[list[str]] = []
     access_key_id: Optional[str] = None
     secret_access_key: Optional[str] = None
