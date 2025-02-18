@@ -209,7 +209,7 @@ class DataverseClient:
             raise InvalidProcessError(
                 "Could not create VQA project by this function, please use create_vqa_project"
             )
-        raw_ontology_data: dict = ontology.dict(exclude_none=True)
+        raw_ontology_data: dict = ontology.model_dump(exclude_none=True)
         classes_data_list: list[dict] = []
         rank = 1
         # remove `id` field in OntologyClass and Attribute
@@ -225,15 +225,19 @@ class DataverseClient:
             classes_data_list.append(cls_)
         raw_ontology_data["ontology_classes_data"] = classes_data_list
         if project_tag is not None:
-            raw_project_tag_data: dict = project_tag.dict(exclude_none=True)
+            raw_project_tag_data: dict = project_tag.model_dump(exclude_none=True)
             if tag_attrs := raw_project_tag_data.pop("attributes", None):
                 raw_project_tag_data["attribute_data"] = parse_attribute(tag_attrs)
         else:
             raw_project_tag_data = {}
 
-        ontology_data = OntologyAPISchema(**raw_ontology_data).dict(exclude_none=True)
-        project_tag_data = ProjectTagAPISchema(**raw_project_tag_data).dict()
-        sensor_data = [sensor.dict(exclude_none=True) for sensor in sensors]
+        ontology_data = OntologyAPISchema(**raw_ontology_data).model_dump(
+            exclude_none=True
+        )
+        project_tag_data = ProjectTagAPISchema(**raw_project_tag_data).model_dump(
+            exclude_none=True
+        )
+        sensor_data = [sensor.model_dump(exclude_none=True) for sensor in sensors]
 
         try:
             raw_project_data = ProjectAPISchema(
@@ -242,7 +246,7 @@ class DataverseClient:
                 sensor_data=sensor_data,
                 project_tag_data=project_tag_data,
                 description=description,
-            ).dict(exclude_none=True)
+            ).model_dump(exclude_none=True)
         except ValidationError as e:
             raise APIValidationError(
                 f"Something wrong when composing the final project data: {e}"
@@ -297,7 +301,7 @@ class DataverseClient:
                 ontology_name=ontology_name,
                 question_answer=question_answer,
                 description=description,
-            ).dict(exclude_none=True)
+            ).model_dump(exclude_none=True)
         except ValidationError as e:
             raise APIValidationError(
                 f"Something wrong when composing the vqa project data: {e}"
@@ -411,7 +415,7 @@ class DataverseClient:
         if ontology_name:
             edit_vqa_data["ontology_name"] = ontology_name
         if create:
-            edit_vqa_data["create"] = [q.dict(exclude_none=True) for q in create]
+            edit_vqa_data["create"] = [q.model_dump(exclude_none=True) for q in create]
         if update:
             question_table = {
                 q.rank: {
@@ -439,7 +443,7 @@ class DataverseClient:
                     ]["attribute_id"]
                     update_question_data["options"] = update_question.options
                 update_questions.append(
-                    UpdateQuestionAPISchema(**update_question_data).dict(
+                    UpdateQuestionAPISchema(**update_question_data).model_dump(
                         exclude_none=True
                     )
                 )
@@ -902,7 +906,7 @@ of this project OR has been added before"
         if project.ontology.image_type == OntologyImageType.VQA:
             raise InvalidProcessError("Could not add project_tag for VQA project")
 
-        raw_project_tag: dict = project_tag.dict(exclude_none=True)
+        raw_project_tag: dict = project_tag.model_dump(exclude_none=True)
         # new project tag attributes to be creaeted
         new_attribute_data: list = parse_attribute(
             raw_project_tag.get("attributes", [])
@@ -962,7 +966,7 @@ of this project OR has been added before"
         if project.ontology.image_type == OntologyImageType.VQA:
             raise InvalidProcessError("Could not edit project_tag for VQA project")
 
-        raw_project_tag: dict = project_tag.dict(exclude_none=True)
+        raw_project_tag: dict = project_tag.model_dump(exclude_none=True)
         # old project tag attributes to be extended
         patched_attribute_data: list = parse_attribute(
             raw_project_tag.get("attributes", [])
@@ -1025,7 +1029,7 @@ of this project OR has been added before"
         # new ontology classes to be created
         new_classes_data = []
         for ontology_class in ontology_classes:
-            raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
+            raw_ontology_class: dict = ontology_class.model_dump(exclude_none=True)
             attribute_data: list = parse_attribute(
                 raw_ontology_class.get("attributes", [])
             )
@@ -1097,7 +1101,7 @@ of this project OR has been added before"
         # ontology classes to be edited
         patched_classes_data = []
         for ontology_class in ontology_classes:
-            raw_ontology_class: dict = ontology_class.dict(exclude_none=True)
+            raw_ontology_class: dict = ontology_class.model_dump(exclude_none=True)
             attribute_data: list = parse_attribute(
                 raw_ontology_class.get("attributes", [])
             )
@@ -1563,7 +1567,7 @@ of this project OR has been added before"
                 access_key_id=access_key_id,
                 secret_access_key=secret_access_key,
                 **kwargs,
-            ).dict(exclude_none=True)
+            ).model_dump(exclude_none=True)
         except ValidationError as e:
             raise APIValidationError(
                 f"Something wrong when composing the final dataset data: {e}"

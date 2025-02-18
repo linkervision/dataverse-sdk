@@ -1,7 +1,7 @@
 import re
 from typing import Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from .common import (
     AnnotationFormat,
@@ -28,12 +28,11 @@ class Attribute(BaseModel):
     type: AttributeType
     aliases: Optional[list] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
-    @validator("type")
-    def option_data_validator(cls, value, values, **kwargs):
-        if value == AttributeType.OPTION and not values.get("options"):
+    @field_validator("type")
+    def option_data_validator(cls, value, info):
+        if value == AttributeType.OPTION and not info.data.get("options"):
             raise ValueError(
                 "Need to assign value for `options` "
                 + "if the Attribute type is option"
@@ -44,8 +43,7 @@ class Attribute(BaseModel):
 class ProjectTag(BaseModel):
     attributes: Optional[list[Attribute]] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @classmethod
     def create(cls, project_tag_data: dict) -> "ProjectTag":
@@ -57,8 +55,7 @@ class Sensor(BaseModel):
     name: str
     type: SensorType
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @classmethod
     def create(cls, sensor_data: dict) -> "Sensor":
@@ -74,10 +71,9 @@ class OntologyClass(BaseModel):
     aliases: Optional[list] = None
     extended_class: Optional[dict] = None
 
-    class Config:
-        validate_assignment = True
+    model_config = ConfigDict(validate_assignment=True)
 
-    @validator("color", pre=True, always=True)
+    @field_validator("color", mode="before")
     def color_validator(cls, value):
         if not value:
             value = "#cc39f4"
@@ -100,11 +96,9 @@ class QuestionClass(BaseModel):
     answer_options: Optional[list] = None
     answer_type: AttributeType
 
-    class Config:
-        validate_assignment = True
-        use_enum_values = True
+    model_config = ConfigDict(validate_assignment=True)
 
-    @validator("color", pre=True, always=True)
+    @field_validator("color", mode="before")
     def color_validator(cls, value):
         if not value:
             value = "#cc39f4"
@@ -116,7 +110,7 @@ class QuestionClass(BaseModel):
             )
         return value
 
-    @validator("answer_type")
+    @field_validator("answer_type")
     def answer_type_validator(cls, value, values, **kwargs):
         if value == AttributeType.OPTION and not values.get("answer_options"):
             raise ValueError(
@@ -128,8 +122,8 @@ class QuestionClass(BaseModel):
 
 class UpdateQuestionClass(BaseModel):
     rank: int
-    question: Optional[str]
-    options: Optional[list]
+    question: Optional[str] = None
+    options: Optional[list] = None
 
 
 class Ontology(BaseModel):
@@ -139,8 +133,7 @@ class Ontology(BaseModel):
     pcd_type: Optional[OntologyPcdType] = None
     classes: Optional[list[OntologyClass]] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @classmethod
     def create(cls, ontology_data: dict) -> "Ontology":
@@ -417,8 +410,7 @@ class Dataset(BaseModel):
     storage_url: Optional[str] = None
     client_alias: Optional[str] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class Dataslice(BaseModel):
@@ -431,8 +423,7 @@ class Dataslice(BaseModel):
     file_count: Optional[int] = None
     export_records: Optional[list] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class ConvertRecord(BaseModel):
@@ -443,8 +434,7 @@ class ConvertRecord(BaseModel):
     status: str
     trait: dict
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
     def get_label_file(
         self, save_path: str = "./labels.txt", timeout: int = 3000
@@ -498,12 +488,11 @@ class MLModel(BaseModel):
     updated_at: str
     project: Project
     classes: list
-    model_records: list = []
+    operation_records: list = []
     triton_model_name: str
     description: Optional[str] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
     @classmethod
     def create(cls, model_data: dict, client_alias: str) -> "MLModel":
@@ -533,7 +522,7 @@ class MLModel(BaseModel):
             name=model_data["name"],
             project=project,
             classes=classes,
-            model_records=model_data.get("model_records", []),
+            operation_records=model_data.get("model_records", []),
             updated_at=model_data["updated_at"],
             triton_model_name=model_data["triton_model_name"],
             client_alias=client_alias,
