@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Optional, Union
 from urllib.parse import urlencode
 
@@ -612,3 +613,70 @@ class AsyncBackendAPI:
         except Exception as e:
             print(f"Request failed: {str(e)}")
             return None
+
+    async def get_datarows(
+        self, batch_size: int = 20, order_by: str = "id", **kwargs
+    ) -> AsyncGenerator[list[dict], None, None]:
+        if "offset" in kwargs or "limit" in kwargs:
+            raise ValueError("Specifying offset or limit directly is not allowed.")
+
+        kwargs["order_by"] = order_by
+        dataslice_set = kwargs.pop("dataslice_set", [])
+        query_params = {
+            **kwargs,
+            "order_by": order_by,
+            "dataslice_set": dataslice_set,
+            "limit": batch_size,
+        }
+        query_string = urlencode(query_params, doseq=True)
+
+        id_gt = 0
+        while True:
+            url = f"{self.host}/api/datarows/?{query_string}&id__gt={id_gt}"
+            resp = await self.async_send_request(
+                url=url,
+                method="get",
+                headers=self.headers,
+            )
+            json_data = resp.json()
+            if json_data["count"] == 0:
+                break
+            if not json_data["results"]:
+                break
+
+            # Get last datarow id
+            datarows = json_data["results"]
+            id_gt = datarows[-1]["id"]
+            yield datarows
+
+    async def get_datarows_flat_parent(
+        self, batch_size: int = 20, order_by: str = "id", **kwargs
+    ) -> AsyncIterator[list[dict]]:
+        id_gt = 0
+        limit = batch_size
+        kwargs["order_by"] = order_by
+        while True:
+            kwargs.update({"id__gt": id_gt, "limit": limit})
+            url = f"{self.host}/api/datarows/flat-parent/?{urlencode(kwargs)}"
+            resp: bytes = await self.async_send_request(
+                url=url,
+                method="get",
+                headers=self.headers,
+            )
+            json_data: list[dict] = json.loads(resp)
+            if not json_data["results"]:
+                break
+
+            # Get last datarow id
+            datarows = json_data["results"]
+            id_gt = datarows[-1]["id"]
+            yield datarows
+
+    async def get_dataslice(self, dataslice_id: int) -> dict:
+        url = f"{self.host}/api/dataslices/{dataslice_id}/"
+        resp: bytes = await self.async_send_request(
+            url=url,
+            method="get",
+            headers=self.headers,
+        )
+        return json.loads(resp)
