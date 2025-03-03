@@ -633,12 +633,12 @@ class AsyncBackendAPI:
         id_gt = 0
         while True:
             url = f"{self.host}/api/datarows/?{query_string}&id__gt={id_gt}"
-            resp = await self.async_send_request(
+            resp: dict = await self.async_send_request(
                 url=url,
                 method="get",
                 headers=self.headers,
             )
-            json_data = resp.json()
+            json_data = resp
             if json_data["count"] == 0:
                 break
             if not json_data["results"]:
@@ -658,12 +658,12 @@ class AsyncBackendAPI:
         while True:
             kwargs.update({"id__gt": id_gt, "limit": limit})
             url = f"{self.host}/api/datarows/flat-parent/?{urlencode(kwargs)}"
-            resp: bytes = await self.async_send_request(
+            resp: dict = await self.async_send_request(
                 url=url,
                 method="get",
                 headers=self.headers,
             )
-            json_data: list[dict] = json.loads(resp)
+            json_data: list[dict] = resp
             if not json_data["results"]:
                 break
 
@@ -674,9 +674,9 @@ class AsyncBackendAPI:
 
     async def get_dataslice(self, dataslice_id: int) -> dict:
         url = f"{self.host}/api/dataslices/{dataslice_id}/"
-        resp: bytes = await self.async_send_request(
+        resp: dict = await self.async_send_request(
             url=url,
             method="get",
             headers=self.headers,
         )
-        return json.loads(resp)
+        return resp

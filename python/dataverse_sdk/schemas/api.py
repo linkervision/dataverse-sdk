@@ -51,7 +51,7 @@ class OntologyClassAPISchema(BaseModel):
     rank: int
     attribute_data: Optional[list[AttributeAPISchema]] = None
 
-    @field_validator("color", mode="before")
+    @field_validator("color")
     def color_validator(cls, value):
         if not value.startswith("#") or not re.search(
             r"\b[a-zA-Z0-9]{6}\b", value.lstrip("#")

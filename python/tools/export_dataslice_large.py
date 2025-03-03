@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 
 from dataverse_sdk.apis.backend import AsyncBackendAPI
 from dataverse_sdk.constants import DataverseHost
@@ -18,6 +19,13 @@ def export_dataslice_to_local(
     sequential: bool = False,
     alias: str = "default",
 ):
+    if not os.path.exists(target_folder):
+        raise OSError(f"target folder: {target_folder} not exists")
+
+    if not os.access(target_folder, os.W_OK):
+        print(f"Write permission denied: {target_folder}")
+        raise OSError(f"write permission denied {target_folder}")
+
     client = AsyncBackendAPI(
         host=host,
         email=email,
@@ -26,7 +34,7 @@ def export_dataslice_to_local(
     )
     exporter: Exporter = Exporter(
         target_folder=target_folder,
-        async_curation_api=client,
+        async_api=client,
     )
 
     async def run_export(exporter: Exporter):
