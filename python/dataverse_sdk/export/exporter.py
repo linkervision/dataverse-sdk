@@ -1,11 +1,11 @@
 import os
+import time
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
 from typing import Callable
 
-from apis.backend import AsyncBackendAPI
-from schemas.format import AnnotationFormat
-
+from ..apis.backend import AsyncBackendAPI
+from ..schemas.format import AnnotationFormat
 from .base import ExportAnnotationBase
 from .constant import ExportFormat
 
@@ -92,15 +92,20 @@ class Exporter:
         self,
         producer: Generator[tuple[bytes, str]],
     ):
+        counter = 0
+        time_start = time.time()
         async for bytes_, path in producer:
-            # Write file to local
-            file_path = f"{self.target_folder}/{path}"
-            if not os.path.exists(file_path):
-                with open(file_path, "wb") as f:
-                    f.write(bytes_)
-                print("File created and data written.")
-            else:
-                print("File already exists. No action taken.")
+            file_path = os.path.join(self.target_folder, path)
+            dir_path = os.path.dirname(file_path)
+            os.makedirs(dir_path, exist_ok=True)
+            with open(file_path, "wb") as f:
+                f.write(bytes_)
+
+            counter += 1
+            if counter % 10 == 0:
+                now = time.time()
+                print("performance: ", now - time_start, "count: ", counter)
+                time_start = now
 
     @classmethod
     def register(cls, format: ExportFormat):

@@ -1,7 +1,7 @@
 import json
 from typing import Union
 
-from apis.third_party import ThirdPartyAPI
+from ..apis.third_party import ThirdPartyAPI
 
 
 def convert_to_bytes(obj: Union[dict, list, str]) -> bytes:
