@@ -25,7 +25,6 @@ class ExportVQA(ExportAnnotationBase):
         *_,
         **kwargs,
     ) -> AsyncGenerator[bytes, str]:
-        current_file_count = 0
         datarows = []
 
         for frame_datarow_map in sequence_frame_map.values():
@@ -34,15 +33,11 @@ class ExportVQA(ExportAnnotationBase):
                     datarows.append(datarow)
 
                     img_bytes: bytes = await download_url_file_async(datarow["url"])
-                    file_extension = os.path.splitext(datarow["url"])[-1]
-
+                    original_file_name = os.path.basename(datarow["original_url"])
                     yield (
                         img_bytes,
-                        os.path.join(
-                            "images", f"{current_file_count:012d}{file_extension}"
-                        ),
+                        os.path.join("images", original_file_name),
                     )
-                    current_file_count += 1
 
         annot_bytes: bytes = convert_to_bytes(
             convert_annotation(

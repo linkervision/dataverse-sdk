@@ -27,14 +27,10 @@ class ExportYolo(ExportAnnotationBase):
             for datarow_ids in frame_datarow_map.values():
                 async for datarow in datarow_generator_func(datarow_ids):
                     img_bytes: bytes = await download_url_file_async(datarow["url"])
-                    file_extension = os.path.splitext(datarow["url"])[
-                        -1
-                    ]  # contains dot .
+                    original_file_name = os.path.basename(datarow["original_url"])
                     yield (
                         img_bytes,
-                        os.path.join(
-                            "images", f"{current_file_count:012d}{file_extension}"
-                        ),
+                        os.path.join("images", original_file_name),
                     )
 
                     annot_bytes: bytes = convert_to_bytes(
