@@ -126,7 +126,7 @@ class Exporter:
                         str(_id) for _id in id_chunks
                     ),  # id_set="1,2,3,4,5"
                     batch_size=100,
-                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name",
+                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url",
                 )
                 async for batched_datarow in gen:
                     for datarow in batched_datarow:
