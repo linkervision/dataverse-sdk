@@ -533,6 +533,9 @@ python tools/import_vqa_dataset.py -host https://staging.visionai.linkervision.a
 python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/dataverse/curation  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
 ```
 
+### Export Large Dataslice and download files
+
+python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export model name / ground_truths} --target_folder {folder path} --export-format {coco, visionai ...etc}
 
 ## Links to language repos
 
