@@ -79,7 +79,7 @@ def convert_annotation(
             )
 
         (
-            category_map,
+            category_idx_map,
             image_update,
             anno_update,
             image_id_start,
@@ -108,7 +108,7 @@ def convert_annotation(
             id=class_id,
             name=class_name,
         )
-        for class_name, class_id in category_map.items()
+        for class_name, class_id in category_idx_map.items()
     ]
     coco = COCO(categories=categories, images=images, annotations=annotations).dict()
     return coco
