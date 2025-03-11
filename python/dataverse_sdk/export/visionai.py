@@ -612,18 +612,18 @@ class ExportVisionAI(ExportAnnotationBase):
         annotation_name: str,
         datarow_id_to_frame_datarow_id: dict[int, int],
         current_batch: list[dict],
+        pre_frame_datarow_id: int,
+        last_batch: bool,
     ) -> list[tuple[bytes, str]]:
         annotation_results = []
-        pre_frame_datarow_id = None
 
         async for datarow in datarow_generator_func(datarow_id_list):
             frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
-            sequence_frame_datarows[frame_datarow_id].append(datarow)
             current_batch.append(datarow)
             if pre_frame_datarow_id is None:
                 pre_frame_datarow_id = frame_datarow_id
             elif pre_frame_datarow_id != frame_datarow_id:
-                sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+                sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
                 annot_bytes: bytes = convert_to_bytes(
                     aggregate_datarows_annotations(
                         frame_datarows=sequence_frame_datarows,
@@ -638,6 +638,22 @@ class ExportVisionAI(ExportAnnotationBase):
                 annotation_results.append((annot_bytes, anno_path))
                 sequence_frame_datarows = defaultdict(list)
                 pre_frame_datarow_id = frame_datarow_id
+            sequence_frame_datarows[frame_datarow_id].append(datarow)
+        if last_batch:
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annot_bytes: bytes = convert_to_bytes(
+                aggregate_datarows_annotations(
+                    frame_datarows=sequence_frame_datarows,
+                    sequence_folder_url=f"{target_folder.rstrip('/')}/"
+                    + f"{sequence_id:012d}/",
+                    annotation_name=annotation_name,
+                )
+            )
+            anno_path = os.path.join(
+                f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+            )
+            annotation_results.append((annot_bytes, anno_path))
+            sequence_frame_datarows = defaultdict(list)
 
         return (
             annotation_results,
@@ -693,6 +709,8 @@ class ExportVisionAI(ExportAnnotationBase):
                                 annotation_name,
                                 datarow_id_to_frame_datarow_id,
                                 current_batch,
+                                pre_frame_datarow_id,
+                                last_batch=False,
                             )
                             results = await self.download_batch(
                                 session,
@@ -729,6 +747,8 @@ class ExportVisionAI(ExportAnnotationBase):
                         annotation_name,
                         datarow_id_to_frame_datarow_id,
                         current_batch,
+                        pre_frame_datarow_id,
+                        last_batch=True,
                     )
                     results = await self.download_batch(
                         session,

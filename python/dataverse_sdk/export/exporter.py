@@ -110,7 +110,6 @@ class Exporter:
             current_batch.append((bytes_, full_path))
 
             if len(current_batch) >= BATCH_SIZE:
-                # Process batch
                 tasks = [write_file(b, p) for b, p in current_batch]
                 await asyncio.gather(*tasks)
 
@@ -118,7 +117,6 @@ class Exporter:
 
                 current_batch = []
 
-        # Process remaining files in last batch
         if current_batch:
             tasks = [write_file(b, p) for b, p in current_batch]
             await asyncio.gather(*tasks)
