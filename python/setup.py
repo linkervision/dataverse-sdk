@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 AUTHOR = "LinkerVision"
 PACKAGE_NAME = "dataverse-sdk"
-PACKAGE_VERSION = "2.0.0"
+PACKAGE_VERSION = "2.0.1"
 DESC = "Dataverse SDK For Python"
 with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -15,7 +15,18 @@ setup(
     author=AUTHOR,
     url="",
     description=DESC,
-    install_requires=["pydantic==2.*", "requests", "httpx>=0.23.0", "tqdm", "aiofiles"],
+    install_requires=[
+        "pydantic==2.*",
+        "requests",
+        "httpx>=0.23.0",
+        "tqdm",
+        "aiofiles",
+        "visionai-data-format==2.0.0",
+        "aiohttp",
+        "aiohttp_retry",
+        "numpy>=1.21,<2",
+        "opencv-contrib-python==4.8.1.78",
+    ],
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=["Programming Language :: Python :: 3"],
