@@ -2,6 +2,9 @@ from enum import Enum
 
 GROUND_TRUTH_ANNOTATION_NAME = "ground_truths"
 
+MAX_CONCURRENT_DOWNLOADS = 100
+BATCH_SIZE = 100
+
 
 class ExportFormat(str, Enum):
     COCO = "coco"

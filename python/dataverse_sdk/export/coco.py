@@ -1,7 +1,10 @@
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 from typing import Callable
 
+import aiohttp
+from tqdm import tqdm
 from visionai_data_format.converters.vai_to_coco import VAItoCOCO
 from visionai_data_format.schemas.coco_schema import COCO, Category
 from visionai_data_format.utils.common import (
@@ -11,13 +14,46 @@ from visionai_data_format.utils.common import (
 )
 
 from .base import ExportAnnotationBase
-from .constant import GROUND_TRUTH_ANNOTATION_NAME, ExportFormat
+from .constant import (
+    BATCH_SIZE,
+    GROUND_TRUTH_ANNOTATION_NAME,
+    MAX_CONCURRENT_DOWNLOADS,
+    ExportFormat,
+)
 from .exporter import Exporter
-from .utils import convert_to_bytes, download_url_file_async
+from .utils import convert_to_bytes
 
 
 @Exporter.register(format=ExportFormat.COCO)
 class ExportCoco(ExportAnnotationBase):
+    async def download_batch(
+        self,
+        session: aiohttp.ClientSession,
+        semaphore: asyncio.Semaphore,
+        batch_datarows: list[dict],
+    ) -> list[tuple[bytes, str]]:
+        tasks = []
+
+        for datarow in batch_datarows:
+            url = datarow["url"]
+            file_path = os.path.join(COCO_IMAGE_PATH, datarow["unique_file_name"])
+
+            async def download_single(url, file_path):
+                async with semaphore:
+                    try:
+                        async with session.get(url) as response:
+                            response.raise_for_status()
+                            img_bytes = await response.read()
+                            return img_bytes, file_path
+                    except Exception as e:
+                        print(f"Error downloading {url}: {e}")
+                        return None
+
+            tasks.append(download_single(url, file_path))
+
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r is not None]
+
     async def producer(
         self,
         class_names: list[str],
@@ -27,24 +63,54 @@ class ExportCoco(ExportAnnotationBase):
         annotation_name: str,
         *_,
         **kwargs,
-    ) -> AsyncGenerator[bytes, str]:
-        datarows = []
-        for frame_datarow_map in sequence_frame_map.values():
-            for datarow_ids in frame_datarow_map.values():
-                async for datarow in datarow_generator_func(datarow_ids):
-                    datarows.append(datarow)
+    ) -> AsyncGenerator[tuple[bytes, str], None]:
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
+        async with aiohttp.ClientSession() as session:
+            current_batch = []
+            datarows = []  # Keep track of all datarows for annotation
+            datarow_id_list = []
+            total_datarows = sum(len(v) for v in sequence_frame_map.values())
+            existing_files = set()
 
-                    img_bytes: bytes = await download_url_file_async(datarow["url"])
-                    original_file_name = os.path.basename(datarow["original_url"])
-                    yield (
-                        img_bytes,
-                        os.path.join(
-                            COCO_IMAGE_PATH,
-                            original_file_name,
-                        ),
+            with tqdm(
+                total=total_datarows, desc="Downloading images", unit="file"
+            ) as progress_bar:
+                for frame_datarow_map in sequence_frame_map.values():
+                    for datarow_ids in frame_datarow_map.values():
+                        datarow_id_list.extend(datarow_ids)
+                for start_idx in range(0, len(datarow_id_list), BATCH_SIZE):
+                    async for datarow in datarow_generator_func(
+                        datarow_id_list[start_idx : start_idx + BATCH_SIZE]
+                    ):
+                        original_file_name = os.path.basename(datarow["original_url"])
+                        unique_file_name = Exporter.get_unique_filename(
+                            self, original_file_name, existing_files
+                        )
+                        existing_files.add(unique_file_name)
+                        datarow["unique_file_name"] = unique_file_name
+                        current_batch.append(datarow)
+                        datarows.append(datarow)
+
+                        if len(current_batch) >= BATCH_SIZE:
+                            results = await self.download_batch(
+                                session, semaphore, current_batch
+                            )
+                            for result in results:
+                                if result:
+                                    yield result
+                                    progress_bar.update(1)
+                            current_batch = []
+
+                if current_batch:
+                    results = await self.download_batch(
+                        session, semaphore, current_batch
                     )
+                    for result in results:
+                        if result:
+                            yield result
+                            progress_bar.update(1)
 
-        annot_bytes: bytes = convert_to_bytes(
+        annot_bytes = convert_to_bytes(
             convert_annotation(
                 datarows=datarows,
                 class_names=class_names,
@@ -99,6 +165,12 @@ def convert_annotation(
             img_extension=file_extension,
             img_width=datarow["image_width"],
             img_height=datarow["image_height"],
+        )
+        image_update[0].file_name = datarow["unique_file_name"]
+        image_update[
+            0
+        ].coco_url = (
+            f"{image_update[0].coco_url.rsplit('/',1)[0]}/{datarow['unique_file_name']}"
         )
         images.extend(image_update)
         annotations.extend(anno_update)
