@@ -620,6 +620,7 @@ class ExportVisionAI(ExportAnnotationBase):
         async for datarow in datarow_generator_func(datarow_id_list):
             frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
             current_batch.append(datarow)
+            sequence_frame_datarows[frame_datarow_id].append(datarow)
             if pre_frame_datarow_id is None:
                 pre_frame_datarow_id = frame_datarow_id
             elif pre_frame_datarow_id != frame_datarow_id:
@@ -636,9 +637,9 @@ class ExportVisionAI(ExportAnnotationBase):
                     f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
                 )
                 annotation_results.append((annot_bytes, anno_path))
-                sequence_frame_datarows = defaultdict(list)
+                sequence_frame_datarows.pop(pre_frame_datarow_id)
                 pre_frame_datarow_id = frame_datarow_id
-            sequence_frame_datarows[frame_datarow_id].append(datarow)
+
         if last_batch:
             sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
             annot_bytes: bytes = convert_to_bytes(
@@ -684,8 +685,8 @@ class ExportVisionAI(ExportAnnotationBase):
             with tqdm(
                 total=total_datarows, desc="Downloading images", unit="file"
             ) as progress_bar:
+                sequence_frame_datarows = defaultdict(list)
                 for sequence_id, frame_datarow_map in sequence_frame_map.items():
-                    sequence_frame_datarows = defaultdict(list)
                     for frame_datarow_id, datarow_ids in frame_datarow_map.items():
                         datarow_id_list.extend(datarow_ids)
                         frame_datarow_id_to_sequence_id[frame_datarow_id] = sequence_id
