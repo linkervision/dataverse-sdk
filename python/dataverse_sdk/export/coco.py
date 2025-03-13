@@ -136,9 +136,10 @@ def convert_annotation(
         camera_sensor_name = datarow["sensor_name"]
         url = datarow["url"]
         file_extension = os.path.splitext(url)[-1]
-
-        if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-            target_visionai: dict = datarow["items"].get(annotation_name, {})
+        if annotation_name == "groundtruth":
+            target_visionai: dict = datarow["items"].get(
+                GROUND_TRUTH_ANNOTATION_NAME, {}
+            )
         else:
             target_visionai: dict = (
                 datarow["items"].get("predictions", {}).get(annotation_name, {})

@@ -103,7 +103,7 @@ def make_parser():
     parser.add_argument(
         "--anno",
         type=str,
-        default="",
+        default="groundtruth",
         help="the annotation name for exporting",
     )
     parser.add_argument(

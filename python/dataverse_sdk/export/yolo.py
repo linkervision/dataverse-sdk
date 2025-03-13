@@ -134,9 +134,8 @@ def convert_annotation(
     -------
     str
     """
-
-    if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-        visionai_dict: dict = datarow["items"].get(annotation_name, {})
+    if annotation_name == "groundtruth":
+        visionai_dict: dict = datarow["items"].get(GROUND_TRUTH_ANNOTATION_NAME, {})
     else:
         visionai_dict: dict = (
             datarow["items"].get("predictions", {}).get(annotation_name, {})

@@ -214,9 +214,8 @@ def aggregate_static_annotations(
     for datarow in datarows:
         datarow_items = datarow["items"]
         frame_num = int(datarow["frame_id"])
-
-        if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-            data = datarow_items.get(annotation_name, {}).get(root_key, {})
+        if annotation_name == "groundtruth":
+            data = datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}).get(root_key, {})
         else:
             data = datarow_items.get("predictions", {}).get(annotation_name, {})
 
