@@ -11,6 +11,7 @@ from .base import ExportAnnotationBase
 from .constant import (
     BATCH_SIZE,
     GROUND_TRUTH_ANNOTATION_NAME,
+    GROUNDTRUTH,
     MAX_CONCURRENT_DOWNLOADS,
     ExportFormat,
 )
@@ -134,7 +135,7 @@ def convert_annotation(
     -------
     str
     """
-    if annotation_name == "groundtruth":
+    if annotation_name == GROUNDTRUTH:
         visionai_dict: dict = datarow["items"].get(GROUND_TRUTH_ANNOTATION_NAME, {})
     else:
         visionai_dict: dict = (

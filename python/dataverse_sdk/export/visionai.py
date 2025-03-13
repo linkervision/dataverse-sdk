@@ -14,6 +14,7 @@ from .base import ExportAnnotationBase
 from .constant import (
     BATCH_SIZE,
     GROUND_TRUTH_ANNOTATION_NAME,
+    GROUNDTRUTH,
     MAX_CONCURRENT_DOWNLOADS,
     ExportFormat,
 )
@@ -214,7 +215,7 @@ def aggregate_static_annotations(
     for datarow in datarows:
         datarow_items = datarow["items"]
         frame_num = int(datarow["frame_id"])
-        if annotation_name == "groundtruth":
+        if annotation_name == GROUNDTRUTH:
             data = datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}).get(root_key, {})
         else:
             data = datarow_items.get("predictions", {}).get(annotation_name, {})

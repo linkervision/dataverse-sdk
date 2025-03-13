@@ -17,6 +17,7 @@ from .base import ExportAnnotationBase
 from .constant import (
     BATCH_SIZE,
     GROUND_TRUTH_ANNOTATION_NAME,
+    GROUNDTRUTH,
     MAX_CONCURRENT_DOWNLOADS,
     ExportFormat,
 )
@@ -136,7 +137,7 @@ def convert_annotation(
         camera_sensor_name = datarow["sensor_name"]
         url = datarow["url"]
         file_extension = os.path.splitext(url)[-1]
-        if annotation_name == "groundtruth":
+        if annotation_name == GROUNDTRUTH:
             target_visionai: dict = datarow["items"].get(
                 GROUND_TRUTH_ANNOTATION_NAME, {}
             )

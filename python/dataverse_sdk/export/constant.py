@@ -1,5 +1,6 @@
 from enum import Enum
 
+GROUNDTRUTH = "groundtruth"
 GROUND_TRUTH_ANNOTATION_NAME = "ground_truths"
 
 MAX_CONCURRENT_DOWNLOADS = 100
