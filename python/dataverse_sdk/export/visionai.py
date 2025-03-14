@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import os
 import uuid
@@ -5,12 +6,19 @@ from collections import defaultdict
 from collections.abc import AsyncGenerator
 from typing import Callable, Optional
 
+import aiohttp
+from tqdm import tqdm
 from visionai_data_format.schemas.visionai_schema import VisionAIModel
 
 from .base import ExportAnnotationBase
-from .constant import GROUND_TRUTH_ANNOTATION_NAME, ExportFormat
+from .constant import (
+    BATCH_SIZE,
+    GROUND_TRUTH_ANNOTATION_NAME,
+    GROUNDTRUTH,
+    MAX_CONCURRENT_DOWNLOADS,
+    ExportFormat,
+)
 from .exporter import Exporter
-from .utils import download_url_file_async  # ##
 from .utils import convert_to_bytes
 
 
@@ -207,9 +215,8 @@ def aggregate_static_annotations(
     for datarow in datarows:
         datarow_items = datarow["items"]
         frame_num = int(datarow["frame_id"])
-
-        if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-            data = datarow_items.get(annotation_name, {}).get(root_key, {})
+        if annotation_name == GROUNDTRUTH:
+            data = datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}).get(root_key, {})
         else:
             data = datarow_items.get("predictions", {}).get(annotation_name, {})
 
@@ -556,6 +563,107 @@ def aggregate_datarows_annotations(
 
 @Exporter.register(format=ExportFormat.VISIONAI)
 class ExportVisionAI(ExportAnnotationBase):
+    async def download_batch(
+        self,
+        session: aiohttp.ClientSession,
+        semaphore: asyncio.Semaphore,
+        batch_datarows: list[dict],
+        datarow_id_to_frame_datarow_id: dict[int, int],
+        frame_datarow_id_to_sequence_id: dict[int, int],
+    ) -> list[tuple[bytes, str]]:
+        tasks = []
+        for datarow in batch_datarows:
+            url = datarow["url"]
+            frame_num, sensor_name = int(datarow["frame_id"]), datarow["sensor_name"]
+            frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            file_name = url.split("/")[-1]
+            file_path = os.path.join(
+                f"{sequence_id:012d}",
+                "data",
+                sensor_name,
+                f"{frame_num:012d}{os.path.splitext(file_name)[-1]}",
+            )
+
+            async def download_single(url, file_path):
+                async with semaphore:
+                    try:
+                        async with session.get(url) as response:
+                            response.raise_for_status()
+                            img_bytes = await response.read()
+                            return img_bytes, file_path
+                    except Exception as e:
+                        print(f"Error downloading {url}: {e}")
+                        return None
+
+            tasks.append(download_single(url, file_path))
+
+        results = await asyncio.gather(*tasks)
+
+        return [r for r in results if r is not None]
+
+    async def process_datarows(
+        self,
+        datarow_generator_func: Callable[[list], AsyncGenerator[dict]],
+        datarow_id_list: list[int],
+        frame_datarow_id_to_sequence_id: dict[int, int],
+        sequence_frame_datarows: defaultdict[int, list[dict]],
+        target_folder: str,
+        annotation_name: str,
+        datarow_id_to_frame_datarow_id: dict[int, int],
+        current_batch: list[dict],
+        pre_frame_datarow_id: int,
+        last_batch: bool,
+    ) -> list[tuple[bytes, str]]:
+        annotation_results = []
+
+        async for datarow in datarow_generator_func(datarow_id_list):
+            frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+            current_batch.append(datarow)
+            sequence_frame_datarows[frame_datarow_id].append(datarow)
+            if pre_frame_datarow_id is None:
+                pre_frame_datarow_id = frame_datarow_id
+            elif pre_frame_datarow_id != frame_datarow_id:
+                sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
+                annot_bytes: bytes = convert_to_bytes(
+                    aggregate_datarows_annotations(
+                        frame_datarows=sequence_frame_datarows,
+                        sequence_folder_url=f"{target_folder.rstrip('/')}/"
+                        + f"{sequence_id:012d}/",
+                        annotation_name=annotation_name,
+                    )
+                )
+                anno_path = os.path.join(
+                    f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+                )
+                annotation_results.append((annot_bytes, anno_path))
+                sequence_frame_datarows.pop(pre_frame_datarow_id)
+                pre_frame_datarow_id = frame_datarow_id
+
+        if last_batch:
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annot_bytes: bytes = convert_to_bytes(
+                aggregate_datarows_annotations(
+                    frame_datarows=sequence_frame_datarows,
+                    sequence_folder_url=f"{target_folder.rstrip('/')}/"
+                    + f"{sequence_id:012d}/",
+                    annotation_name=annotation_name,
+                )
+            )
+            anno_path = os.path.join(
+                f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+            )
+            annotation_results.append((annot_bytes, anno_path))
+            sequence_frame_datarows = defaultdict(list)
+
+        return (
+            annotation_results,
+            sequence_frame_datarows,
+            datarow_id_list,
+            pre_frame_datarow_id,
+            current_batch,
+        )
+
     async def producer(
         self,
         target_folder: str,
@@ -565,40 +673,96 @@ class ExportVisionAI(ExportAnnotationBase):
         *_,
         **kwargs,
     ) -> AsyncGenerator[bytes, str]:
-        for sequence_id, frame_datarow_map in sequence_frame_map.items():
-            sequence_frame_datarows = defaultdict(list)
-            for frame_datarow_id, datarow_ids in frame_datarow_map.items():
-                async for datarow in datarow_generator_func(datarow_ids):
-                    sequence_frame_datarows[frame_datarow_id].append(datarow)
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
+        async with aiohttp.ClientSession() as session:
+            datarow_id_list = []
+            total_datarows = sum(len(v) for v in sequence_frame_map.values())
+            annotation_results = []
+            current_batch = []
+            pre_frame_datarow_id = None
+            frame_datarow_id_to_sequence_id = {}
+            datarow_id_to_frame_datarow_id = {}
+            with tqdm(
+                total=total_datarows, desc="Downloading images", unit="file"
+            ) as progress_bar:
+                sequence_frame_datarows = defaultdict(list)
+                for sequence_id, frame_datarow_map in sequence_frame_map.items():
+                    for frame_datarow_id, datarow_ids in frame_datarow_map.items():
+                        datarow_id_list.extend(datarow_ids)
+                        frame_datarow_id_to_sequence_id[frame_datarow_id] = sequence_id
+                        for datarow_id in datarow_ids:
+                            datarow_id_to_frame_datarow_id[
+                                datarow_id
+                            ] = frame_datarow_id
+                        if len(datarow_id_list) >= BATCH_SIZE:
+                            (
+                                annotation_results,
+                                sequence_frame_datarows,
+                                datarow_id_list,
+                                pre_frame_datarow_id,
+                                current_batch,
+                            ) = await self.process_datarows(
+                                datarow_generator_func,
+                                datarow_id_list,
+                                frame_datarow_id_to_sequence_id,
+                                sequence_frame_datarows,
+                                target_folder,
+                                annotation_name,
+                                datarow_id_to_frame_datarow_id,
+                                current_batch,
+                                pre_frame_datarow_id,
+                                last_batch=False,
+                            )
+                            results = await self.download_batch(
+                                session,
+                                semaphore,
+                                current_batch,
+                                datarow_id_to_frame_datarow_id,
+                                frame_datarow_id_to_sequence_id,
+                            )
+                            for result in results:
+                                if result:
+                                    yield result
+                                    progress_bar.update(1)
+                            current_batch = []
+                            datarow_id_list = []
 
-                    img_bytes: bytes = await download_url_file_async(datarow["url"])
-                    url, frame_num, sensor_name = (
-                        datarow["url"],
-                        int(datarow["frame_id"]),
-                        datarow["sensor_name"],
-                    )
-                    file_name = url.split("/")[-1]
-                    file_path = os.path.join(
-                        f"{sequence_id:012d}",
-                        "data",
-                        sensor_name,
-                        f"{frame_num:012d}{os.path.splitext(file_name)[-1]}",
-                    )
-                    yield img_bytes, file_path
+                        if len(annotation_results) >= BATCH_SIZE:
+                            for annotation_result in annotation_results:
+                                yield annotation_result
+                            annotation_results = []
 
-            annot_bytes: bytes = convert_to_bytes(
-                aggregate_datarows_annotations(
-                    frame_datarows=sequence_frame_datarows,
-                    sequence_folder_url=f"{target_folder}{sequence_id:012d}/",
-                    annotation_name=annotation_name,
-                )
-            )
-            yield (
-                annot_bytes,
-                os.path.join(
-                    f"{sequence_id:012d}",
-                    "annotations",
-                    "groundtruth",
-                    "visionai.json",
-                ),
-            )
+                if datarow_id_list:
+                    (
+                        annotation_results,
+                        sequence_frame_datarows,
+                        datarow_id_list,
+                        pre_frame_datarow_id,
+                        current_batch,
+                    ) = await self.process_datarows(
+                        datarow_generator_func,
+                        datarow_id_list,
+                        frame_datarow_id_to_sequence_id,
+                        sequence_frame_datarows,
+                        target_folder,
+                        annotation_name,
+                        datarow_id_to_frame_datarow_id,
+                        current_batch,
+                        pre_frame_datarow_id,
+                        last_batch=True,
+                    )
+                    results = await self.download_batch(
+                        session,
+                        semaphore,
+                        current_batch,
+                        datarow_id_to_frame_datarow_id,
+                        frame_datarow_id_to_sequence_id,
+                    )
+                    for result in results:
+                        if result:
+                            yield result
+                            progress_bar.update(1)
+
+                if annotation_results:
+                    for annotation_result in annotation_results:
+                        yield annotation_result

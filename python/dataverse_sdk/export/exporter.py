@@ -1,13 +1,15 @@
+import asyncio
 import os
-import time
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
 from typing import Callable
 
+import aiofiles
+
 from ..apis.backend import AsyncBackendAPI
 from ..schemas.format import AnnotationFormat
 from .base import ExportAnnotationBase
-from .constant import ExportFormat
+from .constant import BATCH_SIZE, MAX_CONCURRENT_DOWNLOADS, ExportFormat
 
 NONE_SEQUENCE_DATAROW_ID = -1
 
@@ -93,19 +95,34 @@ class Exporter:
         producer: Generator[tuple[bytes, str]],
     ):
         counter = 0
-        time_start = time.time()
-        async for bytes_, path in producer:
-            file_path = os.path.join(self.target_folder, path)
-            dir_path = os.path.dirname(file_path)
-            os.makedirs(dir_path, exist_ok=True)
-            with open(file_path, "wb") as f:
-                f.write(bytes_)
+        current_batch = []
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
-            counter += 1
-            if counter % 10 == 0:
-                now = time.time()
-                print("performance: ", now - time_start, "count: ", counter)
-                time_start = now
+        async def write_file(bytes_: bytes, file_path: str):
+            async with semaphore:
+                dir_path = os.path.dirname(file_path)
+                os.makedirs(dir_path, exist_ok=True)
+                async with aiofiles.open(file_path, "wb") as f:
+                    await f.write(bytes_)
+
+        async for bytes_, path in producer:
+            full_path = os.path.join(self.target_folder, path)
+            current_batch.append((bytes_, full_path))
+
+            if len(current_batch) >= BATCH_SIZE:
+                tasks = [write_file(b, p) for b, p in current_batch]
+                await asyncio.gather(*tasks)
+
+                counter += len(current_batch)
+
+                current_batch = []
+
+        if current_batch:
+            tasks = [write_file(b, p) for b, p in current_batch]
+            await asyncio.gather(*tasks)
+            counter += len(current_batch)
+
+        print(f"Total files processed: {counter}")
 
     @classmethod
     def register(cls, format: ExportFormat):
@@ -125,7 +142,7 @@ class Exporter:
                     id_set=",".join(
                         str(_id) for _id in id_chunks
                     ),  # id_set="1,2,3,4,5"
-                    batch_size=100,
+                    batch_size=BATCH_SIZE,
                     fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url",
                 )
                 async for batched_datarow in gen:
@@ -138,6 +155,17 @@ class Exporter:
                         yield datarow
 
         return f
+
+    def get_unique_filename(self, original_file_name, existing_files):
+        base_name, extension = os.path.splitext(original_file_name)
+        counter = 1
+        new_file_name = original_file_name
+
+        while new_file_name in existing_files:
+            new_file_name = f"{base_name}({counter}){extension}"
+            counter += 1
+
+        return new_file_name
 
 
 async def get_datarows_sequence_info(
@@ -159,14 +187,13 @@ async def get_datarows_sequence_info(
     dict[int, dict[int, list]]
         datarow map with sequence_datarow_id as key and the frame_datarow_id as sub-key with list of datarow ids
     """
-    batch_size = 100
     # Call datarows_flat_parent for building sequence/frame structure
     # Get frame_datarow_id as a unique indicator
     if dataslice_type not in {"image", "pcd"}:
         dataslice_type = "base"
 
     datarows_generator: Generator = curation_api.get_datarows_flat_parent(
-        batch_size=batch_size,
+        batch_size=BATCH_SIZE,
         dataslice_id=dataslice_id,
         type=dataslice_type,
         fields="id,sequence_datarow_id,frame_datarow_id",

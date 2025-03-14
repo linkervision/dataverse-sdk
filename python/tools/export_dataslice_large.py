@@ -48,8 +48,7 @@ def export_dataslice_to_local(
             producer=producer,
         )
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_export(exporter))
+    asyncio.run(run_export(exporter))
 
 
 def make_parser():
@@ -104,7 +103,7 @@ def make_parser():
     parser.add_argument(
         "--anno",
         type=str,
-        default="",
+        default="groundtruth",
         help="the annotation name for exporting",
     )
     parser.add_argument(

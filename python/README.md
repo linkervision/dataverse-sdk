@@ -535,7 +535,7 @@ python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/
 
 ### Export Large Dataslice and download files
 
-python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export model name / ground_truths} --target_folder {folder path} --export-format {coco, visionai ...etc}
+python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export model name / groundtruth} --target_folder {folder path} --export-format {coco, visionai ...etc}
 
 ## Links to language repos
 
