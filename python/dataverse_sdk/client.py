@@ -1578,7 +1578,11 @@ of this project OR has been added before"
                 async_api, raw_dataset_data, sensors
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
-        dataset_data = api.create_dataset(**raw_dataset_data)
+        try:
+            dataset_data = api.create_dataset(**raw_dataset_data)
+        except DataverseExceptionBase as e:
+            print(e.__dict__)
+            raise e
         dataset_data.update(
             {
                 "project": project,
