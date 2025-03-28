@@ -3,6 +3,7 @@ import logging
 import os
 from asyncio import Semaphore
 from collections import deque
+from pathlib import Path
 from typing import Optional, Union
 from uuid import uuid4
 
@@ -1645,6 +1646,7 @@ of this project OR has been added before"
         failed_urls = []
         upload_task_queue = deque()
 
+        data_folder = Path(data_folder).resolve()
         create_dataset_uuid: str = str(uuid4())
 
         async def generate_presigned_url_task(
@@ -1659,7 +1661,8 @@ of this project OR has been added before"
             # Convert absolute file paths to relative paths
             # i.e <long data folder path>/data/image.jpg -> /data/image.jpg
             filtered_paths = [
-                path.replace(data_folder, "") for path in batched_file_paths
+                str(Path(path).relative_to(data_folder)).replace("\\", "/")
+                for path in batched_file_paths
             ]
             async with semaphore:
                 try:

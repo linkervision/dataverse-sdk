@@ -270,8 +270,10 @@ def aggregate_visionai_tags(
     # 1. combine all tags classes from different datarows
     sequence_class_set = set()
     for datarow in datarows:
-        if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-            current_tags = datarow["items"].get(annotation_name, {}).get("tags")
+        if annotation_name == GROUNDTRUTH:
+            current_tags = (
+                datarow["items"].get(GROUND_TRUTH_ANNOTATION_NAME, {}).get("tags")
+            )
         else:
             current_tags = (
                 datarow["items"]
@@ -307,8 +309,10 @@ def aggregate_visionai_tags(
 
     # 3. replace each datarows RLE number with sequence class order
     for datarow in datarows:
-        if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-            current_tags = datarow["items"].get(annotation_name, {}).get("tags")
+        if annotation_name == GROUNDTRUTH:
+            current_tags = (
+                datarow["items"].get(GROUND_TRUTH_ANNOTATION_NAME, {}).get("tags")
+            )
         else:
             current_tags = (
                 datarow["items"]
@@ -416,8 +420,8 @@ def aggregate_datarows_annotations(
             datarow_items: dict = datarow["items"]
             frame_num = int(datarow["frame_id"])
 
-            if annotation_name == GROUND_TRUTH_ANNOTATION_NAME:
-                vai = copy.deepcopy(datarow_items.get(annotation_name, {}))
+            if annotation_name == GROUNDTRUTH:
+                vai = copy.deepcopy(datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}))
             else:
                 vai = copy.deepcopy(
                     datarow_items.get("predictions", {}).get(annotation_name, {})
