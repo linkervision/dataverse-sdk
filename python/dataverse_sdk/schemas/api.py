@@ -114,7 +114,6 @@ class UpdateQuestionAPISchema(BaseModel):
 class DatasetAPISchema(BaseModel):
     name: str
     project_id: int
-    sensor_ids: list[int]
     data_source: DataSource
     type: DatasetType
     annotation_format: AnnotationFormat

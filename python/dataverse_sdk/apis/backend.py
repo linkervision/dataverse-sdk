@@ -358,7 +358,6 @@ class BackendAPI:
         name: str,
         data_source: str,
         project_id: int,
-        sensor_ids: list[int],
         type: str,
         annotation_format: str,
         storage_url: str,
@@ -382,7 +381,6 @@ class BackendAPI:
         payload_data = {
             "name": name,
             "project_id": project_id,
-            "sensor_ids": sensor_ids,
             "data_source": data_source,
             "storage_url": storage_url,
             "container_name": container_name,

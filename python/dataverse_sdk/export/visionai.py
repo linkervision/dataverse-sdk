@@ -589,16 +589,26 @@ class ExportVisionAI(ExportAnnotationBase):
                 f"{frame_num:012d}{os.path.splitext(file_name)[-1]}",
             )
 
-            async def download_single(url, file_path):
+            async def download_single(url, file_path, max_retries=5, initial_delay=1):
                 async with semaphore:
-                    try:
-                        async with session.get(url) as response:
-                            response.raise_for_status()
-                            img_bytes = await response.read()
-                            return img_bytes, file_path
-                    except Exception as e:
-                        print(f"Error downloading {url}: {e}")
-                        return None
+                    delay = initial_delay
+                    for attempt in range(max_retries):
+                        try:
+                            async with session.get(url) as response:
+                                response.raise_for_status()
+                                img_bytes = await response.read()
+                                return img_bytes, file_path
+                        except Exception as e:
+                            if attempt == max_retries - 1:
+                                print(
+                                    f"Error downloading {url} after {max_retries} attempts: {e}"
+                                )
+                                return None
+                            print(
+                                f"Attempt {attempt + 1} failed for {url}: {e}. Retrying in {delay} seconds..."
+                            )
+                            await asyncio.sleep(delay)
+                            delay *= 2
 
             tasks.append(download_single(url, file_path))
 
