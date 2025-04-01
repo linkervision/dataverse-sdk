@@ -367,7 +367,7 @@ dataset_data2 = {
     "sensors": project.sensors,
     "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
     "annotation_format": AnnotationFormat.VISION_AI,
-    "annotations": ["groundtruth"],  # remove it when data_source is DataSource.LOCAL
+    "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
     "auto_tagging": []
