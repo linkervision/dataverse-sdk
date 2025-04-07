@@ -312,7 +312,6 @@ dataset_data = {
     "storage_url": "storage/url",
     "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
-    "sensors": project.sensors,
     "type": DatasetType.ANNOTATED_DATA,
     "annotation_format": AnnotationFormat.VISION_AI,
     "annotations": ["groundtruth"],
@@ -368,10 +367,11 @@ dataset_data2 = {
     "sensors": project.sensors,
     "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
     "annotation_format": AnnotationFormat.VISION_AI,
-    "annotations": ["groundtruth"],
+    "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
     "auto_tagging": []
+    "sas_token": ""
 }
 dataset2 = project.create_dataset(**dataset_data2)
 

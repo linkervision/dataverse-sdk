@@ -1435,10 +1435,7 @@ of this project OR has been added before"
             raise ClientConnectionError(f"Failed to get the dataset: {e}")
 
         project = self.get_project(dataset_data["project"]["id"])
-        sensors = [
-            Sensor.create(sensor_data) for sensor_data in dataset_data["sensors"]
-        ]
-        dataset_data.update({"project": project, "sensors": sensors})
+        dataset_data.update({"project": project})
         return Dataset(**dataset_data, client_alias=client_alias)
 
     # TODO: required arguments for different DataSource
@@ -1447,7 +1444,6 @@ of this project OR has been added before"
         name: str,
         data_source: DataSource,
         project: Project,
-        sensors: list[Sensor],
         type: DatasetType,
         annotation_format: AnnotationFormat,
         storage_url: str,
@@ -1476,8 +1472,6 @@ of this project OR has been added before"
             the DataSource basemodel of the given dataset
         project : Project
             Project basemodel
-        sensors : list[Sensor]
-            list of Sensor basemodel
         type : DatasetType
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
@@ -1545,13 +1539,11 @@ of this project OR has been added before"
                     "Import data source must be LOCAL if host is not in DataverseHost."
                 )
 
-        sensor_ids = [sensor.id for sensor in sensors]
         project_id = project.id
         try:
             raw_dataset_data: dict = DatasetAPISchema(
                 name=name,
                 project_id=project_id,
-                sensor_ids=sensor_ids,
                 data_source=data_source,
                 type=type,
                 annotation_format=annotation_format,
@@ -1576,14 +1568,13 @@ of this project OR has been added before"
 
         if data_source == DataSource.LOCAL:
             create_dataset_uuid = DataverseClient.upload_files_from_local(
-                async_api, raw_dataset_data, sensors
+                async_api, api, raw_dataset_data
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
         dataset_data = api.create_dataset(**raw_dataset_data)
         dataset_data.update(
             {
                 "project": project,
-                "sensors": sensors,
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
                 "auto_tagging": auto_tagging,
@@ -1594,7 +1585,7 @@ of this project OR has been added before"
 
     @staticmethod
     def upload_files_from_local(
-        async_api: AsyncBackendAPI, raw_dataset_data: dict, sensors: list
+        async_api: AsyncBackendAPI, api: BackendAPI, raw_dataset_data: dict
     ) -> dict:
         loop = asyncio.get_event_loop()
         data_folder = raw_dataset_data["data_folder"]
@@ -1604,7 +1595,8 @@ of this project OR has been added before"
         required_data = DataverseClient._get_format_folders(
             annotation_format=raw_dataset_data["annotation_format"],
             dataset_type=dataset_type,
-            sensors=sensors,
+            project_id=raw_dataset_data["project_id"],
+            api=api,
         )
         if required_data:
             for required_folder_or_file in required_data:
@@ -1756,13 +1748,18 @@ of this project OR has been added before"
 
     @staticmethod
     def _get_format_folders(
-        annotation_format: AnnotationFormat, dataset_type: DatasetType, sensors: list
+        annotation_format: AnnotationFormat,
+        dataset_type: DatasetType,
+        project_id: int,
+        api: BackendAPI,
     ) -> list[str]:
         if annotation_format == AnnotationFormat.KITTI:
+            project = api.get_project(project_id=project_id)
+            sensors = project["sensors"]
             if dataset_type == DatasetType.RAW_DATA:
                 return []
             elif len(sensors) == 1:
-                if sensors[0].type == SensorType.LIDAR:  # one-lidar case
+                if sensors[0]["type"] == SensorType.LIDAR:  # one-lidar case
                     return ["label_2", "velodyne"]
                 else:
                     raise DataverseExceptionBase(

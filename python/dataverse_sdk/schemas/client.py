@@ -292,7 +292,6 @@ class Project(BaseModel):
         self,
         name: str,
         data_source: DataSource,
-        sensors: list[Sensor],
         type: DatasetType,
         annotation_format: AnnotationFormat,
         storage_url: str,
@@ -317,8 +316,6 @@ class Project(BaseModel):
             name of dataset
         data_source : DataSource
             the DataSource basemodel of the given dataset
-        sensors : list[Sensor]
-            list of Sensor basemodel
         type : DatasetType
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
@@ -369,7 +366,6 @@ class Project(BaseModel):
             name=name,
             data_source=data_source,
             project=self,
-            sensors=sensors,
             type=type,
             annotation_format=annotation_format,
             storage_url=storage_url,
@@ -393,7 +389,6 @@ class Project(BaseModel):
 class Dataset(BaseModel):
     id: Optional[int] = None
     project: Project
-    sensors: list[Sensor]
     name: str
     type: DatasetType
     data_source: DataSource
