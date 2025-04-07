@@ -31,25 +31,26 @@ class ExportVQA(ExportAnnotationBase):
             file_path = os.path.join("images", datarow["unique_file_name"])
 
             async def download_single(url, file_path, max_retries=5, initial_delay=1):
-                async with semaphore:
-                    delay = initial_delay
-                    for attempt in range(max_retries):
-                        try:
-                            async with session.get(url) as response:
-                                response.raise_for_status()
-                                img_bytes = await response.read()
-                                return img_bytes, file_path
-                        except Exception as e:
-                            if attempt == max_retries - 1:
-                                print(
-                                    f"Error downloading {url} after {max_retries} attempts: {e}"
-                                )
-                                return None
-                            print(
-                                f"Attempt {attempt + 1} failed for {url}: {e}. Retrying in {delay} seconds..."
-                            )
-                            await asyncio.sleep(delay)
-                            delay *= 2
+                pass
+                # async with semaphore:
+                #     delay = initial_delay
+                #     for attempt in range(max_retries):
+                #         try:
+                #             async with session.get(url) as response:
+                #                 response.raise_for_status()
+                #                 img_bytes = await response.read()
+                #                 return img_bytes, file_path
+                #         except Exception as e:
+                #             if attempt == max_retries - 1:
+                #                 print(
+                #                     f"Error downloading {url} after {max_retries} attempts: {e}"
+                #                 )
+                #                 return None
+                #             print(
+                #                 f"Attempt {attempt + 1} failed for {url}: {e}. Retrying in {delay} seconds..."
+                #             )
+                #             await asyncio.sleep(delay)
+                #             delay *= 2
 
             tasks.append(download_single(url, file_path))
 
@@ -75,7 +76,7 @@ class ExportVQA(ExportAnnotationBase):
             total_datarows = sum(len(v) for v in sequence_frame_map.values())
             existing_files = set()
             with tqdm(
-                total=total_datarows, desc="Downloading images", unit="file"
+                total=total_datarows, desc="Downloading Labels", unit="file"
             ) as progress_bar:
                 for frame_datarow_map in sequence_frame_map.values():
                     for datarow_ids in frame_datarow_map.values():
