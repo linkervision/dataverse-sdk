@@ -1142,6 +1142,24 @@ of this project OR has been added before"
         return dataslice_list
 
     @staticmethod
+    def list_datasets(
+        project_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> list:
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            dataset_list: list = api.list_datasets(project_id=project_id)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the models: {e}")
+        return dataset_list
+
+    @staticmethod
     def list_models(
         project_id: int,
         client: Optional["DataverseClient"] = None,
