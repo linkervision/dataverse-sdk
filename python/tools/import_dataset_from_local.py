@@ -1,5 +1,7 @@
 import argparse
 import logging
+import time
+from typing import Optional
 
 from dataverse_sdk import DataverseClient
 from dataverse_sdk.constants import DataverseHost
@@ -23,6 +25,7 @@ def import_dataset_from_local(
     sequential: bool = False,
     gen_metadata: bool = False,
     gen_auto_tagging: bool = False,
+    reupload_dataset_uuid: Optional[str] = None,
     alias: str = "default",
 ):
     client = DataverseClient(
@@ -48,6 +51,7 @@ def import_dataset_from_local(
         "auto_tagging": AUTO_TAGGING_CLASSES if gen_auto_tagging else [],
         "annotation_format": annotation_format,
         "sequential": sequential,
+        "reupload_dataset_uuid": reupload_dataset_uuid,
     }
     if dataset_type == DatasetType.ANNOTATED_DATA:
         dataset_data["annotations"] = ["groundtruth"]
@@ -146,11 +150,20 @@ def make_parser():
         action="store_true",
         help="Whether generate auto_tagging for your dataset",
     )
+    parser.add_argument(
+        "-reupload",
+        "--reupload_dataset_uuid",
+        type=str,
+        default=None,
+        help="The dataset uuid of the reupload dataset",
+    )
 
     return parser.parse_args()
 
 
 if __name__ == "__main__":
+    start = time.time()
+
     args = make_parser()
     import_dataset_from_local(
         host=args.host,
@@ -166,4 +179,8 @@ if __name__ == "__main__":
         sequential=args.sequential,
         gen_metadata=args.metadata,
         gen_auto_tagging=args.auto_tagging,
+        reupload_dataset_uuid=args.reupload_dataset_uuid,
     )
+
+    end = time.time()
+    logging.info("import_dataset_from_local complete, duration: {%d}s", end - start)
