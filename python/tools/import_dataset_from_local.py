@@ -155,7 +155,7 @@ def make_parser():
         "--reupload_dataset_uuid",
         type=str,
         default=None,
-        help="The dataset uuid of the reupload dataset",
+        help="The dataset UUID to reupload.",
     )
 
     return parser.parse_args()
