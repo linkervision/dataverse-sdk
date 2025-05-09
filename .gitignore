@@ -1,4 +1,5 @@
 .vscode
+report/
 
 # Mac OS
 .DS_Store
