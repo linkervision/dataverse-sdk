@@ -1802,11 +1802,10 @@ of this project OR has been added before"
                                 file=file_content,
                                 content_type="application/octet-stream",
                             )
+                            progress_bar.update(1)
                     except Exception as e:
                         logging.exception(e)
                         return (path, info)
-                    finally:
-                        progress_bar.update(1)
 
             remaining_files = (file for file in zip(paths, upload_infos, strict=True))
             attempt_count = 1
