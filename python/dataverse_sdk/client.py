@@ -1622,7 +1622,7 @@ of this project OR has been added before"
                 upload_task_queue,
                 create_dataset_uuid,
                 failed_urls,
-            ) = event_loop.run_until_complete(
+            ) = asyncio.run(
                 DataverseClient.run_generate_presigned_urls(
                     file_paths=file_paths, api=async_api_client, data_folder=data_folder
                 )
@@ -1636,7 +1636,8 @@ of this project OR has been added before"
                 raise ClientConnectionError(
                     "something went wrong, missing create dataset uuid"
                 )
-            failed_file_info_batches = event_loop.run_until_complete(
+
+            failed_file_info_batches = asyncio.run(
                 DataverseClient.run_upload_tasks(upload_task_queue)
             )
 
@@ -1647,7 +1648,7 @@ of this project OR has been added before"
             provided_data_folder: str,
             event_loop: AbstractEventLoop,
         ):
-            print("Reuploading dataset from [%s]...", provided_data_folder)
+            print(f"Reuploading dataset from [{provided_data_folder}]...")
 
             prev_failed_report_path = (
                 Path.cwd() / "report" / reupload_dataset_uuid / "failed_upload.json"
@@ -1681,7 +1682,7 @@ of this project OR has been added before"
             failed_file_info_list = failed_report["failed_file_info_list"]
             upload_task_queue = deque(failed_file_info_list)
 
-            failed_file_info_batches = event_loop.run_until_complete(
+            failed_file_info_batches = asyncio.run(
                 DataverseClient.run_upload_tasks(upload_task_queue)
             )
             if not failed_file_info_batches:
