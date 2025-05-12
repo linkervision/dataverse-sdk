@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import platform
 from asyncio import AbstractEventLoop, Semaphore
 from collections import deque
 from pathlib import Path
@@ -54,7 +55,13 @@ from .utils.utils import (
     get_filepaths,
 )
 
-MAX_CONCURRENT_FILES = 100
+
+def is_macOS():
+    return platform.system() == "Darwin"
+
+
+# to avoid the `Too many open files` error in macOS
+MAX_CONCURRENT_FILES = 70 if is_macOS() else 100
 
 
 def parse_attribute(attr_list: list) -> list:
