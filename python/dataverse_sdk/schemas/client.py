@@ -345,6 +345,9 @@ class Project(BaseModel):
             access key id for AWS s3 bucket, by default None
         secret_access_key : Optional[str], optional
             secret access key for AWS s3 bucket, by default None
+        reupload_dataset_uuid: Optional[str], optional
+            dataset UUID of a previously failed local dataset import. If provided, the files that failed to upload
+            (as recorded in `failed_upload.json`) will be re-uploaded, by default None
 
         Returns
         -------

@@ -155,7 +155,11 @@ def make_parser():
         "--reupload_dataset_uuid",
         type=str,
         default=None,
-        help="The dataset UUID to reupload.",
+        help=(
+            "Dataset UUID of a previously failed local dataset import. "
+            "If provided, the files that failed to upload (as recorded in `failed_upload.json`) "
+            "will be re-uploaded."
+        ),
     )
 
     return parser.parse_args()
