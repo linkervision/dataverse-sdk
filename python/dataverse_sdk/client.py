@@ -1598,7 +1598,7 @@ of this project OR has been added before"
         async_api: AsyncBackendAPI,
         api: BackendAPI,
         raw_dataset_data: dict,
-        reupload_dataset_uuid: str | None = None,
+        reupload_dataset_uuid: Optional[str] = None,
     ) -> str:
         def run_new_upload_tasks(
             data_folder: str,
