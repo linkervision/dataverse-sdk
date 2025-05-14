@@ -306,6 +306,7 @@ class Project(BaseModel):
         description: Optional[str] = None,
         access_key_id: Optional[str] = None,
         secret_access_key: Optional[str] = None,
+        reupload_dataset_uuid: Optional[str] = None,
         **kwargs,
     ):
         """Create Dataset From project itself
@@ -344,6 +345,9 @@ class Project(BaseModel):
             access key id for AWS s3 bucket, by default None
         secret_access_key : Optional[str], optional
             secret access key for AWS s3 bucket, by default None
+        reupload_dataset_uuid: Optional[str], optional
+            dataset UUID of a previously failed local dataset import. If provided, the files that failed to upload
+            (as recorded in `failed_upload.json`) will be re-uploaded, by default None
 
         Returns
         -------
@@ -381,6 +385,7 @@ class Project(BaseModel):
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             client_alias=self.client_alias,
+            reupload_dataset_uuid=reupload_dataset_uuid,
             **kwargs,
         )
         return dataset_output

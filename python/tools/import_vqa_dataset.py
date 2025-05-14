@@ -1,6 +1,7 @@
 import argparse
 import logging
 import time
+from typing import Optional
 
 from dataverse_sdk import DataverseClient
 from dataverse_sdk.constants import DataverseHost
@@ -22,6 +23,7 @@ def import_vqa_dataset_from_local(
     sequential: bool = False,
     gen_metadata: bool = False,
     gen_auto_tagging: bool = False,
+    reupload_dataset_uuid: Optional[str] = None,
     alias: str = "default",
 ):
     client = DataverseClient(
@@ -47,6 +49,7 @@ def import_vqa_dataset_from_local(
         "auto_tagging": gen_auto_tagging,
         "annotation_format": annotation_format,
         "sequential": sequential,
+        "reupload_dataset_uuid": reupload_dataset_uuid,
     }
     if dataset_type == DatasetType.ANNOTATED_DATA:
         dataset_data["annotations"] = ["groundtruth"]
@@ -128,6 +131,17 @@ def make_parser():
         action="store_true",
         help="Whether generate metadata for your dataset",
     )
+    parser.add_argument(
+        "-reupload",
+        "--reupload_dataset_uuid",
+        type=str,
+        default=None,
+        help=(
+            "Dataset UUID of a previously failed local dataset import. "
+            "If provided, the files that failed to upload (as recorded in `failed_upload.json`) "
+            "will be re-uploaded."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -154,4 +168,5 @@ if __name__ == "__main__":
         sequential=args.sequential,
         gen_metadata=args.metadata,
         gen_auto_tagging=[],
+        reupload_dataset_uuid=args.reupload_dataset_uuid,
     )
