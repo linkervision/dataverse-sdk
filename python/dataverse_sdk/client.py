@@ -1,7 +1,9 @@
 import asyncio
+import json
 import logging
 import os
-from asyncio import Semaphore
+import platform
+from asyncio import AbstractEventLoop, Semaphore
 from collections import deque
 from pathlib import Path
 from typing import Optional, Union
@@ -53,7 +55,13 @@ from .utils.utils import (
     get_filepaths,
 )
 
-MAX_CONCURRENT_FILES = 100
+
+def is_macOS():
+    return platform.system() == "Darwin"
+
+
+# to avoid the `Too many open files` error in macOS
+MAX_CONCURRENT_FILES = 70 if is_macOS() else 100
 
 
 def parse_attribute(attr_list: list) -> list:
@@ -1478,6 +1486,7 @@ of this project OR has been added before"
         client_alias: Optional[str] = None,
         access_key_id: Optional[str] = None,
         secret_access_key: Optional[str] = None,
+        reupload_dataset_uuid: Optional[str] = None,
         **kwargs,
     ) -> Dataset:
         """Create Dataset
@@ -1586,9 +1595,10 @@ of this project OR has been added before"
 
         if data_source == DataSource.LOCAL:
             create_dataset_uuid = DataverseClient.upload_files_from_local(
-                async_api, api, raw_dataset_data
+                async_api, api, raw_dataset_data, reupload_dataset_uuid
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
+
         dataset_data = api.create_dataset(**raw_dataset_data)
         dataset_data.update(
             {
@@ -1603,60 +1613,151 @@ of this project OR has been added before"
 
     @staticmethod
     def upload_files_from_local(
-        async_api: AsyncBackendAPI, api: BackendAPI, raw_dataset_data: dict
-    ) -> dict:
-        loop = asyncio.get_event_loop()
-        data_folder = raw_dataset_data["data_folder"]
-        dataset_type = raw_dataset_data["type"]
+        async_api: AsyncBackendAPI,
+        api: BackendAPI,
+        raw_dataset_data: dict,
+        reupload_dataset_uuid: Optional[str] = None,
+    ) -> str:
+        def run_new_upload_tasks(
+            data_folder: str,
+            dataset_type: DatasetType,
+            async_api_client: AsyncBackendAPI,
+            event_loop: AbstractEventLoop,
+        ):
+            print(f"Uploading new dataset from [{data_folder}]...")
 
-        # check folder structure
-        required_data = DataverseClient._get_format_folders(
-            annotation_format=raw_dataset_data["annotation_format"],
-            dataset_type=dataset_type,
-            project_id=raw_dataset_data["project_id"],
-            api=api,
-        )
-        if required_data:
-            for required_folder_or_file in required_data:
-                path = os.path.join(data_folder, required_folder_or_file)
-                if not os.path.exists(path):
-                    raise DataverseExceptionBase(
-                        type="",
-                        detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}",
+            # check folder structure
+            required_data = DataverseClient._get_format_folders(
+                annotation_format=raw_dataset_data["annotation_format"],
+                dataset_type=dataset_type,
+                project_id=raw_dataset_data["project_id"],
+                api=api,
+            )
+            if required_data:
+                for required_folder_or_file in required_data:
+                    path = os.path.join(data_folder, required_folder_or_file)
+                    if not os.path.exists(path):
+                        raise DataverseExceptionBase(
+                            type="",
+                            detail=f"Require the file or folder: {path} for {raw_dataset_data['annotation_format']}",
+                        )
+
+            file_paths = DataverseClient._find_all_paths(data_folder)
+            (
+                upload_task_queue,
+                create_dataset_uuid,
+                failed_urls,
+            ) = asyncio.run(
+                DataverseClient.run_generate_presigned_urls(
+                    file_paths=file_paths, api=async_api_client, data_folder=data_folder
+                )
+            )
+            if failed_urls:
+                raise ClientConnectionError(
+                    f"unable to generate urls for: {failed_urls}"
+                )
+
+            if not create_dataset_uuid:
+                raise ClientConnectionError(
+                    "something went wrong, missing create dataset uuid"
+                )
+
+            failed_file_info_batches = asyncio.run(
+                DataverseClient.run_upload_tasks(upload_task_queue)
+            )
+
+            return create_dataset_uuid, failed_file_info_batches
+
+        def run_reupload_tasks(
+            reupload_dataset_uuid: str,
+            provided_data_folder: str,
+            event_loop: AbstractEventLoop,
+        ):
+            print(f"Reuploading dataset from [{provided_data_folder}]...")
+
+            prev_failed_report_path = (
+                Path.cwd() / "report" / reupload_dataset_uuid / "failed_upload.json"
+            )
+
+            if not prev_failed_report_path.exists():
+                raise DataverseExceptionBase(
+                    detail=(
+                        f"Failed upload report not found at [{prev_failed_report_path}]; "
+                        f"cannot proceed with reuploading dataset [{reupload_dataset_uuid}]."
                     )
+                )
 
-        file_paths = DataverseClient._find_all_paths(data_folder)
-        upload_task_queue, create_dataset_uuid, failed_urls = loop.run_until_complete(
-            DataverseClient.run_generate_presigned_urls(
-                file_paths=file_paths, api=async_api, data_folder=data_folder
+            with open(prev_failed_report_path) as f:
+                failed_report = json.load(f)
+
+            if provided_data_folder != (
+                reupload_local_dataset_folder := failed_report.get(
+                    "local_dataset_folder"
+                )
+            ):
+                raise DataverseExceptionBase(
+                    detail=(
+                        f"The local dataset folder [{reupload_local_dataset_folder}] for the reupload does not match "
+                        f"the currently provided '--folder' [{provided_data_folder}].\n"
+                        f"To reupload dataset [{reupload_dataset_uuid}], "
+                        f"please set '--folder' to [{reupload_local_dataset_folder}]."
+                    )
+                )
+
+            failed_file_info_list = failed_report["failed_file_info_list"]
+            upload_task_queue = deque(failed_file_info_list)
+
+            failed_file_info_batches = asyncio.run(
+                DataverseClient.run_upload_tasks(upload_task_queue)
+            )
+            if not failed_file_info_batches:
+                prev_failed_report_path.unlink(missing_ok=True)
+
+            return reupload_dataset_uuid, failed_file_info_batches
+
+        data_folder = raw_dataset_data["data_folder"]
+        loop = asyncio.get_event_loop()
+
+        create_dataset_uuid, failed_file_info_batches = (
+            run_reupload_tasks(reupload_dataset_uuid, data_folder, loop)
+            if reupload_dataset_uuid
+            else run_new_upload_tasks(
+                data_folder, raw_dataset_data["type"], async_api, loop
             )
         )
-        if failed_urls:
-            raise ClientConnectionError(f"unable to generate urls for: {failed_urls}")
 
-        if not create_dataset_uuid:
+        if failed_file_info_batches:
+            failed_report_path = (
+                Path.cwd() / "report" / create_dataset_uuid / "failed_upload.json"
+            )
+            failed_report_path.parent.mkdir(parents=True, exist_ok=True)
+            report = {
+                "dataset_uuid": create_dataset_uuid,
+                "local_dataset_folder": data_folder,
+                "failed_file_info_list": failed_file_info_batches,
+            }
+
+            with open(failed_report_path, "w") as f:
+                json.dump(report, f)
+
             raise ClientConnectionError(
-                "something went wrong, missing create dataset uuid"
+                f"Failed to upload dataset.\n"
+                f"A detailed failure report has been saved at: {failed_report_path}\n"
+                f"To retry, import the dataset with the 'reupload_dataset_id' parameter set to [{create_dataset_uuid}]."
             )
-
-        failed_urls = loop.run_until_complete(
-            DataverseClient.run_upload_tasks(upload_task_queue)
-        )
-        if failed_urls:
-            raise ClientConnectionError(f"failed to upload urls: {failed_urls}")
         return create_dataset_uuid
 
     @staticmethod
     async def run_generate_presigned_urls(
         file_paths: list, api: AsyncBackendAPI, data_folder: str
-    ) -> tuple[deque, str, list[str]]:
-        max_retry_count, batch_size, max_concurrent_api_calls = 3, 500, 10
+    ) -> tuple[deque[tuple[list[str], list[dict]]], str, list[str]]:
+        max_retry_count, batch_size, max_concurrent_api_calls = 5, 500, 10
         semaphore = asyncio.Semaphore(max_concurrent_api_calls)
 
-        failed_urls = []
-        upload_task_queue = deque()
+        failed_urls: list[str] = []
+        upload_task_queue: deque[tuple[list[str], list[dict]]] = deque()
 
-        data_folder = Path(data_folder).resolve()
+        data_folder_path = Path(data_folder).resolve()
         create_dataset_uuid: str = str(uuid4())
 
         async def generate_presigned_url_task(
@@ -1671,7 +1772,7 @@ of this project OR has been added before"
             # Convert absolute file paths to relative paths
             # i.e <long data folder path>/data/image.jpg -> /data/image.jpg
             filtered_paths = [
-                str(Path(path).relative_to(data_folder)).replace("\\", "/")
+                str(Path(path).relative_to(data_folder_path)).replace("\\", "/")
                 for path in batched_file_paths
             ]
             async with semaphore:
@@ -1692,6 +1793,7 @@ of this project OR has been added before"
                     raise
                 except Exception as e:
                     logging.warning(f"Retrying batch due to error: {e}")
+                    await asyncio.sleep(retry_count**2)
                     await generate_presigned_url_task(
                         batched_file_paths, retry_count + 1
                     )
@@ -1706,56 +1808,89 @@ of this project OR has been added before"
         return upload_task_queue, create_dataset_uuid, failed_urls
 
     @staticmethod
-    async def run_upload_tasks(upload_task_queue: deque) -> list[str]:
+    async def run_upload_tasks(upload_task_queue: deque[tuple[list[str], list[dict]]]):
+        async def upload_batch(
+            paths: list[str],
+            upload_infos: list[dict],
+            async_client: AsyncThirdPartyAPI,
+            semaphore: Semaphore,
+            max_retry_count: int,
+            progress_bar: tqdm_asyncio,
+        ) -> tuple[list[str], list[dict[str, str]]] | None:
+            async def upload_file(path: str, info: dict):
+                async with semaphore:
+                    try:
+                        async with aio_open(path, "rb") as file:
+                            file_content = await file.read()
+                            await async_client.upload_file(
+                                method="PUT",
+                                target_url=info["url"],
+                                file=file_content,
+                                content_type="application/octet-stream",
+                            )
+                            progress_bar.update(1)
+                    except Exception as e:
+                        logging.exception(e)
+                        return (path, info)
+
+            remaining_files = (file for file in zip(paths, upload_infos, strict=True))
+            attempt_count = 1
+
+            while attempt_count <= max_retry_count:
+                print(f"🔁 Upload file batch ({attempt_count}/{max_retry_count}) ...")
+
+                upload_tasks = (
+                    upload_file(path, info) for path, info in remaining_files
+                )
+                failed_files = await asyncio.gather(*upload_tasks)
+                if not any(failed_files):
+                    print(
+                        f"✅ Upload file batch successful on attempt ({attempt_count}/{max_retry_count})"
+                    )
+                    return None
+
+                remaining_files = (file for file in failed_files if file)
+                print(
+                    f"❌ Upload file batch failed on attempt ({attempt_count}/{max_retry_count})"
+                )
+
+                await asyncio.sleep(attempt_count**2)
+                attempt_count += 1
+
+            failed_files = list(remaining_files)
+            failed_paths = [path for path, _ in failed_files]
+            failed_remote_urls = [{"url": info["url"]} for _, info in failed_files]
+
+            return (failed_paths, failed_remote_urls)
+
         tasks = []
         client = AsyncThirdPartyAPI()
         semaphore = Semaphore(MAX_CONCURRENT_FILES)
+        max_retry_count = 3
         total_files = sum(len(paths) for paths, _ in upload_task_queue)
         progress_bar = tqdm_asyncio(
             total=total_files, desc="Uploading files", unit="file"
         )
+
         for batched_file_paths, upload_file_infos in upload_task_queue:
+            tasks.append(
+                upload_batch(
+                    batched_file_paths,
+                    upload_file_infos,
+                    client,
+                    semaphore,
+                    max_retry_count,
+                    progress_bar,
+                )
+            )
 
-            async def upload_batch(
-                paths: list[str],
-                upload_infos: list[dict],
-                async_client: AsyncThirdPartyAPI,
-            ) -> list[str]:
-                failed_urls = []
-
-                async def upload_file(path: str, info: dict):
-                    async with semaphore:
-                        try:
-                            async with aio_open(path, "rb") as file:
-                                file_content = await file.read()
-                                await async_client.upload_file(
-                                    method=info["method"],
-                                    target_url=info["url"],
-                                    file=file_content,
-                                    content_type=info["content_type"],
-                                )
-                        except Exception as e:
-                            logging.exception(e)
-                            failed_urls.append(path)
-                        finally:
-                            progress_bar.update(1)
-
-                upload_tasks = [
-                    upload_file(path, info) for path, info in zip(paths, upload_infos)
-                ]
-
-                await asyncio.gather(*upload_tasks)
-
-                return failed_urls
-
-            tasks.append(upload_batch(batched_file_paths, upload_file_infos, client))
-
-        failed_urls = []
+        failed_file_info_list: list[tuple[list[str], list[dict[str, str]]]] = []
         for results in await tqdm_asyncio.gather(*tasks):
-            failed_urls.extend(results)
+            if results:
+                failed_file_info_list.append(results)
 
         progress_bar.close()
-        return failed_urls
+        return failed_file_info_list
 
     @staticmethod
     def _find_all_paths(*paths) -> list[str]:
@@ -1806,24 +1941,23 @@ of this project OR has been added before"
 
 class AsyncThirdPartyAPI:
     transport = AsyncHTTPTransport(
-        retries=10,
+        retries=5,
     )
 
     def __init__(self):
-        self.client = AsyncClient(transport=self.transport, timeout=Timeout(100))
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
 
     async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
         try:
             resp: Response = await self.client.request(method=method, url=url, **kwargs)
-
-        except Exception:
+        except Exception as e:
             logging.exception("async send request error")
+            raise AsyncThirdPartyAPIException(detail="async send request error") from e
 
         if not 200 <= resp.status_code <= 299:
             raise AsyncThirdPartyAPIException(
-                status_code=resp.status_code, detail=resp.content
+                status_code=resp.status_code, detail=resp.text
             )
-
         return resp
 
     async def upload_file(
