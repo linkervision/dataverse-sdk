@@ -2,6 +2,7 @@ import re
 from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from .common import (
     AnnotationFormat,
@@ -111,10 +112,10 @@ class QuestionClass(BaseModel):
         return value
 
     @field_validator("answer_type")
-    def answer_type_validator(cls, value, values, **kwargs):
-        if value == AttributeType.OPTION and not values.get("answer_options"):
+    def answer_type_validator(cls, value, values: ValidationInfo, **kwargs):
+        if value == AttributeType.OPTION and not values.data.get("answer_options"):
             raise ValueError(
-                f"* {values} Need to assign value for `answer_options` "
+                f"* {values.data} Need to assign value for `answer_options` "
                 + "if the Answer type is option"
             )
         return value
