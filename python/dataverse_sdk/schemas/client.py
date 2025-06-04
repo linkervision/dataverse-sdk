@@ -256,6 +256,14 @@ class Project(BaseModel):
         )
         return project
 
+    def list_datasets(self) -> list:
+        from ..client import DataverseClient
+
+        dataset_list: list = DataverseClient.list_datasets(
+            project_id=self.id, client_alias=self.client_alias
+        )
+        return dataset_list
+
     def list_dataslices(self) -> list:
         from ..client import DataverseClient
 

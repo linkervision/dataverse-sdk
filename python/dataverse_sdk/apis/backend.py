@@ -232,6 +232,15 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def list_datasets(self, project_id: int, **kwargs) -> list:
+        kwargs["project"] = project_id
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
     def list_dataslices(self, project_id: int, **kwargs) -> list:
         kwargs["project"] = project_id
         resp = self.send_request(
