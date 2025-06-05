@@ -640,6 +640,7 @@ class AsyncBackendAPI:
                         {
                             "id_set": ",".join([str(id_) for id_ in id_chunks]),
                             "limit": batch_size,
+                            "id__gt": id_gt,
                         }
                     )
                     url = f"{self.host}/api/datarows/?{urlencode(kwargs)}"
