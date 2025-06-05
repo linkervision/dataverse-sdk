@@ -73,7 +73,7 @@ The following sections provide examples for the most common DataVerse tasks incl
 * [Edit Project](#edit-project)
 * [Update Alias](#update-ontology-alias)
 * [Create Dataset](#create-dataset)
-* [Get Dataset](#get-dataset)
+* [List Dataset](#list-and-get-dataset)
 * [List Dataslices](#list-and-get-dataslices)
 * [Export Dataslice](#export-dataslice-and-download)
 * [List Models](#list-models)
@@ -383,7 +383,18 @@ python tools/import_dataset_from_local.py -host https://staging.visionai.linkerv
 ```
 <br>
 
-### Get Dataset
+### List and Get Dataset
+
+The `list_datasets` method would return the list of dataset under the given project
+```Python
+project = client.get_project(project_id=1)
+datasets:list = project.list_datasets()
+```
+OR
+```Python
+datasets:list = client.list_datasets(project_id=1, client_alias=client.alias )
+```
+
 
 The `get_dataset` method retrieves the dataset info from the connected site. The `dataset_id` parameter is the unique integer ID of the dataset, not its "name" property.
 
