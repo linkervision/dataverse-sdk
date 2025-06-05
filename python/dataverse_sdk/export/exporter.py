@@ -139,9 +139,7 @@ class Exporter:
             datarow_id_set: set[int] = set()
             for id_chunks in chunks(datarow_id_list, 1000):
                 gen: AsyncGenerator = curation_api.get_datarows(
-                    id_set=",".join(
-                        str(_id) for _id in id_chunks
-                    ),  # id_set="1,2,3,4,5"
+                    id_set_list=id_chunks,
                     batch_size=BATCH_SIZE,
                     fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url",
                 )
