@@ -72,3 +72,9 @@ def download_file_from_url(url: str, save_path: str):
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred while downloading the file: {e}")
+
+
+def chunks(lst: list, n: int):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]

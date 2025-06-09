@@ -12,6 +12,7 @@ from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
 from ..exceptions.client import DataverseExceptionBase
+from ..utils.utils import chunks
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +228,15 @@ class BackendAPI:
             kwargs["ontology__image_type"] = image_type.value
         resp = self.send_request(
             url=f"{self.host}/api/projects/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
+    def list_datasets(self, project_id: int, **kwargs) -> list:
+        kwargs["project"] = project_id
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/?{urlencode(kwargs)}",
             method="get",
             headers=self.headers,
         )
@@ -613,39 +623,63 @@ class AsyncBackendAPI:
             return None
 
     async def get_datarows(
-        self, batch_size: int = 20, order_by: str = "id", **kwargs
-    ) -> AsyncGenerator[list[dict], None, None]:
+        self,
+        batch_size: int = 20,
+        order_by: str = "id",
+        id_set_list: Optional[list] = None,
+        **kwargs,
+    ) -> AsyncGenerator[list[dict]]:
         if "offset" in kwargs or "limit" in kwargs:
             raise ValueError("Specifying offset or limit directly is not allowed.")
-
         kwargs["order_by"] = order_by
-        dataslice_set = kwargs.pop("dataslice_set", [])
-        query_params = {
-            **kwargs,
-            "order_by": order_by,
-            "dataslice_set": dataslice_set,
-            "limit": batch_size,
-        }
-        query_string = urlencode(query_params, doseq=True)
-
         id_gt = 0
-        while True:
-            url = f"{self.host}/api/datarows/?{query_string}&id__gt={id_gt}"
-            resp: dict = await self.async_send_request(
-                url=url,
-                method="get",
-                headers=self.headers,
-            )
-            json_data = resp
-            if json_data["count"] == 0:
-                break
-            if not json_data["results"]:
-                break
+        if id_set_list:
+            for id_chunks in chunks(id_set_list, batch_size):
+                while True:
+                    kwargs.update(
+                        {
+                            "id_set": ",".join([str(id_) for id_ in id_chunks]),
+                            "limit": batch_size,
+                            "id__gt": id_gt,
+                        }
+                    )
+                    url = f"{self.host}/api/datarows/?{urlencode(kwargs)}"
+                    resp: dict = await self.async_send_request(
+                        url=url,
+                        method="get",
+                        headers=self.headers,
+                    )
+                    json_data = resp
+                    datarows = json_data["results"]
+                    if not datarows:
+                        break
+                    # Get last datarow id
+                    id_gt = datarows[-1]["id"]
+                    yield datarows
+        else:
+            dataslice_set = kwargs.pop("dataslice_set", [])
+            query_params = {
+                **kwargs,
+                "dataslice_set": dataslice_set,
+                "limit": batch_size,
+            }
+            query_string = urlencode(query_params, doseq=True)
 
-            # Get last datarow id
-            datarows = json_data["results"]
-            id_gt = datarows[-1]["id"]
-            yield datarows
+            id_gt = 0
+            while True:
+                url = f"{self.host}/api/datarows/?{query_string}&id__gt={id_gt}"
+                resp: dict = await self.async_send_request(
+                    url=url,
+                    method="get",
+                    headers=self.headers,
+                )
+                json_data = resp
+                if not json_data["results"]:
+                    break
+                # Get last datarow id
+                datarows = json_data["results"]
+                id_gt = datarows[-1]["id"]
+                yield datarows
 
     async def get_datarows_flat_parent(
         self, batch_size: int = 20, order_by: str = "id", **kwargs
