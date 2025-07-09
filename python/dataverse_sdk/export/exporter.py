@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
 from typing import Callable
@@ -152,6 +153,7 @@ class Exporter:
                             continue
                         datarow_id_set.add(dr_id)
                         yield datarow
+                time.sleep(2)
 
         return f
 
