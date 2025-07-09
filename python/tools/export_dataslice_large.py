@@ -20,7 +20,8 @@ def export_dataslice_to_local(
     alias: str = "default",
 ):
     if not os.path.exists(target_folder):
-        raise OSError(f"target folder: {target_folder} not exists")
+        os.makedirs(target_folder, exist_ok=True)
+        # raise OSError(f"target folder: {target_folder} not exists")
 
     if not os.access(target_folder, os.W_OK):
         print(f"Write permission denied: {target_folder}")
