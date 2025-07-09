@@ -591,6 +591,27 @@ class DataverseClient:
             export_records=dataslice_data["export_records"],
         )
 
+    def get_datarow(
+        self,
+        datarow_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> dict:
+        if client_alias is None:
+            client_alias = self.alias
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            datarow_data: dict = api.get_datarow(datarow_id=datarow_id)
+        except DataverseExceptionBase as e:
+            logging.exception(f"Got api error from Dataverse: {e}")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to get the dataslice: {e}")
+        return datarow_data
+
     def export_dataslice(
         self,
         dataslice_id: int,

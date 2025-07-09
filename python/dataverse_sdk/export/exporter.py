@@ -12,6 +12,7 @@ from .base import ExportAnnotationBase
 from .constant import BATCH_SIZE, MAX_CONCURRENT_DOWNLOADS, ExportFormat
 
 NONE_SEQUENCE_DATAROW_ID = -1
+NONE_FRAME_DATAROW_ID = -1
 
 
 class Exporter:
@@ -200,14 +201,21 @@ async def get_datarows_sequence_info(
     datarow_retrieved_info: dict[int, dict[int, list[int]]] = defaultdict(
         lambda: defaultdict(list)
     )
+    missing_frame_datarow_id = 0
     async for datarows in datarows_generator:
         for datarow in datarows:
             # set NONE_SEQUENCE_DATAROW_ID for None case (which mean the original data is not sequential)
             if datarow["sequence_datarow_id"] is None:
                 datarow["sequence_datarow_id"] = NONE_SEQUENCE_DATAROW_ID
+
+            if datarow["frame_datarow_id"] is None:
+                missing_frame_datarow_id -= 1
+                datarow["frame_datarow_id"] = missing_frame_datarow_id
+
             datarow_retrieved_info[datarow["sequence_datarow_id"]][
                 int(datarow["frame_datarow_id"])
             ].append(datarow["id"])
+    print(f"** missing frame datarow count: {missing_frame_datarow_id}")
     return datarow_retrieved_info
 
 

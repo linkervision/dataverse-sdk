@@ -310,6 +310,17 @@ class BackendAPI:
         )
         return resp.json()
 
+    def get_datarow(self, datarow_id: int) -> dict:
+        fields = "id,dataset_id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url"
+        kwargs = {}
+        kwargs["field"] = fields
+        resp = self.send_request(
+            url=f"{self.host}/api/datarows/{datarow_id}/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()
+
     def get_convert_record(self, convert_record_id: int) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/convert_record/{convert_record_id}/",
