@@ -153,7 +153,7 @@ class Exporter:
                             continue
                         datarow_id_set.add(dr_id)
                         yield datarow
-                time.sleep(1)
+                time.sleep(0.1)
 
         return f
 
