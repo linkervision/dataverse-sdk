@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -133,3 +133,13 @@ class DatasetAPISchema(BaseModel):
     annotations: Optional[list[str]] = []
     access_key_id: Optional[str] = None
     secret_access_key: Optional[str] = None
+
+
+class CreateCustomModelAPISchema(BaseModel):
+    project_id: 0
+    name: str
+    input_classes: list[str]
+    resolution_width: int
+    resolution_height: int
+    model_structure: Literal["yolov9-c", "yolov9-e", "yolov9-s"]
+    weight_url: str

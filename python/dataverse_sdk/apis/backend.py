@@ -460,6 +460,15 @@ class BackendAPI:
         )
         return resp.json()
 
+    def create_custom_model(self, **kwargs):
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/custom_model/",
+            method="post",
+            headers=self.headers,
+            data=kwargs,
+        )
+        return resp.json()
+
 
 class AsyncBackendAPI:
     def __init__(
