@@ -1771,9 +1771,7 @@ of this project OR has been added before"
                 weight_url=weight_url,
             ).model_dump()
         except ValidationError as e:
-            raise APIValidationError(
-                f"Something wrong when composing the final dataset data: {e}"
-            )
+            raise APIValidationError(f"Something wrong when creating custom model: {e}")
 
         api, _ = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=False
