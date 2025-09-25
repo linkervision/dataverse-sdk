@@ -136,7 +136,7 @@ class DatasetAPISchema(BaseModel):
 
 
 class CreateCustomModelAPISchema(BaseModel):
-    project_id: 0
+    project_id: int
     name: str
     input_classes: list[str]
     resolution_width: int
