@@ -466,7 +466,7 @@ class BackendAPI:
             self.headers["X-Request-Source"] = permission
 
         resp = self.send_request(
-            url=f"{self.host}/api/ml_models/custom_model/",
+            url=f"{self.host}/api/ml_models/custom-model/",
             method="post",
             headers=self.headers,
             data=kwargs,
