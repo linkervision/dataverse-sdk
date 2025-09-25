@@ -180,6 +180,51 @@ class DataverseClient:
     def get_user(self):
         return self._api_client.get_user()
 
+    def get_service_info(self):
+        return self._api_client.get_service_info()
+
+    def delete_dataset(
+        self,
+        dataset_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> Dataslice:
+        if client_alias is None:
+            client_alias = self.alias
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            resp = api.delete_dataset(dataset_id=dataset_id)
+        except DataverseExceptionBase as e:
+            logging.exception(f"Got api error from Dataverse: {e}")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to delte the dataset: {e}")
+        return resp
+
+    def delete_dataslice(
+        self,
+        dataslice_id: int,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> Dataslice:
+        if client_alias is None:
+            client_alias = self.alias
+
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        try:
+            resp = api.delete_dataslice(dataslice_id=dataslice_id)
+        except DataverseExceptionBase as e:
+            logging.exception(f"Got api error from Dataverse: {e}")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to delete the dataslice: {e}")
+        return resp
+
     def create_project(
         self,
         name: str,
@@ -1483,7 +1528,7 @@ of this project OR has been added before"
 
         project = self.get_project(dataset_data["project"]["id"])
         dataset_data.update({"project": project})
-        return Dataset(**dataset_data, client_alias=client_alias)
+        return dataset_data  # Dataset(**dataset_data, client_alias=client_alias)
 
     # TODO: required arguments for different DataSource
     @staticmethod

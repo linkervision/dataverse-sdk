@@ -127,6 +127,29 @@ class BackendAPI:
             headers=self.headers,
         ).json()
 
+    def get_service_info(self):
+        return self.send_request(
+            url=f"{self.host}/api/service-info/",
+            method="get",
+            headers=self.headers,
+        ).json()
+
+    def delete_dataset(self, dataset_id: int) -> list:
+        resp = self.send_request(
+            url=f"{self.host}/api/datasets/{dataset_id}/",
+            method="delete",
+            headers=self.headers,
+        )
+        return resp
+
+    def delete_dataslice(self, dataslice_id: int) -> list:
+        resp = self.send_request(
+            url=f"{self.host}/api/dataslices/{dataslice_id:}/",
+            method="delete",
+            headers=self.headers,
+        )
+        return resp
+
     def create_project(
         self,
         name: str,
@@ -245,7 +268,7 @@ class BackendAPI:
     def list_dataslices(self, project_id: int, **kwargs) -> list:
         kwargs["project"] = project_id
         resp = self.send_request(
-            url=f"{self.host}/api/dataslices/basic/?{urlencode(kwargs)}",
+            url=f"{self.host}/api/dataslices/?{urlencode(kwargs)}",
             method="get",
             headers=self.headers,
         )
