@@ -1759,11 +1759,10 @@ of this project OR has been added before"
         weight_url: str,
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
-        permission: str = "",
     ):
         try:
             payload = CreateCustomModelAPISchema(
-                project_id=project.id,
+                project=project.id,
                 name=name,
                 input_classes=input_classes,
                 resolution_width=resolution_width,
@@ -1778,7 +1777,7 @@ of this project OR has been added before"
             client=client, client_alias=client_alias, is_async=False
         )
 
-        api.create_custom_model(**payload, permission=permission)
+        api.create_custom_model(**payload)
 
     @staticmethod
     async def run_generate_presigned_urls(
