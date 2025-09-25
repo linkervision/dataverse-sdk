@@ -553,6 +553,7 @@ class MLModel(BaseModel):
         resolution_height: int,
         model_structure: Literal["yolov9-c", "yolov9-e", "yolov9-s"],
         weight_url: str,
+        permission: str = "",
     ):
         from ..client import DataverseClient
 
@@ -565,4 +566,5 @@ class MLModel(BaseModel):
             model_structure=model_structure,
             weight_url=weight_url,
             client_alias=self.client_alias,
+            permission=permission,
         )
