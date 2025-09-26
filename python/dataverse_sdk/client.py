@@ -691,10 +691,14 @@ class DataverseClient:
             raise InvalidProcessError("The project type is not VQA!")
         output_list = []
         for question in project.ontology.classes:
+            answer = question.attributes[0]
+            option_list = [opt.value for opt in answer.options]
             output_list.append(
                 {
                     "question_id": question.rank,
                     "question": question.extended_class["question"],
+                    "type": answer.type,
+                    "options": option_list,
                 }
             )
         import json
