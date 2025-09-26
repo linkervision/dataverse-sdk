@@ -26,6 +26,7 @@ from .exceptions.client import (
 )
 from .schemas.api import (
     AttributeAPISchema,
+    CreateCustomModelAPISchema,
     DatasetAPISchema,
     OntologyAPISchema,
     ProjectAPISchema,
@@ -1746,6 +1747,38 @@ of this project OR has been added before"
                 f"To retry, import the dataset with the 'reupload_dataset_id' parameter set to [{create_dataset_uuid}]."
             )
         return create_dataset_uuid
+
+    @staticmethod
+    def create_custom_model(
+        project: Project,
+        name: str,
+        input_classes: list[str],
+        resolution_width: int,
+        resolution_height: int,
+        model_structure: str,
+        weight_url: str,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+        permission: str = "",
+    ):
+        try:
+            payload = CreateCustomModelAPISchema(
+                project_id=project.id,
+                name=name,
+                input_classes=input_classes,
+                resolution_width=resolution_width,
+                resolution_height=resolution_height,
+                model_structure=model_structure,
+                weight_url=weight_url,
+            ).model_dump()
+        except ValidationError as e:
+            raise APIValidationError(f"Something wrong when creating custom model: {e}")
+
+        api, _ = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias, is_async=False
+        )
+
+        api.create_custom_model(**payload, permission=permission)
 
     @staticmethod
     async def run_generate_presigned_urls(
