@@ -471,6 +471,19 @@ class BackendAPI:
         )
         return resp.json()
 
+    def create_custom_model(self, **kwargs):
+        permission = kwargs.pop("permission", "")
+        if permission:
+            self.headers["X-Request-Source"] = permission
+
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/custom-model/",
+            method="post",
+            headers=self.headers,
+            data=kwargs,
+        )
+        return resp.json()
+
 
 class AsyncBackendAPI:
     def __init__(
