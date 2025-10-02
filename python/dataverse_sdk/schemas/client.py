@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -542,4 +542,29 @@ class MLModel(BaseModel):
 
         return DataverseClient.get_convert_record(
             convert_record_id=convert_record_id, client_alias=self.client_alias
+        )
+
+    def create_custom_model(
+        self,
+        project: Project,
+        name: str,
+        input_classes: list[str],
+        resolution_width: int,
+        resolution_height: int,
+        model_structure: Literal["yolov9-c", "yolov9-e", "yolov9-s"],
+        weight_url: str,
+        permission: str = "",
+    ):
+        from ..client import DataverseClient
+
+        return DataverseClient.create_custom_model(
+            project=project,
+            name=name,
+            input_classes=input_classes,
+            resolution_width=resolution_width,
+            resolution_height=resolution_height,
+            model_structure=model_structure,
+            weight_url=weight_url,
+            client_alias=self.client_alias,
+            permission=permission,
         )
