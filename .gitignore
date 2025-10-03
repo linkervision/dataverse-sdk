@@ -4,7 +4,8 @@ report/
 .DS_Store
 
 # Virtual environments
+.env
+.venv
 venv/
-env/
-ENV/
-.venv/
+env.bak/
+venv.bak/
