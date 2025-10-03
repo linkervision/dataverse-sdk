@@ -3,3 +3,9 @@ report/
 
 # Mac OS
 .DS_Store
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/

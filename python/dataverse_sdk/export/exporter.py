@@ -141,7 +141,7 @@ class Exporter:
                 gen: AsyncGenerator = curation_api.get_datarows(
                     id_set_list=id_chunks,
                     batch_size=BATCH_SIZE,
-                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url",
+                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url,type",
                 )
                 async for batched_datarow in gen:
                     for datarow in batched_datarow:

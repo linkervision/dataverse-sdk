@@ -19,7 +19,7 @@ from .constant import (
     ExportFormat,
 )
 from .exporter import Exporter
-from .utils import convert_to_bytes
+from .utils import convert_to_bytes, gen_empty_vai
 
 
 def merge_intervals(intervals: list[tuple[int, int]]):
@@ -425,6 +425,11 @@ def aggregate_datarows_annotations(
             else:
                 vai = copy.deepcopy(
                     datarow_items.get("predictions", {}).get(annotation_name, {})
+                )
+
+            if not vai:
+                vai = gen_empty_vai(
+                    datarow=datarow, sequence_folder_url=sequence_folder_url
                 )
 
             # we could retrieve the first data of frames under items

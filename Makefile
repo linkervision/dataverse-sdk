@@ -1,5 +1,5 @@
 GIT = $(shell which git)
-PIP = $(shell which pip)
+PIP = $(shell which pip || which pip3)
 
 #################################
 # package installation

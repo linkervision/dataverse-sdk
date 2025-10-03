@@ -16,7 +16,7 @@ from .constant import (
     ExportFormat,
 )
 from .exporter import Exporter
-from .utils import convert_to_bytes
+from .utils import convert_to_bytes, gen_empty_vai
 
 
 @Exporter.register(format=ExportFormat.YOLO)
@@ -151,6 +151,9 @@ def convert_annotation(
         visionai_dict: dict = (
             datarow["items"].get("predictions", {}).get(annotation_name, {})
         )
+
+    if not visionai_dict:
+        visionai_dict = gen_empty_vai(datarow=datarow, sequence_folder_url="")
 
     (category_map, image_labels_map, _, _) = VAItoYOLO.convert_single_visionai_to_yolo(
         dest_img_folder="",
