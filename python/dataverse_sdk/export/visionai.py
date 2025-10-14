@@ -633,17 +633,22 @@ class ExportVisionAI(ExportAnnotationBase):
         current_batch: list[dict],
         pre_frame_datarow_id: int,
         last_batch: bool,
-    ) -> list[tuple[bytes, str]]:
+    ) -> tuple[
+        list[tuple[bytes, str]],
+        defaultdict[int, list[dict]],
+        list[int],
+        int,
+        list[dict],
+    ]:
         annotation_results = []
 
         async for datarow in datarow_generator_func(datarow_id_list):
             frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
             current_batch.append(datarow)
             sequence_frame_datarows[frame_datarow_id].append(datarow)
-            if pre_frame_datarow_id is None:
-                pre_frame_datarow_id = frame_datarow_id
-            elif pre_frame_datarow_id != frame_datarow_id:
-                sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
+
+            if pre_frame_datarow_id is None or pre_frame_datarow_id != frame_datarow_id:
+                sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
                 annot_bytes: bytes = convert_to_bytes(
                     aggregate_datarows_annotations(
                         frame_datarows=sequence_frame_datarows,
@@ -656,7 +661,7 @@ class ExportVisionAI(ExportAnnotationBase):
                     f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
                 )
                 annotation_results.append((annot_bytes, anno_path))
-                sequence_frame_datarows.pop(pre_frame_datarow_id)
+                sequence_frame_datarows.pop(pre_frame_datarow_id, None)
                 pre_frame_datarow_id = frame_datarow_id
 
         if last_batch:
