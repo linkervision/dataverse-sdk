@@ -22,7 +22,7 @@ from .constant import (
     ExportFormat,
 )
 from .exporter import Exporter
-from .utils import convert_to_bytes
+from .utils import convert_to_bytes, gen_empty_vai
 
 
 @Exporter.register(format=ExportFormat.COCO)
@@ -155,6 +155,9 @@ def convert_annotation(
             target_visionai: dict = (
                 datarow["items"].get("predictions", {}).get(annotation_name, {})
             )
+
+        if not target_visionai:
+            target_visionai = gen_empty_vai(datarow=datarow, sequence_folder_url="")
 
         (
             category_idx_map,
