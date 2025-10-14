@@ -37,15 +37,8 @@ repos:
     rev: v3.3.1
     hooks:
       - id: pyupgrade
-        args: ["--py38-plus","--keep-runtime-typing"] # py39 will somehow break Pydantic
+        args: ["--py38-plus", "--keep-runtime-typing"] # py39 will somehow break Pydantic
         exclude: (visionai_json_schema\.py)
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: ["--config=./ci/setup.cfg"]
-        additional_dependencies: ["flake8-bugbear==22.7.1"]
 
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.18.0
