@@ -511,17 +511,17 @@ def aggregate_datarows_annotations(
     # list out all frames number of combined frames
     frame_num_set = {int(num) for num in combined_frames.keys()}
     # combine all objects under visionai
-    static_objects_map: dict[
-        str, list[tuple[int, dict]]
-    ] = aggregate_static_annotations(
-        datarows=all_datarows, root_key="objects", annotation_name=annotation_name
+    static_objects_map: dict[str, list[tuple[int, dict]]] = (
+        aggregate_static_annotations(
+            datarows=all_datarows, root_key="objects", annotation_name=annotation_name
+        )
     )
 
     # combine all contexts under visionai
-    static_contexts_map: dict[
-        str, list[tuple[int, dict]]
-    ] = aggregate_static_annotations(
-        datarows=all_datarows, root_key="contexts", annotation_name=annotation_name
+    static_contexts_map: dict[str, list[tuple[int, dict]]] = (
+        aggregate_static_annotations(
+            datarows=all_datarows, root_key="contexts", annotation_name=annotation_name
+        )
     )
 
     # retrieve tags under visionai
@@ -715,9 +715,9 @@ class ExportVisionAI(ExportAnnotationBase):
                         datarow_id_list.extend(datarow_ids)
                         frame_datarow_id_to_sequence_id[frame_datarow_id] = sequence_id
                         for datarow_id in datarow_ids:
-                            datarow_id_to_frame_datarow_id[
-                                datarow_id
-                            ] = frame_datarow_id
+                            datarow_id_to_frame_datarow_id[datarow_id] = (
+                                frame_datarow_id
+                            )
                         if len(datarow_id_list) >= BATCH_SIZE:
                             (
                                 annotation_results,
