@@ -652,8 +652,9 @@ class ExportVisionAI(ExportAnnotationBase):
                 annot_bytes: bytes = convert_to_bytes(
                     aggregate_datarows_annotations(
                         frame_datarows=sequence_frame_datarows,
-                        sequence_folder_url=f"{target_folder.rstrip('/')}/"
-                        + f"{sequence_id:012d}/",
+                        sequence_folder_url=os.path.join(
+                            target_folder, f"{sequence_id:012d}", ""
+                        ),
                         annotation_name=annotation_name,
                     )
                 )
@@ -669,8 +670,9 @@ class ExportVisionAI(ExportAnnotationBase):
             annot_bytes: bytes = convert_to_bytes(
                 aggregate_datarows_annotations(
                     frame_datarows=sequence_frame_datarows,
-                    sequence_folder_url=f"{target_folder.rstrip('/')}/"
-                    + f"{sequence_id:012d}/",
+                    sequence_folder_url=os.path.join(
+                        target_folder, f"{sequence_id:012d}", ""
+                    ),
                     annotation_name=annotation_name,
                 )
             )
