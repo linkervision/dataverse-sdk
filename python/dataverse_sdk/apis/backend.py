@@ -473,6 +473,49 @@ class BackendAPI:
         )
         return resp.json()
 
+    def create_session_task_presigned_urls(self, filenames: list[str]) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/session_tasks/presigned-urls/",
+            method="post",
+            headers=self.headers,
+            data={"filenames": filenames},
+        )
+        return resp.json()
+
+    def upload_file_to_presigned_url(self, presigned_url: str, file_path: str) -> None:
+        with open(file_path, "rb") as f:
+            resp = self.send_request(
+                url=presigned_url,
+                method="put",
+                data=f,
+                headers={"Content-Type": "application/octet-stream"},
+            )
+        return resp
+
+    def create_session_task(
+        self,
+        name: str,
+        data_folder: str,
+        video_curation: bool = False,
+        curation_config: Optional[dict] = None,
+    ) -> dict:
+        payload_data = {
+            "name": name,
+            "data_folder": data_folder,
+            "video_curation": video_curation,
+        }
+
+        if video_curation and curation_config:
+            payload_data["curation_config"] = curation_config
+
+        resp = self.send_request(
+            url=f"{self.host}/api/session_tasks/",
+            method="post",
+            headers=self.headers,
+            data=payload_data,
+        )
+        return resp.json()
+
 
 class AsyncBackendAPI:
     def __init__(
