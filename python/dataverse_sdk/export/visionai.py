@@ -659,7 +659,10 @@ class ExportVisionAI(ExportAnnotationBase):
                     )
                 )
                 anno_path = os.path.join(
-                    f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+                    f"{sequence_id:012d}",
+                    "annotations",
+                    annotation_name,
+                    "visionai.json",
                 )
                 annotation_results.append((annot_bytes, anno_path))
                 sequence_frame_datarows.pop(pre_frame_datarow_id, None)
@@ -677,7 +680,7 @@ class ExportVisionAI(ExportAnnotationBase):
                 )
             )
             anno_path = os.path.join(
-                f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+                f"{sequence_id:012d}", "annotations", annotation_name, "visionai.json"
             )
             annotation_results.append((annot_bytes, anno_path))
             sequence_frame_datarows = defaultdict(list)
