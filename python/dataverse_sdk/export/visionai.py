@@ -837,6 +837,7 @@ class ExportVisionAI(ExportAnnotationBase):
                             yield annotation_result
                         annotation_results = []
 
+                # update for non-sequential last batch
                 if datarow_id_list:
                     (
                         annotation_results,
