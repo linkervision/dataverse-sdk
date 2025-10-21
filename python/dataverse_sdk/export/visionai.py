@@ -638,88 +638,37 @@ class ExportVisionAI(ExportAnnotationBase):
         list[tuple[bytes, str]],
         defaultdict[int, list[dict]],
         list[int],
-        int,
+        int | None,
         list[dict],
     ]:
         annotation_results = []
-        if not is_sequential:
-            async for datarow in datarow_generator_func(datarow_id_list):
-                frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
-                current_batch.append(datarow)
-                if pre_frame_datarow_id is None:
-                    pre_frame_datarow_id = frame_datarow_id
-                    sequence_frame_datarows[frame_datarow_id].append(datarow)
-                elif pre_frame_datarow_id != frame_datarow_id:
-                    # export preview frame when frame_datarow_id change
-                    sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
-                    annot_bytes: bytes = convert_to_bytes(
-                        aggregate_datarows_annotations(
-                            frame_datarows=sequence_frame_datarows,
-                            sequence_folder_url=os.path.join(
-                                target_folder, f"{sequence_id:012d}", ""
-                            ),
-                            annotation_name=annotation_name,
-                        )
-                    )
-                    anno_path = os.path.join(
-                        f"{sequence_id:012d}",
-                        "annotations",
-                        annotation_name,
-                        "visionai.json",
-                    )
-                    annotation_results.append((annot_bytes, anno_path))
-                    sequence_frame_datarows.pop(pre_frame_datarow_id, None)
-                    sequence_frame_datarows[frame_datarow_id].append(datarow)
-                    pre_frame_datarow_id = frame_datarow_id
 
-            if last_batch:
-                sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
-                annot_bytes: bytes = convert_to_bytes(
-                    aggregate_datarows_annotations(
-                        frame_datarows=sequence_frame_datarows,
-                        sequence_folder_url=os.path.join(
-                            target_folder, f"{sequence_id:012d}", ""
-                        ),
-                        annotation_name=annotation_name,
-                    )
-                )
-                anno_path = os.path.join(
-                    f"{sequence_id:012d}",
-                    "annotations",
-                    annotation_name,
-                    "visionai.json",
-                )
-                annotation_results.append((annot_bytes, anno_path))
-                sequence_frame_datarows = defaultdict(list)
-            return (
-                annotation_results,
-                sequence_frame_datarows,
-                datarow_id_list,
-                pre_frame_datarow_id,
-                current_batch,
-            )
-        if is_sequential:
-            async for datarow in datarow_generator_func(datarow_id_list):
-                frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
-                sequence_frame_datarows[frame_datarow_id].append(datarow)
-                current_batch.append(datarow)
-            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
-            annot_bytes: bytes = convert_to_bytes(
+        def create_annotation(frame_datarows: dict, seq_id: int) -> tuple[bytes, str]:
+            """Helper to create annotation bytes and path."""
+            annot_bytes = convert_to_bytes(
                 aggregate_datarows_annotations(
-                    frame_datarows=sequence_frame_datarows,
+                    frame_datarows=frame_datarows,
                     sequence_folder_url=os.path.join(
-                        target_folder, f"{sequence_id:012d}", ""
+                        target_folder, f"{seq_id:012d}", ""
                     ),
                     annotation_name=annotation_name,
                 )
             )
             anno_path = os.path.join(
-                f"{sequence_id:012d}",
-                "annotations",
-                annotation_name,
-                "visionai.json",
+                f"{seq_id:012d}", "annotations", annotation_name, "visionai.json"
             )
-            annotation_results.append((annot_bytes, anno_path))
+            return (annot_bytes, anno_path)
+
+        if is_sequential:
+            async for datarow in datarow_generator_func(datarow_id_list):
+                frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+                current_batch.append(datarow)
+
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annotation_results.append(
+                create_annotation(sequence_frame_datarows, sequence_id)
+            )
             sequence_frame_datarows = defaultdict(list)
 
             return (
@@ -729,6 +678,41 @@ class ExportVisionAI(ExportAnnotationBase):
                 pre_frame_datarow_id,
                 current_batch,
             )
+
+        async for datarow in datarow_generator_func(datarow_id_list):
+            frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+            current_batch.append(datarow)
+            if pre_frame_datarow_id is None:
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+                sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+                annotation_results.append(
+                    create_annotation(sequence_frame_datarows, sequence_id)
+                )
+                pre_frame_datarow_id = frame_datarow_id
+            elif pre_frame_datarow_id != frame_datarow_id:
+                # export previous frame when frame_datarow_id changes
+                pre_sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
+                annotation_results.append(
+                    create_annotation(sequence_frame_datarows, pre_sequence_id)
+                )
+                sequence_frame_datarows.pop(pre_frame_datarow_id)
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+                pre_frame_datarow_id = frame_datarow_id
+
+        if last_batch:
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annotation_results.append(
+                create_annotation(sequence_frame_datarows, sequence_id)
+            )
+            sequence_frame_datarows = defaultdict(list)
+
+        return (
+            annotation_results,
+            sequence_frame_datarows,
+            datarow_id_list,
+            pre_frame_datarow_id,
+            current_batch,
+        )
 
     async def producer(
         self,
