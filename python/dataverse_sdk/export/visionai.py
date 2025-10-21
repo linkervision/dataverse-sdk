@@ -650,6 +650,7 @@ class ExportVisionAI(ExportAnnotationBase):
                     pre_frame_datarow_id = frame_datarow_id
                     sequence_frame_datarows[frame_datarow_id].append(datarow)
                 elif pre_frame_datarow_id != frame_datarow_id:
+                    # export preview frame when frame_datarow_id change
                     sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
                     annot_bytes: bytes = convert_to_bytes(
                         aggregate_datarows_annotations(
