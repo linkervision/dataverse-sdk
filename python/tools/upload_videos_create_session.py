@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import logging
 from pathlib import Path
 
@@ -84,7 +85,7 @@ def make_parser():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+async def main():
     args = make_parser()
 
     video_folder = Path(args.folder)
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         )
 
         logging.info(f"Creating session task: {session_name}")
-        session_task = client.create_session_task(
+        await client.create_session_task(
             name=session_name,
             video_folder=args.folder,
             video_curation=args.video_curation,
@@ -120,5 +121,9 @@ if __name__ == "__main__":
         )
 
     except Exception as e:
-        logging.error(f"Failed to create session task: {e}")
+        logging.error(f"❌ Failed to create session task: {e}")
         raise
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
