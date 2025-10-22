@@ -46,6 +46,7 @@ def make_parser():
         help="the password of your dataverse workspace",
     )
     parser.add_argument(
+        "-f",
         "--folder",
         type=str,
         required=True,
@@ -62,7 +63,7 @@ def make_parser():
         "--video-curation",
         action="store_true",
         default=False,
-        help="enable video curation",
+        help="enable video curation (sequential data)",
     )
     parser.add_argument(
         "--global-mean-threshold",
@@ -82,6 +83,7 @@ def make_parser():
         default=5,
         help=f"Set the length of each split clip in seconds ({SPLIT_DURATION_MIN} ~ {SPLIT_DURATION_MAX}s).",
     )
+
     return parser.parse_args()
 
 
