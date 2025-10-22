@@ -643,8 +643,10 @@ class ExportVisionAI(ExportAnnotationBase):
     ]:
         annotation_results = []
 
-        def create_annotation(frame_datarows: dict, seq_id: int) -> tuple[bytes, str]:
-            """Helper to create annotation bytes and path."""
+        def create_aggregated_annotation(
+            frame_datarows: dict, seq_id: int
+        ) -> tuple[bytes, str]:
+            """Helper to create aggregated annotation bytes and path."""
             annot_bytes = convert_to_bytes(
                 aggregate_datarows_annotations(
                     frame_datarows=frame_datarows,
@@ -667,7 +669,7 @@ class ExportVisionAI(ExportAnnotationBase):
 
             sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
             annotation_results.append(
-                create_annotation(sequence_frame_datarows, sequence_id)
+                create_aggregated_annotation(sequence_frame_datarows, sequence_id)
             )
             sequence_frame_datarows = defaultdict(list)
 
@@ -683,17 +685,15 @@ class ExportVisionAI(ExportAnnotationBase):
             frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
             current_batch.append(datarow)
             if pre_frame_datarow_id is None:
-                sequence_frame_datarows[frame_datarow_id].append(datarow)
-                sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
-                annotation_results.append(
-                    create_annotation(sequence_frame_datarows, sequence_id)
-                )
                 pre_frame_datarow_id = frame_datarow_id
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
             elif pre_frame_datarow_id != frame_datarow_id:
                 # export previous frame when frame_datarow_id changes
                 pre_sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
                 annotation_results.append(
-                    create_annotation(sequence_frame_datarows, pre_sequence_id)
+                    create_aggregated_annotation(
+                        sequence_frame_datarows, pre_sequence_id
+                    )
                 )
                 sequence_frame_datarows.pop(pre_frame_datarow_id)
                 sequence_frame_datarows[frame_datarow_id].append(datarow)
@@ -702,7 +702,7 @@ class ExportVisionAI(ExportAnnotationBase):
         if last_batch:
             sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
             annotation_results.append(
-                create_annotation(sequence_frame_datarows, sequence_id)
+                create_aggregated_annotation(sequence_frame_datarows, sequence_id)
             )
             sequence_frame_datarows = defaultdict(list)
 
@@ -779,7 +779,6 @@ class ExportVisionAI(ExportAnnotationBase):
                             current_batch = []
                             datarow_id_list = []
 
-                        if not is_sequential and len(annotation_results) >= BATCH_SIZE:
                             for annotation_result in annotation_results:
                                 yield annotation_result
                             annotation_results = []
