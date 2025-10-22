@@ -1975,7 +1975,7 @@ of this project OR has been added before"
                 detail=f"the format {annotation_format} is not supported for local upload"
             )
 
-    async def create_session_task(
+    async def upload_videos_create_session(
         self,
         name: str,
         video_folder: str,
@@ -1987,16 +1987,16 @@ of this project OR has been added before"
             raise ValueError(f"Video folder does not exist: {video_folder}")
 
         video_extensions = {".mp4", ".avi", ".mov", ".mpeg", ".flv"}
-        video_files = [
+        video_paths = [
             f
             for f in video_path.iterdir()
             if f.is_file() and f.suffix.lower() in video_extensions
         ]
 
-        if not video_files:
+        if not video_paths:
             raise ValueError(f"No video files found in {video_folder}")
 
-        filenames = [video.name for video in video_files]
+        filenames = [video.name for video in video_paths]
         logging.info(f"Found {len(filenames)} videos to upload")
 
         try:
@@ -2037,17 +2037,23 @@ of this project OR has been added before"
                             logging.exception(e)
                             return (path, info)
 
-                remaining_files = (p for p in zip(paths, upload_infos, strict=True))
+                remaining_files = (
+                    file for file in zip(paths, upload_infos, strict=True)
+                )
                 attempt = 1
                 while attempt <= max_retry_count:
                     print(f"🔁 Upload batch ({attempt}/{max_retry_count}) ...")
-                    upload_tasks = (upload_file(p, info) for p, info in remaining_files)
-                    failed = await asyncio.gather(*upload_tasks)
-                    if not any(failed):
+
+                    upload_tasks = (
+                        upload_file(path, info) for path, info in remaining_files
+                    )
+                    failed_files = await asyncio.gather(*upload_tasks)
+                    if not any(failed_files):
                         print(f"✅ Upload batch succeeded on attempt {attempt}")
                         return None
-                    remaining_files = (f for f in failed if f)
+                    remaining_files = (file for file in failed_files if file)
                     print(f"❌ Upload batch failed (attempt {attempt})")
+
                     await asyncio.sleep(attempt**2)
                     attempt += 1
 
@@ -2058,7 +2064,7 @@ of this project OR has been added before"
                 return (failed_paths, failed_remote_urls)
 
             # Create upload task queue
-            upload_task_queue = deque([(video_files, url_info)])
+            upload_task_queue = deque([(video_paths, url_info)])
             client = AsyncThirdPartyAPI()
             semaphore = asyncio.Semaphore(MAX_CONCURRENT_FILES)
             max_retry_count = 3

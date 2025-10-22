@@ -115,7 +115,7 @@ async def main():
         )
 
         logging.info(f"Creating session task: {session_name}")
-        await client.create_session_task(
+        await client.upload_videos_create_session(
             name=session_name,
             video_folder=args.folder,
             video_curation=args.video_curation,
