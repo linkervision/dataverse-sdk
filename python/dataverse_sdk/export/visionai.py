@@ -227,7 +227,9 @@ def aggregate_static_annotations(
     return large_data
 
 
-def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
+def update_streams_uri(
+    streams: dict, sequence_folder_url: str, original_file_name: Optional[str] = None
+) -> dict:
     """Update streams under frames uri
 
     Example:
@@ -246,6 +248,8 @@ def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
         streams data contains multiple sensors and its uri
     sequence_folder_url : str
         sequence folder url destination
+    original_file_name: Optional[str]
+        original file name for the given image/pcd
 
 
     Returns
@@ -259,6 +263,8 @@ def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
         old_uri_path_list = stream_data["uri"].split("/")
         file_path = "/".join(old_uri_path_list[-3:])
         stream_data["uri"] = sequence_folder_url + file_path
+        if original_file_name is not None:
+            stream_data["original_file_name"] = original_file_name
     return current_streams
 
 
@@ -419,6 +425,7 @@ def aggregate_datarows_annotations(
             datarow_id: int = datarow["id"]
             datarow_items: dict = datarow["items"]
             frame_num = int(datarow["frame_id"])
+            original_file_name = os.path.basename(datarow["original_url"])
 
             if annotation_name == GROUNDTRUTH:
                 vai = copy.deepcopy(datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}))
@@ -490,6 +497,7 @@ def aggregate_datarows_annotations(
                 update_streams_uri(
                     streams=frame["frame_properties"]["streams"],
                     sequence_folder_url=sequence_folder_url,
+                    original_file_name=original_file_name,
                 )
             )
             # coordinate system can be optional in visionai
@@ -499,7 +507,9 @@ def aggregate_datarows_annotations(
             if current_vai_sensor not in streams:
                 streams.update(
                     update_streams_uri(
-                        streams=vai["streams"], sequence_folder_url=sequence_folder_url
+                        streams=vai["streams"],
+                        sequence_folder_url=sequence_folder_url,
+                        original_file_name=None,
                     )
                 )
         if not current_frame.get("objects"):
