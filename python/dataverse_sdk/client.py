@@ -2017,7 +2017,7 @@ of this project OR has been added before"
                 paths: list[Path],
                 upload_infos: list[dict],
                 async_client: AsyncThirdPartyAPI,
-                semaphore: asyncio.Semaphore,
+                semaphore: Semaphore,
                 max_retry_count: int,
                 progress_bar: tqdm_asyncio,
             ) -> tuple[list[str], list[dict[str, str]]] | None:
@@ -2034,8 +2034,8 @@ of this project OR has been added before"
                                 )
                                 progress_bar.update(1)
                         except Exception as e:
-                            logging.warning(f"Retry upload: {path.name} ({e})")
-                            return (str(path), info)
+                            logging.exception(e)
+                            return (path, info)
 
                 remaining_files = (p for p in zip(paths, upload_infos, strict=True))
                 attempt = 1
