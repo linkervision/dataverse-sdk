@@ -820,9 +820,9 @@ class DataverseClient:
             "option": {},
         }
         for ontology_class in project.ontology.classes:
-            project_ontology_ids["ontology_class"][
-                ontology_class.id
-            ] = ontology_class.aliases
+            project_ontology_ids["ontology_class"][ontology_class.id] = (
+                ontology_class.aliases
+            )
             for attr in ontology_class.attributes:
                 project_ontology_ids["attribute"][attr.id] = attr.aliases
                 for option in attr.options:
@@ -1557,10 +1557,10 @@ of this project OR has been added before"
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        api, client_alia = DataverseClient._get_api_client(
+        api = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=False
         )
-        async_api, client_alia = DataverseClient._get_api_client(
+        async_api = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=True
         )
 
@@ -1974,6 +1974,144 @@ of this project OR has been added before"
             raise DataverseExceptionBase(
                 detail=f"the format {annotation_format} is not supported for local upload"
             )
+
+    async def upload_videos_create_session(
+        self,
+        name: str,
+        video_folder: str,
+        video_curation: bool = False,
+        curation_config: Optional[dict] = None,
+    ) -> dict:
+        video_path = Path(video_folder)
+        if not video_path.exists() or not video_path.is_dir():
+            raise ValueError(f"Video folder does not exist: {video_folder}")
+
+        video_extensions = {".mp4", ".avi", ".mov", ".mpeg", ".flv"}
+        video_paths = [
+            path
+            for path in video_path.iterdir()
+            if path.is_file() and path.suffix.lower() in video_extensions
+        ]
+
+        if not video_paths:
+            raise ValueError(f"No video files found in {video_folder}")
+
+        filenames = [video.name for video in video_paths]
+        logging.info(f"Found {len(filenames)} videos to upload")
+
+        try:
+            # Step 1: Get presigned URLs
+            logging.info("Getting presigned URLs...")
+            presigned_data = (
+                await self._async_api_client.generate_session_task_presigned_urls(
+                    filenames=filenames
+                )
+            )
+            data_folder = presigned_data["data_folder"]
+            url_info = presigned_data["url_info"]
+
+            # Step 2: Upload videos concurrently with progress bar
+            logging.info("Uploading videos...")
+
+            async def upload_batch(
+                paths: list[Path],
+                upload_infos: list[dict],
+                async_client: AsyncThirdPartyAPI,
+                semaphore: Semaphore,
+                max_retry_count: int,
+                progress_bar: tqdm_asyncio,
+            ) -> tuple[list[str], list[dict[str, str]]] | None:
+                async def upload_file(path: Path, info: dict):
+                    async with semaphore:
+                        try:
+                            async with aio_open(path, "rb") as file:
+                                file_content = await file.read()
+                                await async_client.upload_file(
+                                    method="PUT",
+                                    target_url=info["url"],
+                                    file=file_content,
+                                    content_type="application/octet-stream",
+                                )
+                                progress_bar.update(1)
+                        except Exception as e:
+                            logging.exception(e)
+                            return (path, info)
+
+                remaining_files = (
+                    file for file in zip(paths, upload_infos, strict=True)
+                )
+                attempt = 1
+                while attempt <= max_retry_count:
+                    print(f"🔁 Upload batch ({attempt}/{max_retry_count}) ...")
+
+                    upload_tasks = (
+                        upload_file(path, info) for path, info in remaining_files
+                    )
+                    failed_files = await asyncio.gather(*upload_tasks)
+                    if not any(failed_files):
+                        print(f"✅ Upload batch succeeded on attempt {attempt}")
+                        return None
+                    remaining_files = (file for file in failed_files if file)
+                    print(f"❌ Upload batch failed (attempt {attempt})")
+
+                    await asyncio.sleep(attempt**2)
+                    attempt += 1
+
+                failed_files = list(remaining_files)
+                failed_paths = [path for path, _ in failed_files]
+                failed_remote_urls = [{"url": info["url"]} for _, info in failed_files]
+
+                return (failed_paths, failed_remote_urls)
+
+            # Create upload task queue
+            upload_task_queue = deque([(video_paths, url_info)])
+            client = AsyncThirdPartyAPI()
+            semaphore = asyncio.Semaphore(MAX_CONCURRENT_FILES)
+            max_retry_count = 3
+            total_files = sum(len(paths) for paths, _ in upload_task_queue)
+            progress_bar = tqdm_asyncio(
+                total=total_files, desc="Uploading videos", unit="file"
+            )
+
+            upload_tasks = [
+                upload_batch(
+                    paths,
+                    infos,
+                    client,
+                    semaphore,
+                    max_retry_count,
+                    progress_bar,
+                )
+                for paths, infos in upload_task_queue
+            ]
+
+            failed_uploads = []
+            for result in await tqdm_asyncio.gather(*upload_tasks):
+                if result:
+                    failed_uploads.append(result)
+
+            progress_bar.close()
+
+            if failed_uploads:
+                raise ClientConnectionError(f"Failed uploads: {failed_uploads}")
+
+            # Step 3: Create session task
+            logging.info("Creating session task...")
+            session_task_data = await self._async_api_client.create_session_task(
+                name=name,
+                data_folder=data_folder,
+                video_curation=video_curation,
+                curation_config=curation_config,
+            )
+
+            logging.info(f"✅ Session task '{name}' created successfully!")
+            return session_task_data
+
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create session task: {e}")
 
 
 class AsyncThirdPartyAPI:
