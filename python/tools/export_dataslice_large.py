@@ -43,7 +43,7 @@ def export_dataslice_to_local(
             is_sequential=sequential,
             export_format=export_format,
         )
-        producer = exporter.producer(*data, annotation_name)
+        producer = exporter.producer(*data, annotation_name, sequential)
         await exporter.consumer(
             producer=producer,
         )
