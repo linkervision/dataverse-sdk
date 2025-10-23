@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from dataverse_sdk.client import DataverseClient
+from dataverse_sdk.utils.utils import float_in_range
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -67,19 +68,22 @@ def make_parser():
     )
     parser.add_argument(
         "--global-mean-threshold",
-        type=float,
+        type=float_in_range(GLOBAL_MEAN_THRESHOLD_MIN, GLOBAL_MEAN_THRESHOLD_MAX),
         default=0.001,
         help=f"Threshold for the video's global average motion magnitude ({GLOBAL_MEAN_THRESHOLD_MIN} ~ {GLOBAL_MEAN_THRESHOLD_MAX}). Higher values are stricter (flag more clips as low-motion); lower values are looser (flag fewer clips).",
     )
     parser.add_argument(
         "--per-patch-256-min-threshold",
-        type=float,
+        type=float_in_range(
+            PER_PATCH_256_MIN_THRESHOLD_MIN, PER_PATCH_256_MIN_THRESHOLD_MAX
+        ),
         default=0.000001,
         help=f"Minimum average motion magnitude allowed in any 256x256 pixel patch ({PER_PATCH_256_MIN_THRESHOLD_MIN} ~ {PER_PATCH_256_MIN_THRESHOLD_MAX}). Higher values are stricter per-patch (flag more clips when any 256x256 patch is too still); lower values are looser (flag fewer clips).",
     )
     parser.add_argument(
         "--split-duration",
         type=int,
+        choices=range(SPLIT_DURATION_MIN, SPLIT_DURATION_MAX + 1),
         default=5,
         help=f"Set the length of each split clip in seconds ({SPLIT_DURATION_MIN} ~ {SPLIT_DURATION_MAX}s).",
     )

@@ -1988,9 +1988,9 @@ of this project OR has been added before"
 
         video_extensions = {".mp4", ".avi", ".mov", ".mpeg", ".flv"}
         video_paths = [
-            f
-            for f in video_path.iterdir()
-            if f.is_file() and f.suffix.lower() in video_extensions
+            path
+            for path in video_path.iterdir()
+            if path.is_file() and path.suffix.lower() in video_extensions
         ]
 
         if not video_paths:
