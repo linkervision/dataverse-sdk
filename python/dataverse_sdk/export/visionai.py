@@ -567,7 +567,7 @@ def aggregate_datarows_annotations(
         visionai["contexts"] = combined_contexts_map
     if tags_under_visionai:
         visionai["tags"] = tags_under_visionai
-    return VisionAIModel(**{"visionai": visionai}).dict()
+    return VisionAIModel(**{"visionai": visionai}).model_dump(exclude_none=True)
 
 
 @Exporter.register(format=ExportFormat.VISIONAI)
