@@ -127,7 +127,7 @@ async def main():
         )
 
     except Exception as e:
-        logging.error(f"❌ Failed to create session task: {e}")
+        logging.error(f"❌ Failed to upload videos or create session task: {e}")
         raise
 
 

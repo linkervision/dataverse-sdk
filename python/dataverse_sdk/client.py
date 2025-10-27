@@ -2037,8 +2037,16 @@ of this project OR has been added before"
             logging.exception("Got api error from Dataverse")
             raise
         except Exception as e:
+            try:
+                error_data = json.loads(
+                    getattr(getattr(e, "response", None), "text", str(e))
+                )
+                error_message = next(iter(error_data.get("error", {}).values()))[0]
+            except Exception:
+                error_message = str(e)
+
             raise ClientConnectionError(
-                f"Failed to upload videos and create session task: {e}"
+                f"Failed to create session task: {error_message}"
             )
 
 
