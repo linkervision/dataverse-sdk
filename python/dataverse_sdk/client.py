@@ -1992,7 +1992,6 @@ of this project OR has been added before"
             for path in video_path.iterdir()
             if path.is_file() and path.suffix.lower() in video_extensions
         ]
-
         if not video_paths:
             raise ValueError(f"No video files found in {video_folder}")
 
