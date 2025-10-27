@@ -2006,6 +2006,7 @@ of this project OR has been added before"
                 detail=f"the format {annotation_format} is not supported for local upload"
             )
 
+    @staticmethod
     async def upload_videos_create_session(
         self,
         name: str,
