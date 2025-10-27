@@ -79,6 +79,38 @@ def parse_attribute(attr_list: list) -> list:
     return new_attribute_list
 
 
+class AsyncThirdPartyAPI:
+    transport = AsyncHTTPTransport(
+        retries=5,
+    )
+
+    def __init__(self):
+        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
+
+    async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
+        try:
+            resp: Response = await self.client.request(method=method, url=url, **kwargs)
+        except Exception as e:
+            logging.exception("async send request error")
+            raise AsyncThirdPartyAPIException(detail="async send request error") from e
+
+        if not 200 <= resp.status_code <= 299:
+            raise AsyncThirdPartyAPIException(
+                status_code=resp.status_code, detail=resp.text
+            )
+        return resp
+
+    async def upload_file(
+        self, method: str, target_url: str, file: bytes, content_type: str
+    ):
+        await self.async_send_request(
+            method=method,
+            url=target_url,
+            content=file,
+            headers={"Content-Type": content_type},
+        )
+
+
 class DataverseClient:
     def __init__(
         self,
@@ -1845,61 +1877,60 @@ of this project OR has been added before"
         return upload_task_queue, create_dataset_uuid, failed_urls
 
     @staticmethod
-    async def run_upload_tasks(upload_task_queue: deque[tuple[list[str], list[dict]]]):
-        async def upload_batch(
-            paths: list[str],
-            upload_infos: list[dict],
-            async_client: AsyncThirdPartyAPI,
-            semaphore: Semaphore,
-            max_retry_count: int,
-            progress_bar: tqdm_asyncio,
-        ) -> tuple[list[str], list[dict[str, str]]] | None:
-            async def upload_file(path: str, info: dict):
-                async with semaphore:
-                    try:
-                        async with aio_open(path, "rb") as file:
-                            file_content = await file.read()
-                            await async_client.upload_file(
-                                method="PUT",
-                                target_url=info["url"],
-                                file=file_content,
-                                content_type="application/octet-stream",
-                            )
-                            progress_bar.update(1)
-                    except Exception as e:
-                        logging.exception(e)
-                        return (path, info)
+    async def upload_batch(
+        paths: list[str],
+        upload_infos: list[dict],
+        async_client: AsyncThirdPartyAPI,
+        semaphore: Semaphore,
+        max_retry_count: int,
+        progress_bar: tqdm_asyncio,
+    ) -> tuple[list[str], list[dict[str, str]]] | None:
+        async def upload_file(path: str, info: dict):
+            async with semaphore:
+                try:
+                    async with aio_open(path, "rb") as file:
+                        file_content = await file.read()
+                        await async_client.upload_file(
+                            method="PUT",
+                            target_url=info["url"],
+                            file=file_content,
+                            content_type="application/octet-stream",
+                        )
+                        progress_bar.update(1)
+                except Exception as e:
+                    logging.exception(e)
+                    return (path, info)
 
-            remaining_files = (file for file in zip(paths, upload_infos, strict=True))
-            attempt_count = 1
+        remaining_files = (file for file in zip(paths, upload_infos, strict=True))
+        attempt_count = 1
 
-            while attempt_count <= max_retry_count:
-                print(f"🔁 Upload file batch ({attempt_count}/{max_retry_count}) ...")
+        while attempt_count <= max_retry_count:
+            print(f"🔁 Upload file batch ({attempt_count}/{max_retry_count}) ...")
 
-                upload_tasks = (
-                    upload_file(path, info) for path, info in remaining_files
-                )
-                failed_files = await asyncio.gather(*upload_tasks)
-                if not any(failed_files):
-                    print(
-                        f"✅ Upload file batch successful on attempt ({attempt_count}/{max_retry_count})"
-                    )
-                    return None
-
-                remaining_files = (file for file in failed_files if file)
+            upload_tasks = (upload_file(path, info) for path, info in remaining_files)
+            failed_files = await asyncio.gather(*upload_tasks)
+            if not any(failed_files):
                 print(
-                    f"❌ Upload file batch failed on attempt ({attempt_count}/{max_retry_count})"
+                    f"✅ Upload file batch successful on attempt ({attempt_count}/{max_retry_count})"
                 )
+                return None
 
-                await asyncio.sleep(attempt_count**2)
-                attempt_count += 1
+            remaining_files = (file for file in failed_files if file)
+            print(
+                f"❌ Upload file batch failed on attempt ({attempt_count}/{max_retry_count})"
+            )
 
-            failed_files = list(remaining_files)
-            failed_paths = [path for path, _ in failed_files]
-            failed_remote_urls = [{"url": info["url"]} for _, info in failed_files]
+            await asyncio.sleep(attempt_count**2)
+            attempt_count += 1
 
-            return (failed_paths, failed_remote_urls)
+        failed_files = list(remaining_files)
+        failed_paths = [path for path, _ in failed_files]
+        failed_remote_urls = [{"url": info["url"]} for _, info in failed_files]
 
+        return (failed_paths, failed_remote_urls)
+
+    @staticmethod
+    async def run_upload_tasks(upload_task_queue: deque[tuple[list[str], list[dict]]]):
         tasks = []
         client = AsyncThirdPartyAPI()
         semaphore = Semaphore(MAX_CONCURRENT_FILES)
@@ -1911,7 +1942,7 @@ of this project OR has been added before"
 
         for batched_file_paths, upload_file_infos in upload_task_queue:
             tasks.append(
-                upload_batch(
+                DataverseClient.upload_batch(
                     batched_file_paths,
                     upload_file_infos,
                     client,
@@ -2013,56 +2044,6 @@ of this project OR has been added before"
             # Step 2: Upload videos concurrently with progress bar
             logging.info("Uploading videos...")
 
-            async def upload_batch(
-                paths: list[Path],
-                upload_infos: list[dict],
-                async_client: AsyncThirdPartyAPI,
-                semaphore: Semaphore,
-                max_retry_count: int,
-                progress_bar: tqdm_asyncio,
-            ) -> tuple[list[str], list[dict[str, str]]] | None:
-                async def upload_file(path: Path, info: dict):
-                    async with semaphore:
-                        try:
-                            async with aio_open(path, "rb") as file:
-                                file_content = await file.read()
-                                await async_client.upload_file(
-                                    method="PUT",
-                                    target_url=info["url"],
-                                    file=file_content,
-                                    content_type="application/octet-stream",
-                                )
-                                progress_bar.update(1)
-                        except Exception as e:
-                            logging.exception(e)
-                            return (path, info)
-
-                remaining_files = (
-                    file for file in zip(paths, upload_infos, strict=True)
-                )
-                attempt = 1
-                while attempt <= max_retry_count:
-                    print(f"🔁 Upload batch ({attempt}/{max_retry_count}) ...")
-
-                    upload_tasks = (
-                        upload_file(path, info) for path, info in remaining_files
-                    )
-                    failed_files = await asyncio.gather(*upload_tasks)
-                    if not any(failed_files):
-                        print(f"✅ Upload batch succeeded on attempt {attempt}")
-                        return None
-                    remaining_files = (file for file in failed_files if file)
-                    print(f"❌ Upload batch failed (attempt {attempt})")
-
-                    await asyncio.sleep(attempt**2)
-                    attempt += 1
-
-                failed_files = list(remaining_files)
-                failed_paths = [path for path, _ in failed_files]
-                failed_remote_urls = [{"url": info["url"]} for _, info in failed_files]
-
-                return (failed_paths, failed_remote_urls)
-
             # Create upload task queue
             upload_task_queue = deque([(video_paths, url_info)])
             client = AsyncThirdPartyAPI()
@@ -2074,7 +2055,7 @@ of this project OR has been added before"
             )
 
             upload_tasks = [
-                upload_batch(
+                DataverseClient.upload_batch(
                     paths,
                     infos,
                     client,
@@ -2112,35 +2093,3 @@ of this project OR has been added before"
             raise
         except Exception as e:
             raise ClientConnectionError(f"Failed to create session task: {e}")
-
-
-class AsyncThirdPartyAPI:
-    transport = AsyncHTTPTransport(
-        retries=5,
-    )
-
-    def __init__(self):
-        self.client = AsyncClient(transport=self.transport, timeout=Timeout(30))
-
-    async def async_send_request(self, url: str, method: str, **kwargs) -> Response:
-        try:
-            resp: Response = await self.client.request(method=method, url=url, **kwargs)
-        except Exception as e:
-            logging.exception("async send request error")
-            raise AsyncThirdPartyAPIException(detail="async send request error") from e
-
-        if not 200 <= resp.status_code <= 299:
-            raise AsyncThirdPartyAPIException(
-                status_code=resp.status_code, detail=resp.text
-            )
-        return resp
-
-    async def upload_file(
-        self, method: str, target_url: str, file: bytes, content_type: str
-    ):
-        await self.async_send_request(
-            method=method,
-            url=target_url,
-            content=file,
-            headers={"Content-Type": content_type},
-        )
