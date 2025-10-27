@@ -549,7 +549,21 @@ python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/
 ### Export Large Dataslice and download files
 ```
 python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export-model-name / groundtruth} --target_folder {folder path} --export-format {coco, visionai, yolo, vlm ...etc}
-``````
+```
+
+### Upload videos to create session tasks
+```
+python tools/upload_videos_create_session.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -f {/YOUR/VIDEOS/LOCAL/FOLDER} -n {session-name}
+```
+
+- Advanced arguments for video curation (sequential data):
+
+| Argument name              | Type/Options   | Default   | Description                                                                 |
+|----------------------------|----------------|-----------|-----------------------------------------------------------------------------|
+| --video-curation            | bool | False     | enable video curation (sequential data)                                                     |
+| --global-mean-threshold     | float          | 0.001     | Threshold for the video's global average motion magnitude (0.000001 ~ 0.01). Higher values are stricter (flag more clips as low-motion); lower values are looser (flag fewer clips). |
+| --per-patch-256-min-threshold | float        | 0.000001  | Minimum average motion magnitude allowed in any 256x256 pixel patch (0.000001 ~ 0.0001). Higher values are stricter per-patch (flag more clips when any 256x256 patch is too still); lower values are looser (flag fewer clips). |
+| --split-duration            | int            | 5         | Set the length of each split clip in seconds (2 ~ 30s).                     |
 
 ## Links to language repos
 
