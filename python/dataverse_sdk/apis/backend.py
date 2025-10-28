@@ -374,7 +374,6 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
@@ -384,8 +383,6 @@ class BackendAPI:
         secret_access_key: Optional[str] = None,
         create_dataset_uuid: Optional[str] = None,
     ) -> dict:
-        if auto_tagging is None:
-            auto_tagging = []
         if annotations is None:
             annotations = []
         payload_data = {
@@ -400,7 +397,6 @@ class BackendAPI:
             "sequential": sequential,
             "annotation_format": annotation_format,
             "generate_metadata": generate_metadata,
-            "auto_tagging": auto_tagging,
             "render_pcd": render_pcd,
             "description": description if description else "",
             "annotations": annotations if annotations else [],
