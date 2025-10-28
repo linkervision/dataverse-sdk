@@ -22,7 +22,6 @@ def import_vqa_dataset_from_local(
     annotation_format: AnnotationFormat,
     sequential: bool = False,
     gen_metadata: bool = False,
-    gen_auto_tagging: bool = False,
     reupload_dataset_uuid: Optional[str] = None,
     alias: str = "default",
 ):
@@ -46,7 +45,6 @@ def import_vqa_dataset_from_local(
         "data_folder": data_folder,  # local image folder
         "type": dataset_type,
         "generate_metadata": gen_metadata,
-        "auto_tagging": gen_auto_tagging,
         "annotation_format": annotation_format,
         "sequential": sequential,
         "reupload_dataset_uuid": reupload_dataset_uuid,
@@ -167,6 +165,5 @@ if __name__ == "__main__":
         annotation_format=annotation_format,
         sequential=args.sequential,
         gen_metadata=args.metadata,
-        gen_auto_tagging=[],
         reupload_dataset_uuid=args.reupload_dataset_uuid,
     )

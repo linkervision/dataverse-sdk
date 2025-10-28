@@ -9,8 +9,6 @@ from dataverse_sdk.exceptions.client import DataverseExceptionBase
 from dataverse_sdk.schemas.client import Project
 from dataverse_sdk.schemas.common import AnnotationFormat, DatasetType, DataSource
 
-AUTO_TAGGING_CLASSES = ["weather", "scene", "timeofday"]
-
 
 def import_dataset_from_local(
     host: str,
@@ -24,7 +22,6 @@ def import_dataset_from_local(
     annotation_format: AnnotationFormat,
     sequential: bool = False,
     gen_metadata: bool = False,
-    gen_auto_tagging: bool = False,
     reupload_dataset_uuid: Optional[str] = None,
     alias: str = "default",
 ):
@@ -48,7 +45,6 @@ def import_dataset_from_local(
         "data_folder": data_folder,  # local image folder
         "type": dataset_type,
         "generate_metadata": gen_metadata,
-        "auto_tagging": AUTO_TAGGING_CLASSES if gen_auto_tagging else [],
         "annotation_format": annotation_format,
         "sequential": sequential,
         "reupload_dataset_uuid": reupload_dataset_uuid,
@@ -145,12 +141,6 @@ def make_parser():
         help="Whether generate metadata for your dataset",
     )
     parser.add_argument(
-        "--auto_tagging",
-        default=False,
-        action="store_true",
-        help="Whether generate auto_tagging for your dataset",
-    )
-    parser.add_argument(
         "-reupload",
         "--reupload_dataset_uuid",
         type=str,
@@ -182,7 +172,6 @@ if __name__ == "__main__":
         annotation_format=args.anno_format,
         sequential=args.sequential,
         gen_metadata=args.metadata,
-        gen_auto_tagging=args.auto_tagging,
         reupload_dataset_uuid=args.reupload_dataset_uuid,
     )
 

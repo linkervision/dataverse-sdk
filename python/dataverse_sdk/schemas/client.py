@@ -310,7 +310,6 @@ class Project(BaseModel):
         annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         access_key_id: Optional[str] = None,
@@ -344,8 +343,6 @@ class Project(BaseModel):
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
-        auto_tagging: list, optional
-            generate auto_tagging with target models (weather/scene/timeofday), by default []
         render_pcd : bool, optional
             render pcd preview image or not, be default False
         description : Optional[str], optional
@@ -370,8 +367,6 @@ class Project(BaseModel):
         """
         from ..client import DataverseClient
 
-        if auto_tagging is None:
-            auto_tagging = []
         if annotations is None:
             annotations = []
 
@@ -388,7 +383,6 @@ class Project(BaseModel):
             annotations=annotations,
             sequential=sequential,
             generate_metadata=generate_metadata,
-            auto_tagging=auto_tagging,
             render_pcd=render_pcd,
             description=description,
             access_key_id=access_key_id,
