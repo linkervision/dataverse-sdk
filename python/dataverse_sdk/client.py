@@ -1557,10 +1557,10 @@ of this project OR has been added before"
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        api = DataverseClient._get_api_client(
+        api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=False
         )
-        async_api = DataverseClient._get_api_client(
+        async_api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=True
         )
 
