@@ -19,7 +19,7 @@ from .constant import (
     ExportFormat,
 )
 from .exporter import Exporter
-from .utils import convert_to_bytes
+from .utils import convert_to_bytes, gen_empty_vai
 
 
 def merge_intervals(intervals: list[tuple[int, int]]):
@@ -227,7 +227,9 @@ def aggregate_static_annotations(
     return large_data
 
 
-def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
+def update_streams_uri(
+    streams: dict, sequence_folder_url: str, original_file_name: Optional[str] = None
+) -> dict:
     """Update streams under frames uri
 
     Example:
@@ -246,6 +248,8 @@ def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
         streams data contains multiple sensors and its uri
     sequence_folder_url : str
         sequence folder url destination
+    original_file_name: Optional[str]
+        original file name for the given image/pcd
 
 
     Returns
@@ -259,6 +263,8 @@ def update_streams_uri(streams: dict, sequence_folder_url: str) -> dict:
         old_uri_path_list = stream_data["uri"].split("/")
         file_path = "/".join(old_uri_path_list[-3:])
         stream_data["uri"] = sequence_folder_url + file_path
+        if original_file_name is not None:
+            stream_data["original_file_name"] = original_file_name
     return current_streams
 
 
@@ -419,12 +425,18 @@ def aggregate_datarows_annotations(
             datarow_id: int = datarow["id"]
             datarow_items: dict = datarow["items"]
             frame_num = int(datarow["frame_id"])
+            original_file_name = os.path.basename(datarow["original_url"])
 
             if annotation_name == GROUNDTRUTH:
                 vai = copy.deepcopy(datarow_items.get(GROUND_TRUTH_ANNOTATION_NAME, {}))
             else:
                 vai = copy.deepcopy(
                     datarow_items.get("predictions", {}).get(annotation_name, {})
+                )
+
+            if not vai:
+                vai = gen_empty_vai(
+                    datarow=datarow, sequence_folder_url=sequence_folder_url
                 )
 
             # we could retrieve the first data of frames under items
@@ -485,6 +497,7 @@ def aggregate_datarows_annotations(
                 update_streams_uri(
                     streams=frame["frame_properties"]["streams"],
                     sequence_folder_url=sequence_folder_url,
+                    original_file_name=original_file_name,
                 )
             )
             # coordinate system can be optional in visionai
@@ -494,7 +507,9 @@ def aggregate_datarows_annotations(
             if current_vai_sensor not in streams:
                 streams.update(
                     update_streams_uri(
-                        streams=vai["streams"], sequence_folder_url=sequence_folder_url
+                        streams=vai["streams"],
+                        sequence_folder_url=sequence_folder_url,
+                        original_file_name=None,
                     )
                 )
         if not current_frame.get("objects"):
@@ -506,17 +521,17 @@ def aggregate_datarows_annotations(
     # list out all frames number of combined frames
     frame_num_set = {int(num) for num in combined_frames.keys()}
     # combine all objects under visionai
-    static_objects_map: dict[
-        str, list[tuple[int, dict]]
-    ] = aggregate_static_annotations(
-        datarows=all_datarows, root_key="objects", annotation_name=annotation_name
+    static_objects_map: dict[str, list[tuple[int, dict]]] = (
+        aggregate_static_annotations(
+            datarows=all_datarows, root_key="objects", annotation_name=annotation_name
+        )
     )
 
     # combine all contexts under visionai
-    static_contexts_map: dict[
-        str, list[tuple[int, dict]]
-    ] = aggregate_static_annotations(
-        datarows=all_datarows, root_key="contexts", annotation_name=annotation_name
+    static_contexts_map: dict[str, list[tuple[int, dict]]] = (
+        aggregate_static_annotations(
+            datarows=all_datarows, root_key="contexts", annotation_name=annotation_name
+        )
     )
 
     # retrieve tags under visionai
@@ -562,7 +577,7 @@ def aggregate_datarows_annotations(
         visionai["contexts"] = combined_contexts_map
     if tags_under_visionai:
         visionai["tags"] = tags_under_visionai
-    return VisionAIModel(**{"visionai": visionai}).dict()
+    return VisionAIModel(**{"visionai": visionai}).model_dump(exclude_none=True)
 
 
 @Exporter.register(format=ExportFormat.VISIONAI)
@@ -626,48 +641,79 @@ class ExportVisionAI(ExportAnnotationBase):
         annotation_name: str,
         datarow_id_to_frame_datarow_id: dict[int, int],
         current_batch: list[dict],
-        pre_frame_datarow_id: int,
+        pre_frame_datarow_id: int | None,
         last_batch: bool,
-    ) -> list[tuple[bytes, str]]:
+        is_sequential: bool,
+    ) -> tuple[
+        list[tuple[bytes, str]],
+        defaultdict[int, list[dict]],
+        list[int],
+        int | None,
+        list[dict],
+    ]:
         annotation_results = []
 
-        async for datarow in datarow_generator_func(datarow_id_list):
-            frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
-            current_batch.append(datarow)
-            sequence_frame_datarows[frame_datarow_id].append(datarow)
-            if pre_frame_datarow_id is None:
-                pre_frame_datarow_id = frame_datarow_id
-            elif pre_frame_datarow_id != frame_datarow_id:
-                sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
-                annot_bytes: bytes = convert_to_bytes(
-                    aggregate_datarows_annotations(
-                        frame_datarows=sequence_frame_datarows,
-                        sequence_folder_url=f"{target_folder.rstrip('/')}/"
-                        + f"{sequence_id:012d}/",
-                        annotation_name=annotation_name,
-                    )
-                )
-                anno_path = os.path.join(
-                    f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
-                )
-                annotation_results.append((annot_bytes, anno_path))
-                sequence_frame_datarows.pop(pre_frame_datarow_id)
-                pre_frame_datarow_id = frame_datarow_id
-
-        if last_batch:
-            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
-            annot_bytes: bytes = convert_to_bytes(
+        def create_aggregated_annotation(
+            frame_datarows: dict, seq_id: int
+        ) -> tuple[bytes, str]:
+            """Helper to create aggregated annotation bytes and path."""
+            annot_bytes = convert_to_bytes(
                 aggregate_datarows_annotations(
-                    frame_datarows=sequence_frame_datarows,
-                    sequence_folder_url=f"{target_folder.rstrip('/')}/"
-                    + f"{sequence_id:012d}/",
+                    frame_datarows=frame_datarows,
+                    sequence_folder_url=os.path.join(
+                        target_folder, f"{seq_id:012d}", ""
+                    ),
                     annotation_name=annotation_name,
                 )
             )
             anno_path = os.path.join(
-                f"{sequence_id:012d}", "annotations", "groundtruth", "visionai.json"
+                f"{seq_id:012d}", "annotations", annotation_name, "visionai.json"
             )
-            annotation_results.append((annot_bytes, anno_path))
+            return (annot_bytes, anno_path)
+
+        if is_sequential:
+            async for datarow in datarow_generator_func(datarow_id_list):
+                frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+                current_batch.append(datarow)
+
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annotation_results.append(
+                create_aggregated_annotation(sequence_frame_datarows, sequence_id)
+            )
+            sequence_frame_datarows = defaultdict(list)
+
+            return (
+                annotation_results,
+                sequence_frame_datarows,
+                datarow_id_list,
+                pre_frame_datarow_id,
+                current_batch,
+            )
+
+        async for datarow in datarow_generator_func(datarow_id_list):
+            frame_datarow_id = datarow_id_to_frame_datarow_id[datarow["id"]]
+            current_batch.append(datarow)
+            if pre_frame_datarow_id is None:
+                pre_frame_datarow_id = frame_datarow_id
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+            elif pre_frame_datarow_id != frame_datarow_id:
+                # export previous frame when frame_datarow_id changes
+                pre_sequence_id = frame_datarow_id_to_sequence_id[pre_frame_datarow_id]
+                annotation_results.append(
+                    create_aggregated_annotation(
+                        sequence_frame_datarows, pre_sequence_id
+                    )
+                )
+                sequence_frame_datarows.pop(pre_frame_datarow_id)
+                sequence_frame_datarows[frame_datarow_id].append(datarow)
+                pre_frame_datarow_id = frame_datarow_id
+
+        if last_batch:
+            sequence_id = frame_datarow_id_to_sequence_id[frame_datarow_id]
+            annotation_results.append(
+                create_aggregated_annotation(sequence_frame_datarows, sequence_id)
+            )
             sequence_frame_datarows = defaultdict(list)
 
         return (
@@ -684,6 +730,7 @@ class ExportVisionAI(ExportAnnotationBase):
         sequence_frame_map: dict[int, dict[int, list[int]]],
         datarow_generator_func: Callable[[list], AsyncGenerator[dict]],
         annotation_name: str,
+        is_sequential: bool,
         *_,
         **kwargs,
     ) -> AsyncGenerator[bytes, str]:
@@ -705,10 +752,10 @@ class ExportVisionAI(ExportAnnotationBase):
                         datarow_id_list.extend(datarow_ids)
                         frame_datarow_id_to_sequence_id[frame_datarow_id] = sequence_id
                         for datarow_id in datarow_ids:
-                            datarow_id_to_frame_datarow_id[
-                                datarow_id
-                            ] = frame_datarow_id
-                        if len(datarow_id_list) >= BATCH_SIZE:
+                            datarow_id_to_frame_datarow_id[datarow_id] = (
+                                frame_datarow_id
+                            )
+                        if not is_sequential and len(datarow_id_list) >= BATCH_SIZE:
                             (
                                 annotation_results,
                                 sequence_frame_datarows,
@@ -726,6 +773,7 @@ class ExportVisionAI(ExportAnnotationBase):
                                 current_batch,
                                 pre_frame_datarow_id,
                                 last_batch=False,
+                                is_sequential=is_sequential,
                             )
                             results = await self.download_batch(
                                 session,
@@ -741,11 +789,49 @@ class ExportVisionAI(ExportAnnotationBase):
                             current_batch = []
                             datarow_id_list = []
 
-                        if len(annotation_results) >= BATCH_SIZE:
                             for annotation_result in annotation_results:
                                 yield annotation_result
                             annotation_results = []
+                    if is_sequential:
+                        # process sequence
+                        (
+                            annotation_results,
+                            sequence_frame_datarows,
+                            datarow_id_list,
+                            pre_frame_datarow_id,
+                            current_batch,
+                        ) = await self.process_datarows(
+                            datarow_generator_func,
+                            datarow_id_list,
+                            frame_datarow_id_to_sequence_id,
+                            sequence_frame_datarows,
+                            target_folder,
+                            annotation_name,
+                            datarow_id_to_frame_datarow_id,
+                            current_batch,
+                            pre_frame_datarow_id,
+                            last_batch=False,
+                            is_sequential=is_sequential,
+                        )
+                        # download sequence
+                        results = await self.download_batch(
+                            session,
+                            semaphore,
+                            current_batch,
+                            datarow_id_to_frame_datarow_id,
+                            frame_datarow_id_to_sequence_id,
+                        )
+                        for result in results:
+                            if result:
+                                yield result
+                                progress_bar.update(1)
+                        current_batch = []
+                        datarow_id_list = []
+                        for annotation_result in annotation_results:
+                            yield annotation_result
+                        annotation_results = []
 
+                # update for non-sequential last batch
                 if datarow_id_list:
                     (
                         annotation_results,
@@ -764,6 +850,7 @@ class ExportVisionAI(ExportAnnotationBase):
                         current_batch,
                         pre_frame_datarow_id,
                         last_batch=True,
+                        is_sequential=is_sequential,
                     )
                     results = await self.download_batch(
                         session,

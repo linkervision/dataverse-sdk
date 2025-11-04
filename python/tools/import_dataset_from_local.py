@@ -75,7 +75,7 @@ def make_parser():
         required=True,
         type=str,
         help="the host url of the dataverse site (with curation port)",
-        default=DataverseHost.STAGING,
+        default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
         "-s",

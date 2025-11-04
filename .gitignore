@@ -1,5 +1,11 @@
-.vscode
 report/
 
 # Mac OS
 .DS_Store
+
+# Virtual environments
+.env
+.venv
+venv/
+env.bak/
+venv.bak/
