@@ -28,19 +28,21 @@ Interaction with the Dataverse site starts with an instance of the `DataverseCli
 ```Python
 from dataverse_sdk import *
 from dataverse_sdk.connections import get_connection
+from dataverse_sdk.constants import DataverseHost
+
 client = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="XXX", password="***", service_id="xxxx-xxxx-xx-xxx", alias="default", force = False
+    host=DataverseHost.PRODUCTION.value, email="XXX", password="***", service_id="xxxx-xxxx-xx-xxx", alias="default", force = False
 )
 assert client is get_connection("default")
 
 # Should provide different alias if you are trying to connect to different workspaces
 client2 = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="account-2", password="***", service_id="xxxx-xxxx-xx-xxx", alias="client2", force = False
+    host=DataverseHost.PRODUCTION.value, email="account-2", password="***", service_id="xxxx-xxxx-xx-xxx", alias="client2", force = False
 )
 assert client2 is get_connection(client2.alias)
 
 client3 = DataverseClient(
-    host=DataverseHost.PRODUCTION, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx"
+    host=DataverseHost.PRODUCTION.value, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx"
 )
 assert client3 is get_connection(client3.alias)
 ```

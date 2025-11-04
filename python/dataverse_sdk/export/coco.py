@@ -22,7 +22,7 @@ from .constant import (
     ExportFormat,
 )
 from .exporter import Exporter
-from .utils import convert_to_bytes
+from .utils import convert_to_bytes, gen_empty_vai
 
 
 @Exporter.register(format=ExportFormat.COCO)
@@ -157,6 +157,9 @@ def convert_annotation(
                 datarow["items"].get("predictions", {}).get(annotation_name, {})
             )
 
+        if not target_visionai:
+            target_visionai = gen_empty_vai(datarow=datarow, sequence_folder_url="")
+
         (
             category_idx_map,
             image_update,
@@ -182,9 +185,7 @@ def convert_annotation(
         image_update[0].file_name = datarow["unique_file_name"]
         image_update[
             0
-        ].coco_url = (
-            f"{image_update[0].coco_url.rsplit('/',1)[0]}/{datarow['unique_file_name']}"
-        )
+        ].coco_url = f"{image_update[0].coco_url.rsplit('/', 1)[0]}/{datarow['unique_file_name']}"
         images.extend(image_update)
         annotations.extend(anno_update)
     # generate category objects
