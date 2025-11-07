@@ -1484,7 +1484,6 @@ of this project OR has been added before"
         annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
@@ -1522,8 +1521,6 @@ of this project OR has been added before"
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
-        auto_tagging: list
-            generate auto_tagging with target models (weather/scene/timeofday)
         description : Optional[str], optional
             description of the dataset, by default None
         render_pcd : bool, optional
@@ -1550,8 +1547,6 @@ of this project OR has been added before"
         """
         if annotations is None:
             annotations = []
-        if auto_tagging is None:
-            auto_tagging = []
 
         if type == DatasetType.ANNOTATED_DATA and len(annotations) == 0:
             raise ValueError(
@@ -1586,7 +1581,6 @@ of this project OR has been added before"
                 sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
-                auto_tagging=auto_tagging,
                 render_pcd=render_pcd,
                 description=description,
                 access_key_id=access_key_id,
@@ -1610,7 +1604,6 @@ of this project OR has been added before"
                 "project": project,
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
-                "auto_tagging": auto_tagging,
                 "annotations": annotations,
             }
         )

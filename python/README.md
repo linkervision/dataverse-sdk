@@ -320,7 +320,6 @@ dataset_data = {
     "sequential": False,
     "render_pcd": False,
     "generate_metadata": False,
-    "auto_tagging": ["timeofday"],
     "sas_token": "azure sas token",  # only for azure storage
     "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
     "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
@@ -345,7 +344,6 @@ dataset = project.create_dataset(**dataset_data)
 | sequential | bool | False | data is sequential or not   |
 | render_pcd | bool | False | render pcd preview image or not |
 | generate_metadata | bool | False | generate image meta data or not   |
-| auto_tagging | list | None | generate auto_tagging with target models `["weather", "scene", "timeofday"]`   |
 | description  | str | None | your dataset description  |
 | sas_token | str | None | SAStoken for azure container  |
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
@@ -372,7 +370,6 @@ dataset_data2 = {
     "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
-    "auto_tagging": []
     "sas_token": ""
 }
 dataset2 = project.create_dataset(**dataset_data2)
