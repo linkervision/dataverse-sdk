@@ -320,7 +320,6 @@ dataset_data = {
     "sequential": False,
     "render_pcd": False,
     "generate_metadata": False,
-    "auto_tagging": ["timeofday"],
     "sas_token": "azure sas token",  # only for azure storage
     "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
     "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
@@ -345,7 +344,6 @@ dataset = project.create_dataset(**dataset_data)
 | sequential | bool | False | data is sequential or not   |
 | render_pcd | bool | False | render pcd preview image or not |
 | generate_metadata | bool | False | generate image meta data or not   |
-| auto_tagging | list | None | generate auto_tagging with target models `["weather", "scene", "timeofday"]`   |
 | description  | str | None | your dataset description  |
 | sas_token | str | None | SAStoken for azure container  |
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
@@ -372,7 +370,6 @@ dataset_data2 = {
     "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
-    "auto_tagging": []
     "sas_token": ""
 }
 dataset2 = project.create_dataset(**dataset_data2)
@@ -549,7 +546,21 @@ python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/
 ### Export Large Dataslice and download files
 ```
 python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export-model-name / groundtruth} --target_folder {folder path} --export-format {coco, visionai, yolo, vlm ...etc}
-``````
+```
+
+### Upload videos to create session tasks
+```
+python tools/upload_videos_create_session.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -f {/YOUR/VIDEOS/LOCAL/FOLDER} -n {session-name}
+```
+
+- Advanced arguments for video curation (sequential data):
+
+| Argument name              | Type/Options   | Default   | Description                                                                 |
+|----------------------------|----------------|-----------|-----------------------------------------------------------------------------|
+| --video-curation            | bool | False     | enable video curation (sequential data)                                                     |
+| --global-mean-threshold     | float          | 0.001     | Threshold for the video's global average motion magnitude (0.000001 ~ 0.01). Higher values are stricter (flag more clips as low-motion); lower values are looser (flag fewer clips). |
+| --per-patch-256-min-threshold | float        | 0.000001  | Minimum average motion magnitude allowed in any 256x256 pixel patch (0.000001 ~ 0.0001). Higher values are stricter per-patch (flag more clips when any 256x256 patch is too still); lower values are looser (flag fewer clips). |
+| --split-duration            | int            | 5         | Set the length of each split clip in seconds (2 ~ 30s).                     |
 
 ## Links to language repos
 
