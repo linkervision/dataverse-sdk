@@ -261,8 +261,8 @@ def update_streams_uri(
     current_streams = copy.deepcopy(streams)
     for stream_data in current_streams.values():
         old_uri_path_list = stream_data["uri"].split("/")
-        file_path = "/".join(old_uri_path_list[-3:])
-        stream_data["uri"] = sequence_folder_url + file_path
+        file_path = old_uri_path_list[-3:]
+        stream_data["uri"] = os.path.join(sequence_folder_url, *file_path)
         if original_file_name is not None:
             stream_data["original_file_name"] = original_file_name
     return current_streams

@@ -59,9 +59,12 @@ def download_file_from_url(url: str, save_path: str):
         total_size = int(response.headers.get("content-length", 0))
 
         # Initialize tqdm progress bar
-        with open(save_path, "wb") as file, tqdm(
-            total=total_size, unit="B", unit_scale=True, desc="Downloading"
-        ) as progress_bar:
+        with (
+            open(save_path, "wb") as file,
+            tqdm(
+                total=total_size, unit="B", unit_scale=True, desc="Downloading"
+            ) as progress_bar,
+        ):
             # Write the file in chunks to avoid using too much memory
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:  # Filter out keep-alive chunks
@@ -78,3 +81,20 @@ def chunks(lst: list, n: int):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i : i + n]
+
+
+def float_in_range(min_value: float, max_value: float):
+    """
+    Returns a validator function for argparse to validate floats within a range.
+    """
+    import argparse
+
+    def validator(value):
+        f_value = float(value)
+        if not (min_value <= f_value <= max_value):
+            raise argparse.ArgumentTypeError(
+                f"value {f_value} not in range [{min_value}, {max_value}]"
+            )
+        return f_value
+
+    return validator

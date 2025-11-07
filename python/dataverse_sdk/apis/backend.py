@@ -374,7 +374,6 @@ class BackendAPI:
         data_folder: str,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
@@ -384,8 +383,6 @@ class BackendAPI:
         secret_access_key: Optional[str] = None,
         create_dataset_uuid: Optional[str] = None,
     ) -> dict:
-        if auto_tagging is None:
-            auto_tagging = []
         if annotations is None:
             annotations = []
         payload_data = {
@@ -400,7 +397,6 @@ class BackendAPI:
             "sequential": sequential,
             "annotation_format": annotation_format,
             "generate_metadata": generate_metadata,
-            "auto_tagging": auto_tagging,
             "render_pcd": render_pcd,
             "description": description if description else "",
             "annotations": annotations if annotations else [],
@@ -617,6 +613,37 @@ class AsyncBackendAPI:
             method="POST",
             headers=self.headers,
             json=payload,
+        )
+
+    async def generate_session_task_presigned_urls(self, filenames: list[str]) -> dict:
+        return await self.async_send_request(
+            url=f"{self.host}/api/session_tasks/presigned-urls/",
+            method="post",
+            headers=self.headers,
+            data={"filenames": filenames},
+        )
+
+    async def create_session_task(
+        self,
+        name: str,
+        data_folder: str,
+        video_curation: bool = False,
+        curation_config: Optional[dict] = None,
+    ) -> dict:
+        payload_data = {
+            "name": name,
+            "data_folder": data_folder,
+            "video_curation": video_curation,
+        }
+
+        if video_curation and curation_config:
+            payload_data["curation_config"] = curation_config
+
+        return await self.async_send_request(
+            url=f"{self.host}/api/session_tasks/",
+            method="post",
+            headers=self.headers,
+            data=payload_data,
         )
 
     async def get_project(self, project_id: str) -> dict:

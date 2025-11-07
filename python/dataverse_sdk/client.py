@@ -820,9 +820,9 @@ class DataverseClient:
             "option": {},
         }
         for ontology_class in project.ontology.classes:
-            project_ontology_ids["ontology_class"][
-                ontology_class.id
-            ] = ontology_class.aliases
+            project_ontology_ids["ontology_class"][ontology_class.id] = (
+                ontology_class.aliases
+            )
             for attr in ontology_class.attributes:
                 project_ontology_ids["attribute"][attr.id] = attr.aliases
                 for option in attr.options:
@@ -1484,7 +1484,6 @@ of this project OR has been added before"
         annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
-        auto_tagging: Optional[list] = None,
         render_pcd: bool = False,
         description: Optional[str] = None,
         client: Optional["DataverseClient"] = None,
@@ -1522,8 +1521,6 @@ of this project OR has been added before"
             sequential or not., by default False
         generate_metadata : bool, optional
             generate meta data or not, by default False
-        auto_tagging: list
-            generate auto_tagging with target models (weather/scene/timeofday)
         description : Optional[str], optional
             description of the dataset, by default None
         render_pcd : bool, optional
@@ -1550,17 +1547,15 @@ of this project OR has been added before"
         """
         if annotations is None:
             annotations = []
-        if auto_tagging is None:
-            auto_tagging = []
 
         if type == DatasetType.ANNOTATED_DATA and len(annotations) == 0:
             raise ValueError(
                 "Annotated data should provide at least one annotation folder name (groundtruth or model_name)"
             )
-        api, client_alia = DataverseClient._get_api_client(
+        api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=False
         )
-        async_api, client_alia = DataverseClient._get_api_client(
+        async_api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=True
         )
 
@@ -1586,7 +1581,6 @@ of this project OR has been added before"
                 sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
-                auto_tagging=auto_tagging,
                 render_pcd=render_pcd,
                 description=description,
                 access_key_id=access_key_id,
@@ -1610,7 +1604,6 @@ of this project OR has been added before"
                 "project": project,
                 "sequential": sequential,
                 "generate_metadata": generate_metadata,
-                "auto_tagging": auto_tagging,
                 "annotations": annotations,
             }
         )
@@ -1973,6 +1966,79 @@ of this project OR has been added before"
         else:
             raise DataverseExceptionBase(
                 detail=f"the format {annotation_format} is not supported for local upload"
+            )
+
+    async def upload_videos_create_session(
+        self,
+        name: str,
+        video_folder: str,
+        video_curation: bool = False,
+        curation_config: Optional[dict] = None,
+    ) -> dict:
+        video_path = Path(video_folder)
+        if not video_path.exists() or not video_path.is_dir():
+            raise ValueError(f"Video folder does not exist: {video_folder}")
+
+        video_extensions = {".mp4", ".avi", ".mov", ".mpeg", ".flv"}
+        video_paths = [
+            path
+            for path in video_path.iterdir()
+            if path.is_file() and path.suffix.lower() in video_extensions
+        ]
+        if not video_paths:
+            raise ValueError(f"No video files found in {video_folder}")
+
+        filenames = [video.name for video in video_paths]
+        logging.info(f"Found {len(filenames)} videos to upload")
+
+        try:
+            # Step 1: Get presigned URLs
+            logging.info("Getting presigned URLs...")
+            presigned_data = (
+                await self._async_api_client.generate_session_task_presigned_urls(
+                    filenames=filenames
+                )
+            )
+            data_folder = presigned_data["data_folder"]
+            url_info = presigned_data["url_info"]
+
+            # Step 2: Upload videos concurrently with progress bar
+            logging.info("Uploading videos...")
+            upload_task_queue = deque([(video_paths, url_info)])
+            failed_file_info_batches = await DataverseClient.run_upload_tasks(
+                upload_task_queue
+            )
+            if failed_file_info_batches:
+                raise ClientConnectionError(
+                    f"Failed uploads: {failed_file_info_batches}"
+                )
+
+            # Step 3: Create session task
+            logging.info("Creating session task...")
+            session_task_data = await self._async_api_client.create_session_task(
+                name=name,
+                data_folder=data_folder,
+                video_curation=video_curation,
+                curation_config=curation_config,
+            )
+            logging.info(f"✅ Session task '{name}' created successfully!")
+
+            return session_task_data
+
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            try:
+                error_data = json.loads(
+                    getattr(getattr(e, "response", None), "text", str(e))
+                )
+                error_message = next(iter(error_data.get("error", {}).values()))[0]
+            except Exception:
+                error_message = str(e)
+
+            raise ClientConnectionError(
+                f"Failed to create session task: {error_message}"
             )
 
 
