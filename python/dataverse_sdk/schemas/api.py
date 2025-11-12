@@ -123,7 +123,6 @@ class DatasetAPISchema(BaseModel):
     sas_token: Optional[str] = None
     sequential: bool = False
     generate_metadata: bool = False
-    auto_tagging: list[str] = []
     render_pcd: Optional[bool] = None
     description: Optional[str] = None
     calibration_folder: Optional[str] = None

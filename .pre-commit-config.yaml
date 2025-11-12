@@ -26,30 +26,19 @@ repos:
       - id: detect-private-key
       - id: check-added-large-files
 
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.0
     hooks:
-      - id: black
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        args: ["--profile=black"]
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.3.1
     hooks:
       - id: pyupgrade
-        args: ["--py38-plus","--keep-runtime-typing"] # py39 will somehow break Pydantic
+        args: ["--py38-plus", "--keep-runtime-typing"] # py39 will somehow break Pydantic
         exclude: (visionai_json_schema\.py)
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: ["--config=./ci/setup.cfg"]
-        additional_dependencies: ["flake8-bugbear==22.7.1"]
 
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
     rev: v9.18.0

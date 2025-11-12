@@ -12,6 +12,7 @@ class ExportAnnotationBase(abc.ABC):
         sequence_frame_map: dict[int, dict[int, list[int]]],
         datarow_generator_func: Callable[[list], Generator[dict]],
         annotation_name: str,
+        is_sequential: bool,
         *args,
         **kwargs,
     ) -> Generator[bytes, str]:

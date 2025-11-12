@@ -14,8 +14,13 @@ SITEPACKAGES := $$($(PYTHON) -c "from distutils.sysconfig import get_python_lib;
 install:
 	@$(PYTHON) setup.py install
 
+.PHONY: develop
+develop: ## Install package in development mode
+	@$(PYTHON) setup.py develop
+
 .PHONY: uninstall
 uninstall: ## cleanup all packages
 	@$(PYTHON) setup.py develop --uninstall
 	@$(PIP) uninstall -y $(PACKAGE)
 	@rm -rf $(SITEPACKAGES)/$(PACKAGE)-*.*
+	@rm -rf *.egg-info

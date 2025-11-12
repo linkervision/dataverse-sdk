@@ -79,6 +79,7 @@ class Exporter:
         sequence_frame_map: dict,
         question_id_map: dict,
         annotation_name: str,
+        is_sequential: bool,
     ) -> AsyncGenerator[tuple[bytes, str]]:
         async for data, path in self.export_annot.producer(
             class_names=class_names,
@@ -87,6 +88,7 @@ class Exporter:
             target_folder=self.target_folder,
             datarow_generator_func=await self._gen(self.curation_api),
             annotation_name=annotation_name,
+            is_sequential=is_sequential,
         ):
             if not path:
                 continue
@@ -143,7 +145,7 @@ class Exporter:
                 gen: AsyncGenerator = curation_api.get_datarows(
                     id_set_list=id_chunks,
                     batch_size=BATCH_SIZE,
-                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url",
+                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url,type",
                 )
                 async for batched_datarow in gen:
                     for datarow in batched_datarow:
@@ -248,9 +250,9 @@ def get_datarow_sequences(
         for frame_datarow_id, datarow_id_list in sequence_frame_map[
             sequence_datarow_id
         ].items():
-            new_datarows_sequence_map[sequence_order][
-                frame_datarow_id
-            ] = datarow_id_list
+            new_datarows_sequence_map[sequence_order][frame_datarow_id] = (
+                datarow_id_list
+            )
             if not is_sequential or sequence_datarow_id == NONE_SEQUENCE_DATAROW_ID:
                 sequence_order += 1
         if is_sequential:
