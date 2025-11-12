@@ -434,6 +434,7 @@ class BackendAPI:
             "render_pcd": render_pcd,
             "description": description if description else "",
             "annotations": annotations if annotations else [],
+            "auto_tagging": [],  # FIXME: auto_tagging field is still required by production API.
         }
 
         aws_access_key = {secret_access_key, access_key_id}
