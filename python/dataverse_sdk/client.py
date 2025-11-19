@@ -1178,6 +1178,7 @@ of this project OR has been added before"
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
+        type: Optional[Union[str, list[str]]] = "trained,byom",
     ) -> list[MLModel]:
         """Get the model list by project id
 
@@ -1189,10 +1190,11 @@ of this project OR has been added before"
         client_alias: Optional[str], by default None (should be provided if client is None)
         project: Optional["Project"]
             project basemodel, by default None
+        type : Optional[Union[str, list[str]]], by default "trained,byom" (valid types: 'byom', 'trained', 'uploaded')
 
         Returns
         -------
-        list
+        list[MLModel]
             list of model items
 
         Raises
@@ -1204,7 +1206,9 @@ of this project OR has been added before"
             client=client, client_alias=client_alias
         )
         try:
-            model_list: list = api.list_ml_models(project_id=project_id)
+            if isinstance(type, list):
+                type = ",".join(type)
+            model_list: list = api.list_ml_models(project_id=project_id, type=type)
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise

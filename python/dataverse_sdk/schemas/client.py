@@ -272,11 +272,13 @@ class Project(BaseModel):
         )
         return dataslice_list
 
-    def list_models(self) -> list:
+    def list_models(
+        self, type: Optional[Union[str, list[str]]] = "trained,byom"
+    ) -> list:
         from ..client import DataverseClient
 
         model_list: list = DataverseClient.list_models(
-            project_id=self.id, project=self, client_alias=self.client_alias
+            project_id=self.id, project=self, client_alias=self.client_alias, type=type
         )
         return model_list
 
@@ -499,12 +501,14 @@ class MLModel(BaseModel):
 
     @classmethod
     def create(cls, model_data: dict, client_alias: str) -> "MLModel":
-        if isinstance(model_data["classes"][0], dict):
+        if model_data["classes"] and isinstance(model_data["classes"][0], dict):
             target_class_id = {
                 ontology_class["id"] for ontology_class in model_data["classes"]
             }
         else:
-            target_class_id = set(model_data["classes"])
+            target_class_id = (
+                set(model_data["classes"]) if model_data["classes"] else set()
+            )
 
         from ..client import DataverseClient
 

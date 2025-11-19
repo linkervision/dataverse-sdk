@@ -424,15 +424,62 @@ client.download_export_dataslice_data(dataslice_id=504, export_record_id=export_
 
 
 ### List Models
-The `list_models` method will list all the models in the given project
+
+The `list_models` method will list all the models in the given project. You can filter models by type using the `type` parameter.
+
+#### Basic Usage
 
 ```Python
-#1
-models = client.list_models(project_id = 1, client_alias=client.alias)
-#2
+# Method 1: Using client
+models = client.list_models(project_id=1, client_alias=client.alias)
+
+# Method 2: Using project object
 project = client.get_project(project_id=1)
 models = project.list_models()
 ```
+
+#### Filtering by Model Type
+
+You can filter models using the `ModelType` enum or strings. The SDK supports multiple model types:
+
+```Python
+from dataverse_sdk import ModelType
+
+# Filter by single type using ModelType enum
+models = client.list_models(project_id=1, type=ModelType.TRAINED.value, client_alias=client.alias)
+
+# Filter by single type in a list
+models = client.list_models(project_id=1, type=[ModelType.TRAINED.value], client_alias=client.alias)
+
+# Filter by multiple types using comma-separated string
+models = client.list_models(project_id=1, type="trained,byom", client_alias=client.alias)
+
+# Filter by multiple types using ModelType enum
+models = client.list_models(
+    project_id=1,
+    type=[ModelType.TRAINED.value, ModelType.BYOM.value, ModelType.UPLOADED.value],
+    client_alias=client.alias
+)
+```
+
+#### Available Model Types
+
+| ModelType Enum       | String Value | Description          |
+| -------------------- | ------------ | -------------------- |
+| `ModelType.TRAINED`  | `"trained"`  | Trained models       |
+| `ModelType.BYOM`     | `"byom"`     | Bring Your Own Model |
+| `ModelType.UPLOADED` | `"uploaded"` | Uploaded models      |
+
+#### Input Arguments
+
+| Argument name | Type/Options   | Default        | Description              |
+| ------------- | -------------- | -------------- | ------------------------ |
+| project_id    | int            | \*--           | The project ID           |
+| client_alias  | str            | None           | The client alias         |
+| type          | str, list[str] | "trained,byom" | Model types to filter by |
+
+`＊--`: required argument without default
+
 <br>
 
 ### Get Model

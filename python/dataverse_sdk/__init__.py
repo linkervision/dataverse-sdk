@@ -1,6 +1,6 @@
 from . import connections
 from .client import DataverseClient
-from .constants import DataverseHost
+from .constants import DataverseHost, ModelType
 from .schemas.client import (
     Attribute,
     AttributeOption,
@@ -26,6 +26,7 @@ from .schemas.common import (
 __all__ = [
     "DataverseClient",
     "DataverseHost",
+    "ModelType",
     "AttributeType",
     "OntologyImageType",
     "OntologyPcdType",

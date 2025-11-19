@@ -292,9 +292,14 @@ class BackendAPI:
         )
         return resp.json()
 
-    def list_ml_models(self, project_id: int, type: str = "trained", **kwargs) -> list:
+    def list_ml_models(
+        self,
+        project_id: int,
+        type: str = "trained,byom",
+        **kwargs,
+    ) -> list:
         kwargs["project"] = project_id
-        kwargs["type"] = type
+        kwargs["type__in"] = type
         resp = self.send_request(
             url=f"{self.host}/api/ml_models/?{urlencode(kwargs)}",
             method="get",
