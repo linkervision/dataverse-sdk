@@ -440,43 +440,38 @@ models = project.list_models()
 
 #### Filtering by Model Type
 
-You can filter models using the `ModelType` enum or strings. The SDK supports multiple model types:
+You can filter models by type using strings or lists of strings. The SDK supports multiple model types:
 
 ```Python
-from dataverse_sdk import ModelType
+# Filter by single type using string
+models = client.list_models(project_id=1, type="trained", client_alias=client.alias)
 
-# Filter by single type using ModelType enum
-models = client.list_models(project_id=1, type=ModelType.TRAINED.value, client_alias=client.alias)
+# Filter by single type using list
+models = client.list_models(project_id=1, type=["trained"], client_alias=client.alias)
 
-# Filter by single type in a list
-models = client.list_models(project_id=1, type=[ModelType.TRAINED.value], client_alias=client.alias)
-
-# Filter by multiple types using comma-separated string
-models = client.list_models(project_id=1, type="trained,byom", client_alias=client.alias)
-
-# Filter by multiple types using ModelType enum
+# Filter by multiple types using list
 models = client.list_models(
     project_id=1,
-    type=[ModelType.TRAINED.value, ModelType.BYOM.value, ModelType.UPLOADED.value],
+    type=["trained", "byom", "uploaded"],
     client_alias=client.alias
 )
 ```
 
 #### Available Model Types
 
-| ModelType Enum       | String Value | Description          |
-| -------------------- | ------------ | -------------------- |
-| `ModelType.TRAINED`  | `"trained"`  | Trained models       |
-| `ModelType.BYOM`     | `"byom"`     | Bring Your Own Model |
-| `ModelType.UPLOADED` | `"uploaded"` | Uploaded models      |
+| String Value | Description          |
+| ------------ | -------------------- |
+| `"trained"`  | Trained models       |
+| `"byom"`     | Bring Your Own Model |
+| `"uploaded"` | Uploaded models      |
 
 #### Input Arguments
 
-| Argument name | Type/Options   | Default        | Description              |
-| ------------- | -------------- | -------------- | ------------------------ |
-| project_id    | int            | \*--           | The project ID           |
-| client_alias  | str            | None           | The client alias         |
-| type          | str, list[str] | "trained,byom" | Model types to filter by |
+| Argument name | Type/Options                                                      | Default             | Description              |
+| ------------- | ----------------------------------------------------------------- | ------------------- | ------------------------ |
+| project_id    | int                                                               | \*--                | The project ID           |
+| client_alias  | str                                                               | None                | The client alias         |
+| type          | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by |
 
 `＊--`: required argument without default
 

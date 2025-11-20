@@ -19,9 +19,3 @@ class DataverseHost(str, Enum, metaclass=BaseEnumMeta):
     DEMO = "https://demo.visionai.linkervision.ai/dataverse/curation"
     PRODUCTION = "https://visionai.linkervision.ai/dataverse/curation"
     LOCAL = "http://localhost:8000"
-
-
-class ModelType(str, Enum, metaclass=BaseEnumMeta):
-    BYOM = "byom"
-    TRAINED = "trained"
-    UPLOADED = "uploaded"

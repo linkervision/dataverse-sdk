@@ -273,7 +273,13 @@ class Project(BaseModel):
         return dataslice_list
 
     def list_models(
-        self, type: Optional[Union[str, list[str]]] = "trained,byom"
+        self,
+        type: Optional[
+            Union[
+                Literal["trained", "byom", "uploaded"],
+                list[Literal["trained", "byom", "uploaded"]],
+            ]
+        ] = ["trained", "byom"],
     ) -> list:
         from ..client import DataverseClient
 

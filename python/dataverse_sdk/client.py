@@ -6,7 +6,7 @@ import platform
 from asyncio import AbstractEventLoop, Semaphore
 from collections import deque
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 from uuid import uuid4
 
 from aiofiles import open as aio_open
@@ -1178,7 +1178,12 @@ of this project OR has been added before"
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
-        type: Optional[Union[str, list[str]]] = "trained,byom",
+        type: Optional[
+            Union[
+                Literal["trained", "byom", "uploaded"],
+                list[Literal["trained", "byom", "uploaded"]],
+            ]
+        ] = ["trained", "byom"],
     ) -> list[MLModel]:
         """Get the model list by project id
 
@@ -1190,7 +1195,7 @@ of this project OR has been added before"
         client_alias: Optional[str], by default None (should be provided if client is None)
         project: Optional["Project"]
             project basemodel, by default None
-        type : Optional[Union[str, list[str]]], by default "trained,byom" (valid types: 'byom', 'trained', 'uploaded')
+        type : Optional[Union[Literal["trained", "byom", "uploaded"], list[Literal["trained", "byom", "uploaded"]]]], by default ["trained", "byom"]
 
         Returns
         -------
