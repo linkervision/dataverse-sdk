@@ -6,7 +6,7 @@ import platform
 from asyncio import AbstractEventLoop, Semaphore
 from collections import deque
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 from uuid import uuid4
 
 from aiofiles import open as aio_open
@@ -1178,6 +1178,12 @@ of this project OR has been added before"
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
+        type: Optional[
+            Union[
+                Literal["trained", "byom", "uploaded"],
+                list[Literal["trained", "byom", "uploaded"]],
+            ]
+        ] = ["trained", "byom"],
     ) -> list[MLModel]:
         """Get the model list by project id
 
@@ -1189,10 +1195,11 @@ of this project OR has been added before"
         client_alias: Optional[str], by default None (should be provided if client is None)
         project: Optional["Project"]
             project basemodel, by default None
+        type : Optional[Union[Literal["trained", "byom", "uploaded"], list[Literal["trained", "byom", "uploaded"]]]], by default ["trained", "byom"]
 
         Returns
         -------
-        list
+        list[MLModel]
             list of model items
 
         Raises
@@ -1204,7 +1211,9 @@ of this project OR has been added before"
             client=client, client_alias=client_alias
         )
         try:
-            model_list: list = api.list_ml_models(project_id=project_id)
+            if isinstance(type, list):
+                type = ",".join(type)
+            model_list: list = api.list_ml_models(project_id=project_id, type=type)
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
