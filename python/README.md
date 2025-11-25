@@ -424,15 +424,57 @@ client.download_export_dataslice_data(dataslice_id=504, export_record_id=export_
 
 
 ### List Models
-The `list_models` method will list all the models in the given project
+
+The `list_models` method will list all the models in the given project. You can filter models by type using the `type` parameter.
+
+#### Basic Usage
 
 ```Python
-#1
-models = client.list_models(project_id = 1, client_alias=client.alias)
-#2
+# Method 1: Using client
+models = client.list_models(project_id=1, client_alias=client.alias)
+
+# Method 2: Using project object
 project = client.get_project(project_id=1)
 models = project.list_models()
 ```
+
+#### Filtering by Model Type
+
+You can filter models by type using strings or lists of strings. The SDK supports multiple model types:
+
+```Python
+# Filter by single type using string
+models = client.list_models(project_id=1, type="trained", client_alias=client.alias)
+
+# Filter by single type using list
+models = client.list_models(project_id=1, type=["trained"], client_alias=client.alias)
+
+# Filter by multiple types using list
+models = client.list_models(
+    project_id=1,
+    type=["trained", "byom", "uploaded"],
+    client_alias=client.alias
+)
+```
+
+#### Available Model Types
+
+| String Value | Description          |
+| ------------ | -------------------- |
+| `"trained"`  | Trained models       |
+| `"byom"`     | Bring Your Own Model |
+| `"uploaded"` | Uploaded models      |
+
+#### Input Arguments
+
+| Argument name | Type/Options                                                      | Default             | Description              |
+| ------------- | ----------------------------------------------------------------- | ------------------- | ------------------------ |
+| project_id    | int                                                               | \*--                | The project ID           |
+| client_alias  | str                                                               | None                | The client alias         |
+| type          | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by |
+
+`＊--`: required argument without default
+
 <br>
 
 ### Get Model
