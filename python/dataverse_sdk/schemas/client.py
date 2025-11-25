@@ -512,9 +512,7 @@ class MLModel(BaseModel):
                 ontology_class["id"] for ontology_class in model_data["classes"]
             }
         else:
-            target_class_id = (
-                set(model_data["classes"]) if model_data["classes"] else set()
-            )
+            target_class_id = set(model_data.get("classes") or [])
 
         from ..client import DataverseClient
 
