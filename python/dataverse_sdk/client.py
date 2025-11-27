@@ -1568,13 +1568,6 @@ of this project OR has been added before"
             client=client, client_alias=client_alias, is_async=True
         )
 
-        host = api.get_host()
-        if data_source != DataSource.LOCAL:
-            if host not in DataverseHost:
-                raise ValueError(
-                    "Import data source must be LOCAL if host is not in DataverseHost."
-                )
-
         project_id = project.id
         try:
             raw_dataset_data: dict = DatasetAPISchema(
