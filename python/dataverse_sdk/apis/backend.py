@@ -17,9 +17,21 @@ from ..utils.utils import chunks
 logger = logging.getLogger(__name__)
 
 
+class LoggingRetry(Retry):
+    _host = None
+
+    def increment(self, method=None, url=None, *args, **kwargs):
+        if self.total is not None and self.total > 0:
+            full_url = f"{self._host}{url}" if self._host and url else url
+            logger.warning(
+                f"Retrying request to {full_url} (attempt {self.total - (kwargs.get('retries', self.total))} of {self.total})"
+            )
+        return super().increment(method, url, *args, **kwargs)
+
+
 class BackendAPI:
     adapter = HTTPAdapter(
-        max_retries=Retry(
+        max_retries=LoggingRetry(
             total=10, backoff_factor=15, status_forcelist=[500, 502, 503, 504]
         )
     )
@@ -34,6 +46,7 @@ class BackendAPI:
     ):
         # TODO: Support api versioning
         self.host = host
+        LoggingRetry._host = host
         self.headers = {
             "Content-Type": "application/json",
             "X-Request-Service-Id": service_id,
@@ -82,7 +95,16 @@ class BackendAPI:
             raise
         if resp.status_code in (401, 403, 404):
             logger.exception(f"[{parent_func}] request forbidden.")
-            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
+            try:
+                raise DataverseExceptionBase(
+                    status_code=resp.status_code, **resp.json()
+                )
+            except (ValueError, requests.exceptions.JSONDecodeError):
+                raise DataverseExceptionBase(
+                    status_code=resp.status_code,
+                    detail=f"Invalid response from {self.host} (HTTP {resp.status_code}). "
+                    f"Host may not be a valid Dataverse API endpoint.",
+                )
 
         if resp.status_code == 400:
             logger.exception(f"[{parent_func}] got bad request")
