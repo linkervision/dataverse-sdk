@@ -95,16 +95,10 @@ class BackendAPI:
             raise
         if resp.status_code in (401, 403, 404):
             logger.exception(f"[{parent_func}] request forbidden.")
-            try:
-                raise DataverseExceptionBase(
-                    status_code=resp.status_code, **resp.json()
-                )
-            except (ValueError, requests.exceptions.JSONDecodeError):
-                raise DataverseExceptionBase(
-                    status_code=resp.status_code,
-                    detail=f"Invalid response from {self.host} (HTTP {resp.status_code}). "
-                    f"Host may not be a valid Dataverse API endpoint.",
-                )
+            logger.exception(
+                f"Invalid response from {self.host} (HTTP {resp.status_code}). Host may not be a valid Dataverse API endpoint."
+            )
+            raise DataverseExceptionBase(status_code=resp.status_code, **resp.json())
 
         if resp.status_code == 400:
             logger.exception(f"[{parent_func}] got bad request")
