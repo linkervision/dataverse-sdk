@@ -18,24 +18,25 @@ logger = logging.getLogger(__name__)
 
 
 class LoggingRetry(Retry):
-    _host = None
+    def __init__(self, host=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._host = host
 
     def increment(self, method=None, url=None, *args, **kwargs):
         if self.total is not None and self.total > 0:
             full_url = f"{self._host}{url}" if self._host and url else url
-            logger.warning(
-                f"Retrying request to {full_url} (attempt {self.total - (kwargs.get('retries', self.total))} of {self.total})"
+            attempt = len(self.history) + 1
+            print(
+                f"Retrying request to {full_url} (attempt {attempt} of {(self.total + attempt - 1)})"
             )
-        return super().increment(method, url, *args, **kwargs)
+
+        new_retry = super().increment(method, url, *args, **kwargs)
+        # Preserve host in the new retry instance
+        new_retry._host = self._host
+        return new_retry
 
 
 class BackendAPI:
-    adapter = HTTPAdapter(
-        max_retries=LoggingRetry(
-            total=10, backoff_factor=15, status_forcelist=[500, 502, 503, 504]
-        )
-    )
-
     def __init__(
         self,
         host: str,
@@ -46,7 +47,14 @@ class BackendAPI:
     ):
         # TODO: Support api versioning
         self.host = host
-        LoggingRetry._host = host
+        self.adapter = HTTPAdapter(
+            max_retries=LoggingRetry(
+                host=host,
+                total=10,
+                backoff_factor=15,
+                status_forcelist=[500, 502, 503, 504],
+            )
+        )
         self.headers = {
             "Content-Type": "application/json",
             "X-Request-Service-Id": service_id,
