@@ -1599,6 +1599,8 @@ of this project OR has been added before"
                 async_api, api, raw_dataset_data, reupload_dataset_uuid
             )
             raw_dataset_data["create_dataset_uuid"] = create_dataset_uuid
+        if data_source == DataSource.SDK:
+            raw_dataset_data["create_dataset_uuid"] = ""
 
         dataset_data = api.create_dataset(**raw_dataset_data)
         dataset_data.update(

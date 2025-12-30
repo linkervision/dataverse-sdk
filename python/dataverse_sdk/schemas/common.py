@@ -55,3 +55,4 @@ class DataSource(str, Enum, metaclass=BaseEnumMeta):
     Azure = "azure"
     AWS = "aws"
     LOCAL = "local"
+    SDK = "sdk"
