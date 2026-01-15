@@ -376,11 +376,14 @@ class BackendAPI:
         convert_record_id: int,
         timeout: int = 3000,
         triton_format: bool = True,
+        raw_onnx: bool = False,
         permission: str = "",
         **kwargs,
     ) -> requests.models.Response:
         headers = self.headers.copy()
         kwargs["triton"] = triton_format
+        if raw_onnx:
+            kwargs["raw_onnx"] = raw_onnx
         if permission:
             headers["X-Request-Source"] = permission
         resp = self.send_request(

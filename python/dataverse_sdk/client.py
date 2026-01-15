@@ -1400,6 +1400,7 @@ of this project OR has been added before"
         convert_record_id: int,
         save_path: str = "./triton.zip",
         triton_format: bool = True,
+        raw_onnx: bool = False,
         timeout: int = 3000,
         permission: str = "",
         client: Optional["DataverseClient"] = None,
@@ -1413,6 +1414,7 @@ of this project OR has been added before"
         save_path : str, optional
             local path for saving the model file, by default './triton.zip'
         triton_format: bool, default=True
+        raw_onnx: bool, default=False
         timeout : int, optional
             maximum timeout of the request, by default 3000
         client : Optional['DataverseClient'], optional
@@ -1432,6 +1434,7 @@ of this project OR has been added before"
             resp = api.get_convert_model_file(
                 convert_record_id=convert_record_id,
                 triton_format=triton_format,
+                raw_onnx=raw_onnx,
                 timeout=timeout,
                 permission=permission,
             )
