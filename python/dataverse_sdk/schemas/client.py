@@ -476,6 +476,7 @@ class ConvertRecord(BaseModel):
     def get_convert_model_file(
         self,
         triton_format: bool = True,
+        raw_onnx: bool = False,
         save_path: str = "./triton.zip",
         timeout: int = 3000,
         permission: str = "",
@@ -486,6 +487,7 @@ class ConvertRecord(BaseModel):
             convert_record_id=self.id,
             save_path=save_path,
             triton_format=triton_format,
+            raw_onnx=raw_onnx,
             timeout=timeout,
             permission=permission,
             client_alias=self.client_alias,
