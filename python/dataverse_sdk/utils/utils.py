@@ -321,10 +321,11 @@ def validate_before_create_dataset(
 
     error_lines = [
         "",
-        "❌ The input arguments are not compatible with the data in the provided data_folder.",
+        "❌ The input arguments are not compatible with the project.",
         "",
         "Current configuration:",
-        f"  • Type: {config.dataset_type}",
+        f"  • Annotation format: {config.annotation_format}",
+        f"  • Dataset type: {config.dataset_type}",
         f"  • Sensors: {config.sensor_counts.camera} camera(s), {config.sensor_counts.lidar} lidar(s)",
         f"  • Sequential: {config.is_sequential}",
         f"  • Image type: {config.image_type or 'N/A'}",
