@@ -323,7 +323,8 @@ def validate_before_create_dataset(
 
     error_lines = [
         "",
-        "❌ The input arguments in create_dataset are not compatible with the project:",
+        "❌ The input arguments in create_dataset are not compatible with the project.",
+        "",
         f"  • Dataset type: {config.dataset_type}",
         f"  • Sensors: {config.sensor_counts.camera} camera(s), {config.sensor_counts.lidar} lidar(s)",
         f"  • Annotation format: {config.annotation_format}",
