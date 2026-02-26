@@ -1,8 +1,16 @@
 from pathlib import Path
-from typing import Set
+from typing import Optional, Set
 
 import requests
 from tqdm import tqdm
+
+from dataverse_sdk.schemas.common import (
+    AnnotationFormat,
+    DatasetType,
+    ImportDataSetDataStructureConditions,
+    OntologyImageType,
+    OntologyPcdType,
+)
 
 IMAGE_SUPPORTED_FORMAT = {
     "jpeg",
@@ -98,3 +106,239 @@ def float_in_range(min_value: float, max_value: float):
         return f_value
 
     return validator
+
+
+class AnnotationFormatValidator:
+    @staticmethod
+    def is_vision_ai_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        VisionAI format is supported for almost all cases except VQA
+        """
+        if conditions.image_type == OntologyImageType.VQA:
+            return False
+        return True
+
+    @staticmethod
+    def is_kitti_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        KITTI format requirements:
+        - Exactly 1 LIDAR sensor
+        - 0 or 1 camera (raw: 0 cameras, annotated: 0-1 cameras)
+        - Non-sequential only
+        - If annotated: cuboid PCD type required
+        - If annotated with camera: bbox image type required, no attributes
+        """
+        if conditions.sensor_counts.lidar != 1:
+            return False
+
+        camera_count = conditions.sensor_counts.camera
+        if camera_count > 1 or (
+            conditions.dataset_type == DatasetType.RAW_DATA and camera_count > 0
+        ):
+            return False
+
+        if conditions.is_sequential:
+            return False
+
+        if conditions.dataset_type == DatasetType.ANNOTATED_DATA:
+            if conditions.pcd_type != OntologyPcdType.CUBOID:
+                return False
+            if (
+                camera_count == 1
+                and conditions.image_type != OntologyImageType._2D_BOUNDING_BOX
+            ):
+                return False
+            if conditions.has_attribute:
+                return False
+
+        return True
+
+    @staticmethod
+    def is_coco_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        COCO format requirements:
+        - Annotated data only
+        - Exactly 1 camera, 0 LIDARs
+        - Bounding box image type
+        - No attributes
+        - Non-sequential only
+        """
+        if conditions.dataset_type == DatasetType.RAW_DATA:
+            return False
+
+        if conditions.sensor_counts.camera != 1 or conditions.sensor_counts.lidar != 0:
+            return False
+
+        if conditions.image_type != OntologyImageType._2D_BOUNDING_BOX:
+            return False
+
+        if conditions.has_attribute:
+            return False
+
+        if conditions.is_sequential:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_image_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        Image format requirements:
+        - Raw data only
+        - Exactly 1 camera, 0 LIDARs
+        - Non-sequential only
+        """
+        if conditions.dataset_type == "annotation":
+            return False
+
+        if conditions.sensor_counts.camera != 1 or conditions.sensor_counts.lidar != 0:
+            return False
+
+        if conditions.is_sequential:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_yolo_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        YOLO format requirements:
+        - Annotated data only
+        - Exactly 1 camera, 0 LIDARs
+        - Bounding box image type
+        - No attributes
+        - Non-sequential only
+        """
+        if conditions.dataset_type == DatasetType.RAW_DATA:
+            return False
+
+        if conditions.sensor_counts.camera != 1 or conditions.sensor_counts.lidar != 0:
+            return False
+
+        if conditions.image_type != OntologyImageType._2D_BOUNDING_BOX:
+            return False
+
+        if conditions.has_attribute:
+            return False
+
+        if conditions.is_sequential:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_video_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        Video format requirements:
+        - Raw data only
+        - Exactly 1 camera, 0 LIDARs
+        - Sequential only
+        """
+        if conditions.dataset_type != DatasetType.RAW_DATA:
+            return False
+
+        if conditions.sensor_counts.camera != 1 or conditions.sensor_counts.lidar != 0:
+            return False
+
+        if not conditions.is_sequential:
+            return False
+
+        return True
+
+    @staticmethod
+    def is_vlm_format_supported(
+        conditions: ImportDataSetDataStructureConditions,
+    ) -> bool:
+        """
+        VLM format requirements:
+        - Annotated data only
+        - Exactly 1 camera, 0 LIDARs
+        - VQA image type
+        """
+        if conditions.dataset_type == DatasetType.RAW_DATA:
+            return False
+
+        if conditions.sensor_counts.camera != 1 or conditions.sensor_counts.lidar != 0:
+            return False
+
+        if conditions.image_type != OntologyImageType.VQA:
+            return False
+
+        return True
+
+    @classmethod
+    def get_supported_formats(
+        cls, conditions: ImportDataSetDataStructureConditions
+    ) -> list[AnnotationFormat]:
+        supported_formats = []
+
+        if cls.is_vision_ai_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.VISION_AI)
+
+        if cls.is_kitti_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.KITTI)
+
+        if cls.is_coco_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.COCO)
+
+        if cls.is_image_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.IMAGE)
+
+        if cls.is_yolo_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.YOLO)
+
+        if cls.is_video_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.VIDEO)
+
+        if cls.is_vlm_format_supported(conditions):
+            supported_formats.append(AnnotationFormat.VLM)
+
+        return supported_formats
+
+
+def validate_annotation_format(
+    annotation_format: AnnotationFormat,
+    conditions: ImportDataSetDataStructureConditions,
+) -> tuple[bool, Optional[str]]:
+    supported_formats = AnnotationFormatValidator.get_supported_formats(conditions)
+
+    try:
+        requested_format = AnnotationFormat(annotation_format)
+    except ValueError:
+        return False, f"Unknown annotation format: {annotation_format}"
+
+    if requested_format in supported_formats:
+        return True, None
+
+    supported_names = [fmt.value for fmt in supported_formats]
+
+    error_lines = [
+        "",
+        f"Annotation format '{annotation_format}' is not compatible with your configuration.",
+        "",
+        f"💡 Supported format(s) with current configuration: {', '.join(supported_names) if supported_names else 'none'}",
+        "",
+        "Current configuration:",
+        f"  • Type: {conditions.dataset_type}",
+        f"  • Sensors: {conditions.sensor_counts.camera} camera(s), {conditions.sensor_counts.lidar} lidar(s)",
+        f"  • Sequential: {conditions.is_sequential}",
+        f"  • Image type: {conditions.image_type or 'N/A'}",
+        f"  • PCD type: {conditions.pcd_type or 'N/A'}",
+        f"  • Has attributes: {conditions.has_attribute}",
+        "",
+        "Please adjust your configuration or choose a different annotation_format and try again.",
+    ]
+
+    return False, "\n".join(error_lines)
