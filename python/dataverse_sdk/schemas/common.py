@@ -68,7 +68,7 @@ class SensorCounts:
 
 
 @dataclass
-class DatasetConfig:
+class ProjectCreateDatasetConfig:
     annotation_format: AnnotationFormat
     dataset_type: DatasetType
     sensor_counts: SensorCounts

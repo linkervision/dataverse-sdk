@@ -7,12 +7,12 @@ from pydantic_core.core_schema import ValidationInfo
 from .common import (
     AnnotationFormat,
     AttributeType,
-    DatasetConfig,
     DatasetStatus,
     DatasetType,
     DataSource,
     OntologyImageType,
     OntologyPcdType,
+    ProjectCreateDatasetConfig,
     SensorCounts,
     SensorType,
 )
@@ -341,7 +341,7 @@ class Project(BaseModel):
                         has_attribute = True
                         break
 
-        dataset_config = DatasetConfig(
+        config = ProjectCreateDatasetConfig(
             annotation_format=annotation_format,
             dataset_type=dataset_type,
             sensor_counts=sensor_counts,
@@ -351,7 +351,7 @@ class Project(BaseModel):
             has_attribute=has_attribute,
         )
 
-        is_valid, error_message = validate_before_create_dataset(dataset_config)
+        is_valid, error_message = validate_before_create_dataset(config)
 
         if not is_valid:
             raise ValueError(error_message)

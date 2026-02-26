@@ -6,10 +6,10 @@ from tqdm import tqdm
 
 from dataverse_sdk.schemas.common import (
     AnnotationFormat,
-    DatasetConfig,
     DatasetType,
     OntologyImageType,
     OntologyPcdType,
+    ProjectCreateDatasetConfig,
 )
 
 IMAGE_SUPPORTED_FORMAT = {
@@ -111,7 +111,7 @@ def float_in_range(min_value: float, max_value: float):
 class CreateDatasetValidator:
     @staticmethod
     def is_vision_ai_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         VisionAI format is supported for almost all cases except VQA
@@ -122,7 +122,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_kitti_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         KITTI format requirements:
@@ -159,7 +159,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_coco_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         COCO format requirements:
@@ -188,7 +188,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_image_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         Image format requirements:
@@ -209,7 +209,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_yolo_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         YOLO format requirements:
@@ -238,7 +238,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_video_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         Video format requirements:
@@ -259,7 +259,7 @@ class CreateDatasetValidator:
 
     @staticmethod
     def is_vlm_format_supported(
-        config: DatasetConfig,
+        config: ProjectCreateDatasetConfig,
     ) -> bool:
         """
         VLM format requirements:
@@ -279,7 +279,9 @@ class CreateDatasetValidator:
         return True
 
     @classmethod
-    def get_supported_formats(cls, config: DatasetConfig) -> list[AnnotationFormat]:
+    def get_supported_formats(
+        cls, config: ProjectCreateDatasetConfig
+    ) -> list[AnnotationFormat]:
         supported_formats = []
 
         if cls.is_vision_ai_format_supported(config):
@@ -307,7 +309,7 @@ class CreateDatasetValidator:
 
 
 def validate_before_create_dataset(
-    config: DatasetConfig,
+    config: ProjectCreateDatasetConfig,
 ) -> tuple[bool, Optional[str]]:
     supported_formats = CreateDatasetValidator.get_supported_formats(config)
 
@@ -321,16 +323,14 @@ def validate_before_create_dataset(
 
     error_lines = [
         "",
-        "❌ The input arguments are not compatible with the project.",
-        "",
-        "Current configuration:",
-        f"  • Annotation format: {config.annotation_format}",
+        "❌ The input arguments in create_dataset are not compatible with the project:",
         f"  • Dataset type: {config.dataset_type}",
         f"  • Sensors: {config.sensor_counts.camera} camera(s), {config.sensor_counts.lidar} lidar(s)",
-        f"  • Sequential: {config.is_sequential}",
+        f"  • Annotation format: {config.annotation_format}",
         f"  • Image type: {config.image_type or 'N/A'}",
         f"  • PCD type: {config.pcd_type or 'N/A'}",
         f"  • Has attributes: {config.has_attribute}",
+        f"  • Sequential: {config.is_sequential}",
         "",
         "Please adjust your input arguments and try again.",
     ]
