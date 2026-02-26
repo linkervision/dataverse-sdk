@@ -39,6 +39,7 @@ class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     IMAGE = "image"
     KITTI = "kitti"
     YOLO = "yolo"
+    VIDEO = "video"
     VLM = "vlm"
 
 

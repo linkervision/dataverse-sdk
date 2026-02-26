@@ -326,11 +326,11 @@ def validate_annotation_format(
 
     error_lines = [
         "",
-        f"Annotation format '{annotation_format}' is not compatible with your configuration.",
+        f"Annotation format '{annotation_format}' is not compatible with your input arguments.",
         "",
-        f"💡 Supported format(s) with current configuration: {', '.join(supported_names) if supported_names else 'none'}",
+        f"💡 Supported format(s) with current arguments: {', '.join(supported_names) if supported_names else 'none'}",
         "",
-        "Current configuration:",
+        "Current arguments:",
         f"  • Type: {conditions.dataset_type}",
         f"  • Sensors: {conditions.sensor_counts.camera} camera(s), {conditions.sensor_counts.lidar} lidar(s)",
         f"  • Sequential: {conditions.is_sequential}",
@@ -338,7 +338,7 @@ def validate_annotation_format(
         f"  • PCD type: {conditions.pcd_type or 'N/A'}",
         f"  • Has attributes: {conditions.has_attribute}",
         "",
-        "Please adjust your configuration or choose a different annotation_format and try again.",
+        "Please adjust your input arguments or choose a different annotation_format and try again.",
     ]
 
     return False, "\n".join(error_lines)
