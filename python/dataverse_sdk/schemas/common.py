@@ -68,7 +68,8 @@ class SensorCounts:
 
 
 @dataclass
-class ImportDataSetDataStructureConditions:
+class DatasetConfig:
+    annotation_format: AnnotationFormat
     dataset_type: DatasetType
     sensor_counts: SensorCounts
     is_sequential: bool

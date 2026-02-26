@@ -7,10 +7,10 @@ from pydantic_core.core_schema import ValidationInfo
 from .common import (
     AnnotationFormat,
     AttributeType,
+    DatasetConfig,
     DatasetStatus,
     DatasetType,
     DataSource,
-    ImportDataSetDataStructureConditions,
     OntologyImageType,
     OntologyPcdType,
     SensorCounts,
@@ -307,13 +307,13 @@ class Project(BaseModel):
         )
         return convert_record_data
 
-    def _validate_annotation_format(
+    def _validate_before_create_dataset(
         self,
         annotation_format: AnnotationFormat,
         dataset_type: DatasetType,
         sequential: bool,
     ) -> None:
-        from dataverse_sdk.utils.utils import validate_annotation_format
+        from dataverse_sdk.utils.utils import validate_before_create_dataset
 
         sensor_counts = SensorCounts(camera=0, lidar=0)
         if self.sensors:
@@ -341,7 +341,8 @@ class Project(BaseModel):
                         has_attribute = True
                         break
 
-        conditions = ImportDataSetDataStructureConditions(
+        dataset_config = DatasetConfig(
+            annotation_format=annotation_format,
             dataset_type=dataset_type,
             sensor_counts=sensor_counts,
             is_sequential=sequential,
@@ -350,9 +351,7 @@ class Project(BaseModel):
             has_attribute=has_attribute,
         )
 
-        is_valid, error_message = validate_annotation_format(
-            annotation_format, conditions
-        )
+        is_valid, error_message = validate_before_create_dataset(dataset_config)
 
         if not is_valid:
             raise ValueError(error_message)
@@ -427,7 +426,7 @@ class Project(BaseModel):
         """
         from ..client import DataverseClient
 
-        self._validate_annotation_format(annotation_format, type, sequential)
+        self._validate_before_create_dataset(annotation_format, type, sequential)
 
         if annotations is None:
             annotations = []
