@@ -328,7 +328,7 @@ def validate_annotation_format(
         "",
         f"Annotation format '{annotation_format}' is not compatible with your input arguments.",
         "",
-        f"💡 Supported format(s) with current arguments: {', '.join(supported_names) if supported_names else 'none'}",
+        f"💡Supported format(s) with current arguments: {', '.join(supported_names) if supported_names else 'none'}",
         "",
         "Current arguments:",
         f"  • Type: {conditions.dataset_type}",
