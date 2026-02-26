@@ -341,7 +341,6 @@ class Project(BaseModel):
                         has_attribute = True
                         break
 
-        # Build conditions and validate
         conditions = ImportDataSetDataStructureConditions(
             dataset_type=dataset_type,
             sensor_counts=sensor_counts,
