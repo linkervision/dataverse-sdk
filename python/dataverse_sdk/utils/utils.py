@@ -333,7 +333,7 @@ def validate_before_create_dataset(
         f"  • Has attributes: {config.has_attribute}",
         f"  • Sequential: {config.is_sequential}",
         "",
-        "Please adjust your input arguments and try again.",
+        "Please adjust your input arguments and try again. For detailed guidance, please refer to the documentation: https://linkervision.gitbook.io/dataverse/data-management/import-your-dataset#supported-data-formats",
     ]
 
     return False, "\n".join(error_lines)
