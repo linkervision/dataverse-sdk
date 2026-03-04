@@ -196,7 +196,7 @@ class CreateDatasetValidator:
         - Exactly 1 camera, 0 LIDARs
         - Non-sequential only
         """
-        if config.dataset_type == "annotation":
+        if config.dataset_type == DatasetType.ANNOTATED_DATA:
             return False
 
         if config.sensor_counts.camera != 1 or config.sensor_counts.lidar != 0:
