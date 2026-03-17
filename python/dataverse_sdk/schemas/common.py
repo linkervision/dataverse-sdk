@@ -59,6 +59,10 @@ class DataSource(str, Enum, metaclass=BaseEnumMeta):
     AWS = "aws"
     LOCAL = "local"
     SDK = "sdk"
+    EXISTING_DATASETS = "existing_datasets"
+    EXISTING_DATASLICES = "existing_dataslices"
+    DATA_GENERATION = "data_generation"
+    PRE_IMPORT = "pre_import"
 
 
 @dataclass
@@ -76,7 +80,3 @@ class ProjectCreateDatasetConfig:
     image_type: Optional[OntologyImageType] = None
     pcd_type: Optional[OntologyPcdType] = None
     has_attribute: bool = False
-    EXISTING_DATASETS = "existing_datasets"
-    EXISTING_DATASLICES = "existing_dataslices"
-    DATA_GENERATION = "data_generation"
-    PRE_IMPORT = "pre_import"
