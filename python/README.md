@@ -339,7 +339,7 @@ dataset = project.create_dataset(**dataset_data)
 | data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
 | sensors  | list[Sensor] | ＊-- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
 | type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
-| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE | ＊-- |  the format of your annotation data  |
+| annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE <br> AnnotationFormat.BDDP <br> AnnotationFormat.VIDEO <br> AnnotationFormat.VLM <br>| ＊-- |  the format of your annotation data  |
 | annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
 | sequential | bool | False | data is sequential or not   |
 | render_pcd | bool | False | render pcd preview image or not |
@@ -378,7 +378,7 @@ dataset2 = project.create_dataset(**dataset_data2)
 
 Your could also use the script for importing dataset from local
 ```
-python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
 ```
 <br>
 
@@ -571,18 +571,18 @@ output = client.get_question_list(project_id=107, output_file_path="./question.j
 
 ### Import Your Local Dataset
 ```
-python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
 ```
 
 ### Import VQA Local Dataset
 ```
-python tools/import_vqa_dataset.py -host https://staging.visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -type {raw_data OR annotated_data}
+python tools/import_vqa_dataset.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -type {raw_data OR annotated_data}
 
 ```
 
 ### Export Dataslice and download files
 ```
-python tools/export_dataslice.py -host https://staging.visionai.linkervision.ai/dataverse/curation  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
+python tools/export_dataslice.py -host https://staging.visionai.linkervision.com/dataverse/curation  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
 ```
 
 ### Export Large Dataslice and download files

@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
 
 from ..constants import BaseEnumMeta
 
@@ -37,6 +39,7 @@ class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     IMAGE = "image"
     KITTI = "kitti"
     YOLO = "yolo"
+    VIDEO = "video"
     VLM = "vlm"
 
 
@@ -56,6 +59,23 @@ class DataSource(str, Enum, metaclass=BaseEnumMeta):
     AWS = "aws"
     LOCAL = "local"
     SDK = "sdk"
+
+
+@dataclass
+class SensorCounts:
+    camera: int = 0
+    lidar: int = 0
+
+
+@dataclass
+class ProjectCreateDatasetConfig:
+    annotation_format: AnnotationFormat
+    dataset_type: DatasetType
+    sensor_counts: SensorCounts
+    is_sequential: bool
+    image_type: Optional[OntologyImageType] = None
+    pcd_type: Optional[OntologyPcdType] = None
+    has_attribute: bool = False
     EXISTING_DATASETS = "existing_datasets"
     EXISTING_DATASLICES = "existing_dataslices"
     DATA_GENERATION = "data_generation"
