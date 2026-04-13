@@ -70,7 +70,7 @@ def make_parser():
         "--host",
         required=True,
         type=str,
-        help="the host url of the dataverse site (with curation port)",
+        help="the host url of the dataverse site",
         default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
