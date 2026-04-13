@@ -97,7 +97,7 @@ user = client.get_user()
 
 ### List Projects
 The `list_projects` method will list all projects of the given sites.
-It returns a `list[dict]` from the list_projects API, not a list of `Project` objects,
+It returns a `list[dict]` from the list_projects API, not a list of `Project` objects.
 
 * Example Usage:
 ```Python
