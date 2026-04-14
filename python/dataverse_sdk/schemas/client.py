@@ -12,6 +12,8 @@ from .common import (
     DataSource,
     OntologyImageType,
     OntologyPcdType,
+    ProjectCreateDatasetConfig,
+    SensorCounts,
     SensorType,
 )
 
@@ -272,11 +274,19 @@ class Project(BaseModel):
         )
         return dataslice_list
 
-    def list_models(self) -> list:
+    def list_models(
+        self,
+        type: Optional[
+            Union[
+                Literal["trained", "byom", "uploaded"],
+                list[Literal["trained", "byom", "uploaded"]],
+            ]
+        ] = ["trained", "byom"],
+    ) -> list:
         from ..client import DataverseClient
 
         model_list: list = DataverseClient.list_models(
-            project_id=self.id, project=self, client_alias=self.client_alias
+            project_id=self.id, project=self, client_alias=self.client_alias, type=type
         )
         return model_list
 
@@ -296,6 +306,55 @@ class Project(BaseModel):
             client_alias=self.client_alias,
         )
         return convert_record_data
+
+    def _validate_before_create_dataset(
+        self,
+        annotation_format: AnnotationFormat,
+        dataset_type: DatasetType,
+        sequential: bool,
+    ) -> None:
+        from dataverse_sdk.utils.utils import validate_before_create_dataset
+
+        sensor_counts = SensorCounts(camera=0, lidar=0)
+        if self.sensors:
+            for sensor in self.sensors:
+                sensor_type: SensorType = getattr(sensor, "type", "")
+                if sensor_type == SensorType.CAMERA:
+                    sensor_counts.camera += 1
+                elif sensor_type == SensorType.LIDAR:
+                    sensor_counts.lidar += 1
+
+        image_type = None
+        pcd_type = None
+        has_attribute = False
+
+        if self.ontology:
+            if self.ontology.image_type:
+                image_type = self.ontology.image_type
+
+            if self.ontology.pcd_type:
+                pcd_type = self.ontology.pcd_type
+
+            if self.ontology.classes:
+                for cls in self.ontology.classes:
+                    if cls.attributes:
+                        has_attribute = True
+                        break
+
+        config = ProjectCreateDatasetConfig(
+            annotation_format=annotation_format,
+            dataset_type=dataset_type,
+            sensor_counts=sensor_counts,
+            is_sequential=sequential,
+            image_type=image_type,
+            pcd_type=pcd_type,
+            has_attribute=has_attribute,
+        )
+
+        is_valid, error_message = validate_before_create_dataset(config)
+
+        if not is_valid:
+            raise ValueError(error_message)
 
     def create_dataset(
         self,
@@ -366,6 +425,8 @@ class Project(BaseModel):
             raise error if client is not exist
         """
         from ..client import DataverseClient
+
+        self._validate_before_create_dataset(annotation_format, type, sequential)
 
         if annotations is None:
             annotations = []
@@ -468,6 +529,7 @@ class ConvertRecord(BaseModel):
     def get_convert_model_file(
         self,
         triton_format: bool = True,
+        raw_onnx: bool = False,
         save_path: str = "./triton.zip",
         timeout: int = 3000,
         permission: str = "",
@@ -478,6 +540,7 @@ class ConvertRecord(BaseModel):
             convert_record_id=self.id,
             save_path=save_path,
             triton_format=triton_format,
+            raw_onnx=raw_onnx,
             timeout=timeout,
             permission=permission,
             client_alias=self.client_alias,
@@ -499,12 +562,12 @@ class MLModel(BaseModel):
 
     @classmethod
     def create(cls, model_data: dict, client_alias: str) -> "MLModel":
-        if isinstance(model_data["classes"][0], dict):
+        if model_data["classes"] and isinstance(model_data["classes"][0], dict):
             target_class_id = {
                 ontology_class["id"] for ontology_class in model_data["classes"]
             }
         else:
-            target_class_id = set(model_data["classes"])
+            target_class_id = set(model_data.get("classes") or [])
 
         from ..client import DataverseClient
 
