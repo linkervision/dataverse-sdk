@@ -6,7 +6,7 @@ import platform
 from asyncio import AbstractEventLoop, Semaphore
 from collections import deque
 from pathlib import Path
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 from uuid import uuid4
 
 from aiofiles import open as aio_open
@@ -1199,6 +1199,12 @@ of this project OR has been added before"
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,
         project: Optional["Project"] = None,
+        type: Optional[
+            Union[
+                Literal["trained", "byom", "uploaded"],
+                list[Literal["trained", "byom", "uploaded"]],
+            ]
+        ] = ["trained", "byom"],
     ) -> list[MLModel]:
         """Get the model list by project id
 
@@ -1210,10 +1216,11 @@ of this project OR has been added before"
         client_alias: Optional[str], by default None (should be provided if client is None)
         project: Optional["Project"]
             project basemodel, by default None
+        type : Optional[Union[Literal["trained", "byom", "uploaded"], list[Literal["trained", "byom", "uploaded"]]]], by default ["trained", "byom"]
 
         Returns
         -------
-        list
+        list[MLModel]
             list of model items
 
         Raises
@@ -1225,7 +1232,9 @@ of this project OR has been added before"
             client=client, client_alias=client_alias
         )
         try:
-            model_list: list = api.list_ml_models(project_id=project_id)
+            if isinstance(type, list):
+                type = ",".join(type)
+            model_list: list = api.list_ml_models(project_id=project_id, type=type)
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
@@ -1412,6 +1421,7 @@ of this project OR has been added before"
         convert_record_id: int,
         save_path: str = "./triton.zip",
         triton_format: bool = True,
+        raw_onnx: bool = False,
         timeout: int = 3000,
         permission: str = "",
         client: Optional["DataverseClient"] = None,
@@ -1425,6 +1435,7 @@ of this project OR has been added before"
         save_path : str, optional
             local path for saving the model file, by default './triton.zip'
         triton_format: bool, default=True
+        raw_onnx: bool, default=False
         timeout : int, optional
             maximum timeout of the request, by default 3000
         client : Optional['DataverseClient'], optional
@@ -1444,6 +1455,7 @@ of this project OR has been added before"
             resp = api.get_convert_model_file(
                 convert_record_id=convert_record_id,
                 triton_format=triton_format,
+                raw_onnx=raw_onnx,
                 timeout=timeout,
                 permission=permission,
             )
@@ -1579,13 +1591,6 @@ of this project OR has been added before"
         async_api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias, is_async=True
         )
-
-        host = api.get_host()
-        if data_source != DataSource.LOCAL:
-            if host not in DataverseHost:
-                raise ValueError(
-                    "Import data source must be LOCAL if host is not in DataverseHost."
-                )
 
         project_id = project.id
         try:
