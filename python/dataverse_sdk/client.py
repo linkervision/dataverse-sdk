@@ -478,7 +478,7 @@ class DataverseClient:
         current_user: bool = True,
         exclude_sensor_type: Optional[SensorType] = None,
         image_type: Optional[OntologyImageType] = None,
-    ) -> list[dict]:
+    ) -> list[Project]:
         """list projects in dataverse (with given filter query params)
 
         Parameters
@@ -492,8 +492,8 @@ class DataverseClient:
 
         Returns
         -------
-        list[dict]
-            list of project items returned by the list_projects API
+        list[Project]
+            list of project items
 
         Raises
         ------
@@ -512,7 +512,12 @@ class DataverseClient:
             raise
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the projects: {e}")
-        return project_list
+        output_project_list = []
+        for project in project_list:
+            output_project_list.append(
+                Project.create(project_data=project, client_alias=self.alias)
+            )
+        return output_project_list
 
     @classmethod
     def get_client_project(

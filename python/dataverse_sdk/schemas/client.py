@@ -315,14 +315,21 @@ class Project(BaseModel):
     ) -> None:
         from dataverse_sdk.utils.utils import validate_before_create_dataset
 
+        if self.sensors is None:
+            from ..client import DataverseClient
+
+            project = DataverseClient.get_client_project(
+                project_id=self.id, client_alias=self.client_alias
+            )
+            self.sensors = project.sensors or []
+
         sensor_counts = SensorCounts(camera=0, lidar=0)
-        if self.sensors:
-            for sensor in self.sensors:
-                sensor_type: SensorType = getattr(sensor, "type", "")
-                if sensor_type == SensorType.CAMERA:
-                    sensor_counts.camera += 1
-                elif sensor_type == SensorType.LIDAR:
-                    sensor_counts.lidar += 1
+        for sensor in self.sensors:
+            sensor_type: SensorType = getattr(sensor, "type", "")
+            if sensor_type == SensorType.CAMERA:
+                sensor_counts.camera += 1
+            elif sensor_type == SensorType.LIDAR:
+                sensor_counts.lidar += 1
 
         image_type = None
         pcd_type = None
