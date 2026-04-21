@@ -492,7 +492,7 @@ class DataverseClient:
 
         Returns
         -------
-        list[Projects]
+        list[Project]
             list of project items
 
         Raises

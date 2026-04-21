@@ -23,7 +23,7 @@ def make_parser():
         "--host",
         required=True,
         type=str,
-        help="the host url of the dataverse site (with curation port)",
+        help="the host url of the dataverse site",
     )
     parser.add_argument(
         "-s",

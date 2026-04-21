@@ -48,7 +48,7 @@ def make_parser():
         "--host",
         required=True,
         type=str,
-        help="the host url of the dataverse site (with curation port)",
+        help="the host url of the dataverse site",
         default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
@@ -75,9 +75,9 @@ def make_parser():
     parser.add_argument(
         "-dataslice",
         "--dataslice_id",
-        type=str,
+        type=int,
         required=True,
-        help="The project id you want to import dataset",
+        help="The dataslice id you want to export",
     )
     parser.add_argument(
         "-f",

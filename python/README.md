@@ -8,7 +8,7 @@ Use Dataverse-SDK for Python to help you to interact with the Dataverse platform
   - List models for your selected project-id
   - Get and download your model
 
-[Package (PyPi)](https://pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkernetworks/dataverse-sdk)
+[Package (PyPi)](https://pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkervision/dataverse-sdk)
 
 
 ## Getting started
@@ -42,7 +42,7 @@ client2 = DataverseClient(
 assert client2 is get_connection(client2.alias)
 
 client3 = DataverseClient(
-    host=DataverseHost.PRODUCTION.value, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx"
+    host=DataverseHost.PRODUCTION.value, email="XXX", password="", service_id="xxxx-xxxx-xx-xxx", access_token="xxx", alias="client3", force = False
 )
 assert client3 is get_connection(client3.alias)
 ```
@@ -51,7 +51,7 @@ assert client3 is get_connection(client3.alias)
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| host        | str  | 	＊--    | the host url of the dataverse site (with curation port)   |
+| host        | str  | 	＊--    | the host url of the dataverse site |
 | email  | str | ＊--  |  the email account of your dataverse workspace |
 | password  | str | ＊--  |  the password of your dataverse workspace  |
 | service_id  | str | ＊--   |  The service id of the dataverse you want to connect |
@@ -102,7 +102,7 @@ The `list_projects` method will list all projects of the given sites.
 ```Python
 projects = client.list_projects(current_user = True,
                                 exclude_sensor_type=SensorType.LIDAR,
-                                image_type= OntologyImageType._2D_BOUNDING_BOX)
+                                image_type=OntologyImageType._2D_BOUNDING_BOX)
 
 ```
 
@@ -112,7 +112,7 @@ projects = client.list_projects(current_user = True,
 | :---                 |     :---    |     :---  |          :--- |
 | current_user         | bool  | True     | only show the projects of current user    |
 | exclude_sensor_type  | SensorType.CAMERA <br>  SensorType.LIDAR| None  |   exclude the projects with the given sensor type  |
-| image_type  | OntologyImageType._2D_BOUNDING_BOX <br> OntologyImageType.SEMANTIC_SEGMENTATION <br> OntologyImageType.CLASSIFICATION <br> OntologyImageType.POINT<br> OntologyImageType.POLYGON <br> OntologyImageType.POLYLINE | None  |  only include the projects with the given image type  |
+| image_type  | OntologyImageType._2D_BOUNDING_BOX <br> OntologyImageType.SEMANTIC_SEGMENTATION <br> OntologyImageType.INSTANCE_SEGMENTATION <br> OntologyImageType.CLASSIFICATION <br> OntologyImageType.POINT<br> OntologyImageType.POLYGON <br> OntologyImageType.POLYLINE <br> OntologyImageType.VQA | None  |  only include the projects with the given image type  |
 
 <br>
 
@@ -140,7 +140,7 @@ ontology = Ontology(
     ],
 )
 ```
-For project with camera sensor, there would be only one image_type for one project. You could choose from `[OntologyImageType._2D_BOUNDING_BOX, OntologyImageType.SEMANTIC_SEGMENTATION, OntologyImageType.CLASSIFICATION, OntologyImageType.POINT, OntologyImageType.POLYGON, OntologyImageType.POLYLINE]`.
+For project with camera sensor, there would be only one image_type for one project. You could choose from `[OntologyImageType._2D_BOUNDING_BOX, OntologyImageType.SEMANTIC_SEGMENTATION, OntologyImageType.INSTANCE_SEGMENTATION, OntologyImageType.CLASSIFICATION, OntologyImageType.POINT, OntologyImageType.POLYGON, OntologyImageType.POLYLINE, OntologyImageType.VQA]`.
 
 For project with lidar sensor, your should assign `pcd_type = OntologyPcdType.CUBOID` for the ontology.
 
@@ -186,7 +186,7 @@ project = client.create_project(name="Sample project", ontology=ontology, sensor
 
 ### Get Project
 
-The `get_proejct` method retrieves the project from the connected site. The `project_id` parameter is the unique integer ID of the project, not its "name" property.
+The `get_project` method retrieves the project from the connected site. The `project_id` parameter is the unique integer ID of the project, not its "name" property.
 
 ```Python
 project = client.get_project(project_id= 1, client_alias=client.alias) # if client_alias is not provided, we'll get it from client
@@ -337,7 +337,6 @@ dataset = project.create_dataset(**dataset_data)
 | storage_url | str | ＊-- |  your cloud storage url  |
 | container_name | str | None |  azure container name  |
 | data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
-| sensors  | list[Sensor] | ＊-- |  the list of Sensor of your dataset (one or more from project specified sensors)  |
 | type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
 | annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE <br> AnnotationFormat.BDDP <br> AnnotationFormat.VIDEO <br> AnnotationFormat.VLM <br>| ＊-- |  the format of your annotation data  |
 | annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
@@ -364,7 +363,6 @@ dataset_data2 = {
     "storage_url": "",
     "container_name": "",
     "data_folder": "/YOUR/TARGET/LOCAL/FOLDER",
-    "sensors": project.sensors,
     "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
     "annotation_format": AnnotationFormat.VISION_AI,
     "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
@@ -378,7 +376,7 @@ dataset2 = project.create_dataset(**dataset_data2)
 
 Your could also use the script for importing dataset from local
 ```
-python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+python tools/import_dataset_from_local.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
 ```
 <br>
 
@@ -510,13 +508,13 @@ The `create_vqa_project` method will create project on the connected site with t
 # 1) Create question class with question and answer type pair
 question_answer = [ QuestionClass(class_name="question1", rank=1, question="Is any person found in the picture?",
                     answer_type="boolean"),
-                    QuestionClass(class_name="question2", rank=2, question="What is the blob color of traffic light?",   answer_type="option",answer_options=["red","yello","green"])
+                    QuestionClass(class_name="question2", rank=2, question="What is the blob color of traffic light?",   answer_type="option",answer_options=["red","yellow","green"])
                    ]
 ```
 
 ```Python
 # 2) Create your VQA project as below
-project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", ontology_name="vqa-ontology" question_answer=question_answer)
+project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", ontology_name="vqa-ontology", question_answer=question_answer)
 ```
 
 * Input arguments for creating project:
@@ -526,7 +524,7 @@ project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", o
 | name        | str  | *--    | name of your project    |
 | sensor_name | str | *-- |  the camera sensor name  |
 | ontology_name | str |  *--  |  the ontology name |
-| question_answer|  list[QuestionClass] |  *--  |  your question/answer_type  |
+| question_answer|  list[QuestionClass] |  *--  |  your question/answer_type. `QuestionClass.answer_type` valid values: `boolean`, `option`, `number`, `text`  |
 | description  | str | None | your project description  |
 
 `＊--`: required argument without default
@@ -545,15 +543,16 @@ project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", o
 create_questions = [QuestionClass(class_name="question3", rank=3, question="Age?",answer_type="number")]
 update_questions = [{"rank": 2, "question": "What is the blob color of traffic light?(the closet one)", "options":["black"] }]
 
-#should provide client_alias if calling from client
-client.edit_vqa_ontology(project_id=24,  ontology_name="ontology-new-name",
-                                         create=create_questions,
-                                         update=update_questions,
-                                         client_alias=client.alias)
-#OR
-project.edit_vqa_ontology(project_id=24, ontology_name="ontology-new-name",
-                                         create=create_questions,
-                                         update=update_questions)
+# Through client
+client.edit_vqa_ontology(project_id=24, ontology_name="ontology-new-name",
+                         create=create_questions,
+                         update=update_questions,
+                         client_alias=client.alias)
+
+# Through project object
+project.edit_vqa_ontology(ontology_name="ontology-new-name",
+                          create=create_questions,
+                          update=update_questions)
 ```
 
 ### Get Question List
@@ -571,28 +570,28 @@ output = client.get_question_list(project_id=107, output_file_path="./question.j
 
 ### Import Your Local Dataset
 ```
-python tools/import_dataset_from_local.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
+python tools/import_dataset_from_local.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
 ```
 
 ### Import VQA Local Dataset
 ```
-python tools/import_vqa_dataset.py -host https://staging.visionai.linkervision.com/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -type {raw_data OR annotated_data}
+python tools/import_vqa_dataset.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id} -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -type {raw_data OR annotated_data}
 
 ```
 
 ### Export Dataslice and download files
 ```
-python tools/export_dataslice.py -host https://staging.visionai.linkervision.com/dataverse/curation  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
+python tools/export_dataslice.py -host {YOUR_HOST}  -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} -f {/YOUR/TARGET/LOCAL/file.zip}
 ```
 
 ### Export Large Dataslice and download files
 ```
-python tools/export_dataslice_large.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export-model-name / groundtruth} --target_folder {folder path} --export-format {coco, visionai, yolo, vlm ...etc}
+python tools/export_dataslice_large.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id} -dataslice {dataslice_id} --anno {export-model-name / groundtruth} --target_folder {folder path} --export-format {coco, visionai, yolo, vlm ...etc}
 ```
 
 ### Upload videos to create session tasks
 ```
-python tools/upload_videos_create_session.py -host https://visionai.linkervision.ai/dataverse/curation -e {your-account-email} -p {PASSWORD} -s {service-id} -f {/YOUR/VIDEOS/LOCAL/FOLDER} -n {session-name}
+python tools/upload_videos_create_session.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id} -f {/YOUR/VIDEOS/LOCAL/FOLDER} -n {session-name}
 ```
 
 - Advanced arguments for video curation (sequential data):
@@ -606,4 +605,4 @@ python tools/upload_videos_create_session.py -host https://visionai.linkervision
 
 ## Links to language repos
 
-[Python Readme](https://github.com/linkernetworks/dataverse-sdk/tree/master/python/README.md)
+[Python Readme](https://github.com/linkervision/dataverse-sdk/blob/master/python/README.md)
