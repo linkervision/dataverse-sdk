@@ -1,9 +1,9 @@
 from enum import Enum, EnumMeta
-from typing import Any, Optional
+from typing import Any
 
 
 class BaseEnumMeta(EnumMeta):
-    _value_set: Optional[set[Any]] = None
+    _value_set: set[Any] | None = None
 
     def __contains__(cls, item):
         if cls._value_set is None:
@@ -16,5 +16,5 @@ class DataverseHost(str, Enum, metaclass=BaseEnumMeta):
     DEV2 = "https://dev2.visionai.linkervision.com/dataverse/curation"
     DEV3 = "https://dev3.visionai.linkervision.com/dataverse/curation"
     STAGING = "https://staging.visionai.linkervision.com/dataverse/curation"
-    PRODUCTION = "https://visionai.linkervision.ai/dataverse/curation"
+    PRODUCTION = "https://visionai.linkervision.com/dataverse/curation"
     LOCAL = "http://localhost:8000"
