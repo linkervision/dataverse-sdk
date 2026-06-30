@@ -360,19 +360,18 @@ dataset = project.create_dataset(**dataset_data)
 dataset_data2 = {
     "name": "dataset-local-upload",
     "data_source": DataSource.LOCAL,
-    "storage_url": "",
-    "container_name": "",
     "data_folder": "/YOUR/TARGET/LOCAL/FOLDER",
     "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
     "annotation_format": AnnotationFormat.VISION_AI,
     "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
-    "sas_token": ""
 }
 dataset2 = project.create_dataset(**dataset_data2)
 
 ```
+
+> `storage_url`, `container_name` and `sas_token` are only used by cloud data sources (e.g. `DataSource.AWS` / `DataSource.Azure`). For `DataSource.LOCAL` you can simply omit them.
 
 Your could also use the script for importing dataset from local
 ```
