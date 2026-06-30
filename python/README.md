@@ -386,8 +386,6 @@ dataset2 = project.create_dataset(**dataset_data2)
 
 ```
 
-> `storage_url`, `container_name` and `sas_token` are only used by cloud data sources (e.g. `DataSource.AWS` / `DataSource.Azure`). For `DataSource.LOCAL` you can simply omit them.
-
 Your could also use the script for importing dataset from local
 ```
 python tools/import_dataset_from_local.py -host {YOUR_HOST} -e {your-account-email} -p {PASSWORD} -s {service-id}  -project {project-id} --folder {/YOUR/TARGET/LOCAL/FOLDER} -name {dataset-name} -type {raw_data OR annotated_data} -anno {image OR vision_ai} --sequential
