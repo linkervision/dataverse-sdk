@@ -363,7 +363,7 @@ dataset = project.create_dataset(**dataset_data)
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
 | secret_access_key | str | None| secret access key for AWS private s3 bucket  |
 
-`＊--`: required argument without default
+`＊--`: required for cloud storage
 
 * Check https://linkervision.gitbook.io/dataverse/data-management/import-dataset for the detail of `Import Dataset`.
 
