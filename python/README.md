@@ -305,6 +305,21 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 
 ### Create Dataset
 
+**Required fields by `data_source`** — only the marked fields are needed for each data source; the rest can be omitted:
+
+| `data_source` | `storage_url` | `container_name` | `sas_token` | `data_folder` | Notes |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| `DataSource.AWS` | ＊-- | - | - | ＊-- | use `access_key_id` + `secret_access_key` for a private S3 bucket |
+| `DataSource.Azure` | ＊-- | ＊-- | ＊-- | ＊-- | |
+| `DataSource.LOCAL` | - | - | - | ＊-- | local folder; SDK uploads files and sends `create_dataset_uuid` for you |
+| `DataSource.SDK` | - | ＊-- | - | ＊-- | offline import; only accepted when the backend runs with `OFFLINE_MODE=True` |
+
+`＊--`: required for this `data_source` · `-`: not used (can be omitted)
+
+> `DataSource.DATA_GENERATION` and `DataSource.PRE_IMPORT` require a `data_source_search_body` that the SDK does not currently send, so they are not supported via `create_dataset`.
+>
+> `DataSource.EXISTING_DATASETS` / `EXISTING_DATASLICES` only appear on datasets you read back from the API; they are not inputs for `create_dataset`.
+
 #### Use `create_dataset` to import dataset from **cloud storage**
 
 ```Python
