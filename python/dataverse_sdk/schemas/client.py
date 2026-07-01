@@ -400,7 +400,7 @@ class Project(BaseModel):
         storage_url : Optional[str], optional
             storage url for cloud storage (e.g. AWS, AZURE), by default None
         container_name : Optional[str], optional
-            container name for Azure, by default None
+            Azure container or MinIO bucket name, by default None
         sas_token : Optional[str], optional
             SAStoken for Azure, by default None
         annotations: list, optional
