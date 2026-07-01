@@ -2,7 +2,6 @@ import argparse
 import time
 
 from dataverse_sdk import DataverseClient
-from dataverse_sdk.constants import DataverseHost
 
 
 def export_dataslice_to_local(
@@ -49,7 +48,6 @@ def make_parser():
         required=True,
         type=str,
         help="the host url of the dataverse site",
-        default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
         "-s",

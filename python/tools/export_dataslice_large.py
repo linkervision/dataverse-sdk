@@ -3,7 +3,6 @@ import asyncio
 import os
 
 from dataverse_sdk.apis.backend import AsyncBackendAPI
-from dataverse_sdk.constants import DataverseHost
 from dataverse_sdk.export.exporter import Exporter
 
 
@@ -59,7 +58,6 @@ def make_parser():
         required=True,
         type=str,
         help="the host url of the dataverse site",
-        default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
         "-s",
