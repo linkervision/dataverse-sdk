@@ -1489,8 +1489,8 @@ of this project OR has been added before"
         project: Project,
         type: DatasetType,
         annotation_format: AnnotationFormat,
+        data_folder: str,
         storage_url: Optional[str] = None,
-        data_folder: Optional[str] = None,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         annotations: Optional[list] = None,
@@ -1519,10 +1519,10 @@ of this project OR has been added before"
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
             format type of annotation
+        data_folder : str
+            data folder of the storage
         storage_url : Optional[str], optional
             storage url for cloud storage (e.g. AWS, AZURE), by default None
-        data_folder : Optional[str], optional
-            data folder of the storage, by default None
         container_name : Optional[str], optional
             container name for Azure, by default None
         sas_token : Optional[str], optional
@@ -1557,6 +1557,11 @@ of this project OR has been added before"
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+        if not data_folder:
+            raise ValueError(
+                "`data_folder` is required to create a dataset and cannot be an empty string"
+            )
+
         if annotations is None:
             annotations = []
 

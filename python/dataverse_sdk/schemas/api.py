@@ -117,8 +117,8 @@ class DatasetAPISchema(BaseModel):
     data_source: DataSource
     type: DatasetType
     annotation_format: AnnotationFormat
+    data_folder: str
     storage_url: Optional[str] = None
-    data_folder: Optional[str] = None
     container_name: Optional[str] = None
     sas_token: Optional[str] = None
     sequential: bool = False

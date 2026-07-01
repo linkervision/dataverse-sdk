@@ -369,8 +369,8 @@ class Project(BaseModel):
         data_source: DataSource,
         type: DatasetType,
         annotation_format: AnnotationFormat,
+        data_folder: str,
         storage_url: Optional[str] = None,
-        data_folder: Optional[str] = None,
         container_name: Optional[str] = None,
         sas_token: Optional[str] = None,
         annotations: Optional[list] = None,
@@ -395,10 +395,10 @@ class Project(BaseModel):
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
             format type of annotation
+        data_folder : str
+            data folder of the storage
         storage_url : Optional[str], optional
             storage url for cloud storage (e.g. AWS, AZURE), by default None
-        data_folder : Optional[str], optional
-            data folder of the storage, by default None
         container_name : Optional[str], optional
             container name for Azure, by default None
         sas_token : Optional[str], optional
