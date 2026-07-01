@@ -305,7 +305,7 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 
 ### Create Dataset
 
-**Required fields by `data_source`** — only the marked fields are needed for each data source; the rest can be omitted:
+**Required fields by `data_source`:**
 
 | `data_source` | `storage_url` | `container_name` | `sas_token` | `data_folder` | Notes |
 | :--- | :---: | :---: | :---: | :---: | :--- |
