@@ -1521,7 +1521,7 @@ of this project OR has been added before"
         data_folder : str
             data folder of the storage
         storage_url : Optional[str], optional
-            storage url for cloud storage (e.g. AWS, AZURE), by default None
+            storage url for cloud storage (e.g. AWS, Azure), by default None
         container_name : Optional[str], optional
             Azure container or MinIO bucket name, by default None
         sas_token : Optional[str], optional
