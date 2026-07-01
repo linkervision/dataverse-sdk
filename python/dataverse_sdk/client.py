@@ -1481,7 +1481,6 @@ of this project OR has been added before"
         dataset_data.update({"project": project})
         return Dataset(**dataset_data, client_alias=client_alias)
 
-    # TODO: required arguments for different DataSource
     @staticmethod
     def create_dataset(
         name: str,
