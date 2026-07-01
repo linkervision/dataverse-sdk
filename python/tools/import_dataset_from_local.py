@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 from dataverse_sdk import DataverseClient
+from dataverse_sdk.constants import DataverseHost
 from dataverse_sdk.exceptions.client import DataverseExceptionBase
 from dataverse_sdk.schemas.client import Project
 from dataverse_sdk.schemas.common import AnnotationFormat, DatasetType, DataSource
@@ -67,6 +68,7 @@ def make_parser():
         required=True,
         type=str,
         help="the host url of the dataverse site",
+        default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
         "-s",
@@ -100,35 +102,27 @@ def make_parser():
         "-project",
         "--project_id",
         type=str,
-        required=True,
         help="The project id you want to import dataset",
     )
     parser.add_argument(
         "-folder",
         "--folder",
         type=str,
-        required=True,
         help="the local data folder root folder for importing",
     )
     parser.add_argument(
-        "-name",
-        "--dataset_name",
-        type=str,
-        required=True,
-        help="the dataset name for importing",
+        "-name", "--dataset_name", type=str, help="the dataset name for importing"
     )
     parser.add_argument(
         "-type",
         "--dataset_type",
         type=str,
-        required=True,
         help="the dataset type (annotated_data / raw_data)",
     )
     parser.add_argument(
         "-anno",
         "--anno_format",
         type=str,
-        required=True,
         help="the annotation_format for importing ex vision_ai / coco / image",
     )
     parser.add_argument(
