@@ -312,7 +312,7 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 | `DataSource.AWS` | ＊-- | - | - | ＊-- | use `access_key_id` + `secret_access_key` for a private S3 bucket |
 | `DataSource.Azure` | ＊-- | ＊-- | ＊-- | ＊-- | |
 | `DataSource.LOCAL` | - | - | - | ＊-- | local folder; SDK uploads files and sends `create_dataset_uuid` for you |
-| `DataSource.SDK` | - | ＊-- | - | ＊-- | offline MinIO import: `container_name` = bucket, `data_folder` = path in bucket; needs backend `OFFLINE_MODE=True` |
+| `DataSource.SDK` | - | ＊-- | - | ＊-- | offline MinIO import: `container_name` = bucket, `data_folder` = path in bucket; needs Dataverse deployed in offline mode |
 
 `＊--`: required for this `data_source` · `-`: not used (can be omitted)
 
