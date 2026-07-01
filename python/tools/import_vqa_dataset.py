@@ -4,7 +4,6 @@ import time
 from typing import Optional
 
 from dataverse_sdk import DataverseClient
-from dataverse_sdk.constants import DataverseHost
 from dataverse_sdk.exceptions.client import DataverseExceptionBase
 from dataverse_sdk.schemas.client import Project
 from dataverse_sdk.schemas.common import AnnotationFormat, DatasetType, DataSource
@@ -38,9 +37,6 @@ def import_vqa_dataset_from_local(
 
     dataset_data = {
         "name": dataset_name,
-        "storage_url": "",
-        "container_name": "",
-        "sas_token": "",
         "data_source": DataSource.LOCAL,
         "data_folder": data_folder,  # local image folder
         "type": dataset_type,
@@ -71,7 +67,6 @@ def make_parser():
         required=True,
         type=str,
         help="the host url of the dataverse site",
-        default=DataverseHost.STAGING.value,
     )
     parser.add_argument(
         "-s",
@@ -105,6 +100,7 @@ def make_parser():
         "-f",
         "--folder",
         type=str,
+        required=True,
         help="the local data folder root folder for importing",
     )
     parser.add_argument(
