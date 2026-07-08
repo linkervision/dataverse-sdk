@@ -3,7 +3,7 @@ Dataverse is a MLOPs platform for assisting in data selection, data visualizatio
 Use Dataverse-SDK for Python to help you to interact with the Dataverse platform by Python. Currently, the library supports:
   - Create Project with your input ontology and sensors
   - Get Project by project-id
-  - Create Dataset from your AWS/Azure storage or local
+  - Create Dataset from your AWS storage or local
   - Get Dataset by dataset-id
   - List models for your selected project-id
   - Get and download your model
@@ -307,12 +307,11 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 
 **Required fields by `data_source`:**
 
-| `data_source` | `storage_url` | `container_name` | `sas_token` | `data_folder` | Notes |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| `DataSource.AWS` | ＊-- | - | - | ＊-- | use `access_key_id` + `secret_access_key` for a private S3 bucket |
-| `DataSource.Azure` | ＊-- | ＊-- | ＊-- | ＊-- | |
-| `DataSource.LOCAL` | - | - | - | ＊-- | local folder; SDK uploads files and sends `create_dataset_uuid` for you |
-| `DataSource.SDK` | - | ＊-- | - | ＊-- | offline MinIO import: `container_name` = bucket, `data_folder` = path in bucket; needs Dataverse deployed in offline mode |
+| `data_source` | `storage_url` | `container_name` | `data_folder` | Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| `DataSource.AWS` | ＊-- | - | ＊-- | use `access_key_id` + `secret_access_key` for a private S3 bucket |
+| `DataSource.LOCAL` | - | - | ＊-- | local folder; SDK uploads files and sends `create_dataset_uuid` for you |
+| `DataSource.SDK` | - | ＊-- | ＊-- | offline MinIO import: `container_name` = bucket, `data_folder` = path in bucket; needs Dataverse deployed in offline mode |
 
 `＊--`: required for this `data_source` · `-`: not used (can be omitted)
 
@@ -325,9 +324,8 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 ```Python
 dataset_data = {
     "name": "Dataset 1",
-    "data_source": DataSource.Azure/DataSource.AWS,
+    "data_source": DataSource.AWS,
     "storage_url": "storage/url",
-    "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
     "type": DatasetType.ANNOTATED_DATA,
     "annotation_format": AnnotationFormat.VISION_AI,
@@ -335,9 +333,8 @@ dataset_data = {
     "sequential": False,
     "render_pcd": False,
     "generate_metadata": False,
-    "sas_token": "azure sas token",  # only for azure storage
-    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
-    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
+    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket
+    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket
 }
 dataset = project.create_dataset(**dataset_data)
 
@@ -348,9 +345,9 @@ dataset = project.create_dataset(**dataset_data)
 | Argument name      | Type/Options   | Default | Description   |
 | :---                 |     :---    |     :---  |          :--- |
 | name        | str  | ＊--    | name of your dataset    |
-| data_source | DataSource.Azure <br> DataSource.AWS | ＊-- | the datasource of your dataset |
+| data_source | DataSource.AWS | ＊-- | the datasource of your dataset |
 | storage_url | str | ＊-- |  your cloud storage url  |
-| container_name | str | None |  azure container name  |
+| container_name | str | None |  MinIO bucket name (only for DataSource.SDK offline import)  |
 | data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
 | type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
 | annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE <br> AnnotationFormat.BDDP <br> AnnotationFormat.VIDEO <br> AnnotationFormat.VLM <br>| ＊-- |  the format of your annotation data  |
@@ -359,7 +356,6 @@ dataset = project.create_dataset(**dataset_data)
 | render_pcd | bool | False | render pcd preview image or not |
 | generate_metadata | bool | False | generate image meta data or not   |
 | description  | str | None | your dataset description  |
-| sas_token | str | None | SAStoken for azure container  |
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
 | secret_access_key | str | None| secret access key for AWS private s3 bucket  |
 

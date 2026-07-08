@@ -408,7 +408,6 @@ class BackendAPI:
         generate_metadata: bool = False,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
-        sas_token: Optional[str] = None,
         description: Optional[str] = None,
         annotations: Optional[list[str]] = None,
         access_key_id: Optional[str] = None,
@@ -436,7 +435,6 @@ class BackendAPI:
         for key, value in (
             ("storage_url", storage_url),
             ("container_name", container_name),
-            ("sas_token", sas_token),
         ):
             if value is not None:
                 payload_data[key] = value

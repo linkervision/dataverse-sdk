@@ -120,7 +120,6 @@ class DatasetAPISchema(BaseModel):
     data_folder: str
     storage_url: Optional[str] = None
     container_name: Optional[str] = None
-    sas_token: Optional[str] = None
     sequential: bool = False
     generate_metadata: bool = False
     render_pcd: Optional[bool] = None
