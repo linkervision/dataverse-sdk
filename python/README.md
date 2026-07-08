@@ -333,8 +333,8 @@ dataset_data = {
     "sequential": False,
     "render_pcd": False,
     "generate_metadata": False,
-    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket
-    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket
+    "access_key_id": "aws s3 access key id",  # only for private s3 bucket, don't need to assign it in case of public s3 bucket
+    "secret_access_key": "aws s3 secret access key",  # only for private s3 bucket, don't need to assign it in case of public s3 bucket
 }
 dataset = project.create_dataset(**dataset_data)
 

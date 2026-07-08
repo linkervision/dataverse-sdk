@@ -431,7 +431,7 @@ class BackendAPI:
             "auto_tagging": [],  # FIXME: auto_tagging field is still required by production API.
         }
 
-        # Only send cloud-storage fields when provided
+        # Only send storage location fields when provided
         for key, value in (
             ("storage_url", storage_url),
             ("container_name", container_name),
