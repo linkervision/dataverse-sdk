@@ -402,13 +402,12 @@ class BackendAPI:
         project_id: int,
         type: str,
         annotation_format: str,
-        storage_url: str,
         data_folder: str,
+        storage_url: Optional[str] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
         render_pcd: bool = False,
         container_name: Optional[str] = None,
-        sas_token: Optional[str] = None,
         description: Optional[str] = None,
         annotations: Optional[list[str]] = None,
         access_key_id: Optional[str] = None,
@@ -421,10 +420,7 @@ class BackendAPI:
             "name": name,
             "project_id": project_id,
             "data_source": data_source,
-            "storage_url": storage_url,
-            "container_name": container_name,
             "data_folder": data_folder,
-            "sas_token": sas_token,
             "type": type,
             "sequential": sequential,
             "annotation_format": annotation_format,
@@ -434,6 +430,14 @@ class BackendAPI:
             "annotations": annotations if annotations else [],
             "auto_tagging": [],  # FIXME: auto_tagging field is still required by production API.
         }
+
+        # Only send storage location fields when provided
+        for key, value in (
+            ("storage_url", storage_url),
+            ("container_name", container_name),
+        ):
+            if value is not None:
+                payload_data[key] = value
 
         aws_access_key = {secret_access_key, access_key_id}
         if not (all(aws_access_key) or not any(aws_access_key)):

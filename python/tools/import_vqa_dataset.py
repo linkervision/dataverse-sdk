@@ -38,9 +38,6 @@ def import_vqa_dataset_from_local(
 
     dataset_data = {
         "name": dataset_name,
-        "storage_url": "",
-        "container_name": "",
-        "sas_token": "",
         "data_source": DataSource.LOCAL,
         "data_folder": data_folder,  # local image folder
         "type": dataset_type,

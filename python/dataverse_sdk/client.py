@@ -1481,7 +1481,6 @@ of this project OR has been added before"
         dataset_data.update({"project": project})
         return Dataset(**dataset_data, client_alias=client_alias)
 
-    # TODO: required arguments for different DataSource
     @staticmethod
     def create_dataset(
         name: str,
@@ -1489,10 +1488,9 @@ of this project OR has been added before"
         project: Project,
         type: DatasetType,
         annotation_format: AnnotationFormat,
-        storage_url: str,
         data_folder: str,
+        storage_url: Optional[str] = None,
         container_name: Optional[str] = None,
-        sas_token: Optional[str] = None,
         annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
@@ -1519,14 +1517,12 @@ of this project OR has been added before"
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
             format type of annotation
-        storage_url : str
-            storage url for cloud
         data_folder : str
             data folder of the storage
+        storage_url : Optional[str], optional
+            storage url for cloud storage (e.g. AWS), by default None
         container_name : Optional[str], optional
-            container name for Azure, by default None
-        sas_token : Optional[str], optional
-            SAStoken for Azure, by default None
+            MinIO bucket name, by default None
         annotations: list, optional
             list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
@@ -1557,6 +1553,11 @@ of this project OR has been added before"
         ClientConnectionError
             raise exception if there is any error occurs when calling backend APIs.
         """
+        if not data_folder:
+            raise ValueError(
+                "`data_folder` is required to create a dataset and cannot be an empty string"
+            )
+
         if annotations is None:
             annotations = []
 
@@ -1583,7 +1584,6 @@ of this project OR has been added before"
                 storage_url=storage_url,
                 container_name=container_name,
                 data_folder=data_folder,
-                sas_token=sas_token,
                 sequential=sequential,
                 generate_metadata=generate_metadata,
                 render_pcd=render_pcd,

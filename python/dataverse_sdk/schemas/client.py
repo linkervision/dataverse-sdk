@@ -369,10 +369,9 @@ class Project(BaseModel):
         data_source: DataSource,
         type: DatasetType,
         annotation_format: AnnotationFormat,
-        storage_url: str,
         data_folder: str,
+        storage_url: Optional[str] = None,
         container_name: Optional[str] = None,
-        sas_token: Optional[str] = None,
         annotations: Optional[list] = None,
         sequential: bool = False,
         generate_metadata: bool = False,
@@ -395,14 +394,12 @@ class Project(BaseModel):
             datasettype (annotation or raw)
         annotation_format : AnnotationFormat
             format type of annotation
-        storage_url : str
-            storage url for cloud
         data_folder : str
             data folder of the storage
+        storage_url : Optional[str], optional
+            storage url for cloud storage (e.g. AWS), by default None
         container_name : Optional[str], optional
-            container name for Azure, by default None
-        sas_token : Optional[str], optional
-            SAStoken for Azure, by default None
+            MinIO bucket name, by default None
         annotations: list, optional
             list of annotation folder name (should be groundtruth or $model_name)
         sequential : bool, optional
@@ -447,7 +444,6 @@ class Project(BaseModel):
             storage_url=storage_url,
             container_name=container_name,
             data_folder=data_folder,
-            sas_token=sas_token,
             annotations=annotations,
             sequential=sequential,
             generate_metadata=generate_metadata,

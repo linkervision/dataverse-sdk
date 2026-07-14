@@ -3,7 +3,7 @@ Dataverse is a MLOPs platform for assisting in data selection, data visualizatio
 Use Dataverse-SDK for Python to help you to interact with the Dataverse platform by Python. Currently, the library supports:
   - Create Project with your input ontology and sensors
   - Get Project by project-id
-  - Create Dataset from your AWS/Azure storage or local
+  - Create Dataset from your AWS storage or local
   - Get Dataset by dataset-id
   - List models for your selected project-id
   - Get and download your model
@@ -305,14 +305,27 @@ client.update_alias(project_id=123, alias_file_path= "/Users/Downloads/alias.csv
 
 ### Create Dataset
 
+**Required fields by `data_source`:**
+
+| `data_source` | `storage_url` | `container_name` | `data_folder` | Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| `DataSource.AWS` | ＊-- | - | ＊-- | use `access_key_id` + `secret_access_key` for a private S3 bucket |
+| `DataSource.LOCAL` | - | - | ＊-- | local folder; SDK uploads files and sends `create_dataset_uuid` for you |
+| `DataSource.SDK` | - | ＊-- | ＊-- | offline MinIO import: `container_name` = bucket, `data_folder` = path in bucket; needs Dataverse deployed in offline mode |
+
+`＊--`: required for this `data_source` · `-`: not used (can be omitted)
+
+> `DataSource.DATA_GENERATION` and `DataSource.PRE_IMPORT` require a `data_source_search_body` that the SDK does not currently send, so they are not supported via `create_dataset`.
+>
+> `DataSource.EXISTING_DATASETS` / `EXISTING_DATASLICES` only appear on datasets you read back from the API; they are not inputs for `create_dataset`.
+
 #### Use `create_dataset` to import dataset from **cloud storage**
 
 ```Python
 dataset_data = {
     "name": "Dataset 1",
-    "data_source": DataSource.Azure/DataSource.AWS,
+    "data_source": DataSource.AWS,
     "storage_url": "storage/url",
-    "container_name": "azure container name",
     "data_folder": "datafolder/to/vai_anno",
     "type": DatasetType.ANNOTATED_DATA,
     "annotation_format": AnnotationFormat.VISION_AI,
@@ -320,9 +333,8 @@ dataset_data = {
     "sequential": False,
     "render_pcd": False,
     "generate_metadata": False,
-    "sas_token": "azure sas token",  # only for azure storage
-    "access_key_id" : "aws s3 access key id",# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
-    "secret_access_key": "aws s3 secret access key"# only for private s3 bucket, don't need to assign it in case of public s3 bucket or azure data source
+    "access_key_id": "aws s3 access key id",  # only for private s3 bucket, don't need to assign it in case of public s3 bucket
+    "secret_access_key": "aws s3 secret access key",  # only for private s3 bucket, don't need to assign it in case of public s3 bucket
 }
 dataset = project.create_dataset(**dataset_data)
 
@@ -333,10 +345,9 @@ dataset = project.create_dataset(**dataset_data)
 | Argument name      | Type/Options   | Default | Description   |
 | :---                 |     :---    |     :---  |          :--- |
 | name        | str  | ＊--    | name of your dataset    |
-| data_source | DataSource.Azure <br> DataSource.AWS | ＊-- | the datasource of your dataset |
+| data_source | DataSource.AWS | ＊-- | the datasource of your dataset |
 | storage_url | str | ＊-- |  your cloud storage url  |
-| container_name | str | None |  azure container name  |
-| data_folder | str | ＊-- |  the relative data folder from the storage_url and container  |
+| data_folder | str | ＊-- |  the relative data folder from the storage_url  |
 | type | DatasetType.ANNOTATED_DATA <br> DatasetType.RAW_DATA | ＊-- |  your dataset type  (annotated or raw data)|
 | annotation_format | AnnotationFormat.VISION_AI <br> AnnotationFormat.KITTI <br> AnnotationFormat.COCO <br> AnnotationFormat.YOLO <br> AnnotationFormat.IMAGE <br> AnnotationFormat.BDDP <br> AnnotationFormat.VIDEO <br> AnnotationFormat.VLM <br>| ＊-- |  the format of your annotation data  |
 | annotations | list[str] | None |  list of names for your annotation data folders, such as ["groundtruth"]  |
@@ -344,11 +355,10 @@ dataset = project.create_dataset(**dataset_data)
 | render_pcd | bool | False | render pcd preview image or not |
 | generate_metadata | bool | False | generate image meta data or not   |
 | description  | str | None | your dataset description  |
-| sas_token | str | None | SAStoken for azure container  |
 | access_key_id | str | None |  access key id for AWS private s3 bucket  |
 | secret_access_key | str | None| secret access key for AWS private s3 bucket  |
 
-`＊--`: required argument without default
+`＊--`: required for cloud storage
 
 * Check https://linkervision.gitbook.io/dataverse/data-management/import-dataset for the detail of `Import Dataset`.
 
@@ -360,15 +370,12 @@ dataset = project.create_dataset(**dataset_data)
 dataset_data2 = {
     "name": "dataset-local-upload",
     "data_source": DataSource.LOCAL,
-    "storage_url": "",
-    "container_name": "",
     "data_folder": "/YOUR/TARGET/LOCAL/FOLDER",
     "type": DatasetType.ANNOTATED_DATA, # or DatasetType.RAW_DATA for images
     "annotation_format": AnnotationFormat.VISION_AI,
     "annotations": ["groundtruth"],  # remove it when type is DatasetType.RAW_DATA
     "sequential": False,
     "generate_metadata": False,
-    "sas_token": ""
 }
 dataset2 = project.create_dataset(**dataset_data2)
 
