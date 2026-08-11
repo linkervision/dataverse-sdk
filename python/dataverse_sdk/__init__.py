@@ -18,6 +18,7 @@ from .schemas.client import (
 from .schemas.common import (
     AnnotationFormat,
     AttributeType,
+    ConvertModelFileType,
     DatasetStatus,
     DatasetType,
     DataSource,
@@ -47,6 +48,7 @@ __all__ = [
     "DatasetStatus",
     "DataSource",
     "QuestionClass",
+    "ConvertModelFileType",
 ]
 
 

@@ -64,6 +64,15 @@ class DataSource(str, Enum, metaclass=BaseEnumMeta):
     PRE_IMPORT = "pre_import"
 
 
+class ConvertModelFileType(str, Enum, metaclass=BaseEnumMeta):
+    """Which stored artifact of a convert record to download."""
+
+    TRITON = "triton"
+    MODEL = "model"
+    RAW_ONNX = "raw_onnx"
+    CALIB_CACHE = "calib_cache"
+
+
 @dataclass
 class SensorCounts:
     camera: int = 0

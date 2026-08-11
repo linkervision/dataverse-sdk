@@ -7,6 +7,7 @@ from pydantic_core.core_schema import ValidationInfo
 from .common import (
     AnnotationFormat,
     AttributeType,
+    ConvertModelFileType,
     DatasetStatus,
     DatasetType,
     DataSource,
@@ -531,8 +532,7 @@ class ConvertRecord(BaseModel):
 
     def get_convert_model_file(
         self,
-        triton_format: bool = True,
-        raw_onnx: bool = False,
+        file_type: ConvertModelFileType = ConvertModelFileType.TRITON,
         save_path: str = "./triton.zip",
         timeout: int = 3000,
         permission: str = "",
@@ -542,8 +542,7 @@ class ConvertRecord(BaseModel):
         return DataverseClient.get_convert_model_file(
             convert_record_id=self.id,
             save_path=save_path,
-            triton_format=triton_format,
-            raw_onnx=raw_onnx,
+            file_type=file_type,
             timeout=timeout,
             permission=permission,
             client_alias=self.client_alias,
