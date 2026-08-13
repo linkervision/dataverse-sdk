@@ -73,6 +73,30 @@ class ConvertModelFileType(str, Enum, metaclass=BaseEnumMeta):
     CALIB_CACHE = "calib_cache"
 
 
+# Fallback local filename per artifact, used when no save_path is given. The MODEL
+# and RAW_ONNX artifacts vary with the convert format (onnx vs trt), so these are
+# convenience defaults rather than a promise about the file's contents.
+CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS: dict[ConvertModelFileType, str] = {
+    ConvertModelFileType.TRITON: "./triton.zip",
+    ConvertModelFileType.MODEL: "./model.onnx",
+    ConvertModelFileType.RAW_ONNX: "./raw.onnx",
+    ConvertModelFileType.CALIB_CACHE: "./trt_int8_calib.cache",
+}
+
+
+class ModelStructure(str, Enum, metaclass=BaseEnumMeta):
+    """Architecture to build uploaded custom model weights into."""
+
+    YOLOV9_C = "yolov9-c"
+    YOLOV9_E = "yolov9-e"
+    YOLOV9_S = "yolov9-s"
+    DFINE_N = "dfine-n"
+    DFINE_S = "dfine-s"
+    DFINE_M = "dfine-m"
+    DFINE_L = "dfine-l"
+    DFINE_X = "dfine-x"
+
+
 @dataclass
 class SensorCounts:
     camera: int = 0

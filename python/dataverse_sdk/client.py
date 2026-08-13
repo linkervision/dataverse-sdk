@@ -50,9 +50,11 @@ from .schemas.client import (
     UpdateQuestionClass,
 )
 from .schemas.common import (
+    CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS,
     AnnotationFormat,
     ConvertModelFileType,
     DatasetType,
+    ModelStructure,
     OntologyImageType,
     SensorType,
 )
@@ -1404,7 +1406,7 @@ of this project OR has been added before"
     @staticmethod
     def get_convert_model_file(
         convert_record_id: int,
-        save_path: str = "./triton.zip",
+        save_path: Optional[str] = None,
         file_type: ConvertModelFileType = ConvertModelFileType.TRITON,
         timeout: int = 3000,
         permission: str = "",
@@ -1416,8 +1418,9 @@ of this project OR has been added before"
         Parameters
         ----------
         convert_record_id : int
-        save_path : str, optional
-            local path for saving the model file, by default './triton.zip'
+        save_path : Optional[str], optional
+            local path for saving the model file, by default None, which picks a
+            filename matching the requested file_type
         file_type: ConvertModelFileType, default=ConvertModelFileType.TRITON
             which stored artifact to download: the triton bundle, the main model
             artifact, the intermediate onnx, or the int8 calibration cache
@@ -1433,6 +1436,9 @@ of this project OR has been added before"
             the first item means whether the download success or not
             the second item shows the save_path
         """
+        file_type = ConvertModelFileType(file_type)
+        if save_path is None:
+            save_path = CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS[file_type]
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
@@ -1762,7 +1768,7 @@ of this project OR has been added before"
         input_classes: list[str],
         resolution_width: int,
         resolution_height: int,
-        model_structure: str,
+        model_structure: ModelStructure,
         weight_url: str,
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,

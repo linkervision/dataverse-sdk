@@ -11,6 +11,7 @@ from .common import (
     DatasetStatus,
     DatasetType,
     DataSource,
+    ModelStructure,
     OntologyImageType,
     OntologyPcdType,
     ProjectCreateDatasetConfig,
@@ -533,7 +534,7 @@ class ConvertRecord(BaseModel):
     def get_convert_model_file(
         self,
         file_type: ConvertModelFileType = ConvertModelFileType.TRITON,
-        save_path: str = "./triton.zip",
+        save_path: Optional[str] = None,
         timeout: int = 3000,
         permission: str = "",
     ) -> tuple[bool, str]:
@@ -559,6 +560,10 @@ class MLModel(BaseModel):
     operation_records: list = []
     triton_model_name: str
     description: Optional[str] = None
+    # Typed as str, not ModelStructure: the backend adds structures ahead of SDK
+    # releases, and an unknown value must not fail the whole list_models parse.
+    # Comparing against ModelStructure still works, since that enum subclasses str.
+    model_structure: Optional[str] = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -593,6 +598,7 @@ class MLModel(BaseModel):
             operation_records=model_data.get("model_records", []),
             updated_at=model_data["updated_at"],
             triton_model_name=model_data["triton_model_name"],
+            model_structure=model_data.get("model_structure"),
             client_alias=client_alias,
         )
 
@@ -610,7 +616,7 @@ class MLModel(BaseModel):
         input_classes: list[str],
         resolution_width: int,
         resolution_height: int,
-        model_structure: Literal["yolov9-c", "yolov9-e", "yolov9-s"],
+        model_structure: ModelStructure,
         weight_url: str,
         permission: str = "",
     ):

@@ -1,10 +1,16 @@
 import re
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from .client import AnnotationFormat, DatasetType, DataSource, QuestionClass
-from .common import AttributeType, OntologyImageType, OntologyPcdType, SensorType
+from .common import (
+    AttributeType,
+    ModelStructure,
+    OntologyImageType,
+    OntologyPcdType,
+    SensorType,
+)
 
 
 class AttributeOptionAPISchema(BaseModel):
@@ -139,5 +145,5 @@ class CreateCustomModelAPISchema(BaseModel):
     input_classes: list[str]
     resolution_width: int
     resolution_height: int
-    model_structure: Literal["yolov9-c", "yolov9-e", "yolov9-s"]
+    model_structure: ModelStructure
     weight_url: str

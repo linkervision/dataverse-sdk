@@ -22,6 +22,7 @@ from .schemas.common import (
     DatasetStatus,
     DatasetType,
     DataSource,
+    ModelStructure,
     OntologyImageType,
     OntologyPcdType,
     SensorType,
@@ -49,6 +50,7 @@ __all__ = [
     "DataSource",
     "QuestionClass",
     "ConvertModelFileType",
+    "ModelStructure",
 ]
 
 
