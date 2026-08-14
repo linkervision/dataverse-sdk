@@ -426,10 +426,11 @@ class BackendAPI:
             "render_pcd": render_pcd,
             "description": description if description else "",
             "annotations": annotations if annotations else [],
-            "auto_tagging": [],  # FIXME: auto_tagging field is still required by production API.
+            "storage_url": "",  # FIXME: storage_url field is still required by production API.
+            "container_name": "",  # FIXME: container_name field is still required by production API.
+            "sas_token": "",  # FIXME: sas_token field is still required by production API.
         }
 
-        # Only send storage location fields when provided
         for key, value in (
             ("storage_url", storage_url),
             ("container_name", container_name),
