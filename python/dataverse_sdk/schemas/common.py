@@ -73,12 +73,14 @@ class ConvertModelFileType(str, Enum, metaclass=BaseEnumMeta):
     CALIB_CACHE = "calib_cache"
 
 
-# Fallback local filename per artifact, used when no save_path is given. The MODEL
-# and RAW_ONNX artifacts vary with the convert format (onnx vs trt), so these are
-# convenience defaults rather than a promise about the file's contents.
+# Last-resort local filename per artifact, used only when the caller gives no
+# save_path AND the response carries no usable Content-Disposition filename. The
+# server's own name is authoritative: it reflects the convert format and precision
+# (e.g. "ptq.engine"), which a static table cannot. Treat these as a floor to fall
+# back on, not as a description of what the file contains.
 CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS: dict[ConvertModelFileType, str] = {
     ConvertModelFileType.TRITON: "./triton.zip",
-    ConvertModelFileType.MODEL: "./model.onnx",
+    ConvertModelFileType.MODEL: "./converted_model",
     ConvertModelFileType.RAW_ONNX: "./raw.onnx",
     ConvertModelFileType.CALIB_CACHE: "./trt_int8_calib.cache",
 }

@@ -61,6 +61,7 @@ from .schemas.common import (
 from .utils.utils import (
     download_file_from_response,
     download_file_from_url,
+    filename_from_response,
     get_filepaths,
 )
 
@@ -1419,8 +1420,9 @@ of this project OR has been added before"
         ----------
         convert_record_id : int
         save_path : Optional[str], optional
-            local path for saving the model file, by default None, which picks a
-            filename matching the requested file_type
+            local path for saving the model file, by default None, which uses the
+            filename the server reports in Content-Disposition, falling back to
+            CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS when the server sends none
         file_type: ConvertModelFileType, default=ConvertModelFileType.TRITON
             which stored artifact to download: the triton bundle, the main model
             artifact, the intermediate onnx, or the int8 calibration cache
@@ -1436,9 +1438,18 @@ of this project OR has been added before"
             the first item means whether the download success or not
             the second item shows the save_path
         """
-        file_type = ConvertModelFileType(file_type)
-        if save_path is None:
-            save_path = CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS[file_type]
+        try:
+            file_type = ConvertModelFileType(file_type)
+        except ValueError as e:
+            raise APIValidationError(
+                f"Something wrong when getting the convert model file: {e}"
+            ) from e
+        # Resolved before the request so the failure path always reports a real path.
+        # When the caller gave no save_path the server's own filename wins instead,
+        # but that is only known once the response headers arrive.
+        fallback_save_path = (
+            save_path or CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS[file_type]
+        )
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
@@ -1449,14 +1460,21 @@ of this project OR has been added before"
                 timeout=timeout,
                 permission=permission,
             )
-            download_file_from_response(response=resp, save_path=save_path)
-            return True, save_path
+            if save_path is not None:
+                target_save_path = save_path
+            else:
+                server_filename = filename_from_response(resp)
+                target_save_path = (
+                    f"./{server_filename}" if server_filename else fallback_save_path
+                )
+            download_file_from_response(response=resp, save_path=target_save_path)
+            return True, target_save_path
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
         except Exception:
             logging.exception("Failed to get the convert model file")
-            return False, save_path
+            return False, fallback_save_path
 
     def get_dataset(self, dataset_id: int, client_alias: Optional[str] = None):
         """Get dataset detail and status by id

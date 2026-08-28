@@ -560,8 +560,7 @@ class MLModel(BaseModel):
     operation_records: list = []
     triton_model_name: str
     description: Optional[str] = None
-    # Typed as str, not ModelStructure: the backend adds structures ahead of SDK
-    # releases, and an unknown value must not fail the whole list_models parse.
+    # Typed as str, not ModelStructure: an unknown value must not fail the whole list_models parse.
     # Comparing against ModelStructure still works, since that enum subclasses str.
     model_structure: Optional[str] = None
 

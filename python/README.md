@@ -505,6 +505,61 @@ status, label_file_path = model_record.get_label_file(save_path="./labels.txt", 
 status, onnx_model_path = model_record.get_onnx_model_file(save_path="./model.onnx", timeout=6000)
 ```
 
+### Get Convert Model File
+
+The `get_convert_model_file` method will download one of the stored artifacts of a convert record, selected by the `file_type` argument.
+
+```Python
+from dataverse_sdk import ConvertModelFileType
+
+# Method 1: Using client
+status, save_path = client.get_convert_model_file(
+    convert_record_id=5,
+    file_type=ConvertModelFileType.TRITON,
+    client_alias=client.alias,
+)
+
+# Method 2: Using convert record object
+model_record = model.get_convert_record(convert_record_id=5)
+status, save_path = model_record.get_convert_model_file(file_type=ConvertModelFileType.TRITON)
+```
+
+#### Available File Types
+
+| Enum Value                          | String Value      | File downloaded                                                        | Available when         | Default `save_path`       |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------- | ---------------------- | ------------------------- |
+| `ConvertModelFileType.TRITON`       | `"triton"`        | Triton bundle (`.zip`)                                                 | always                 | `./triton.zip`            |
+| `ConvertModelFileType.MODEL`        | `"model"`         | Main artifact: `model.onnx` (format=onnx) or `trt.engine` (format=trt)  | always                 | `./converted_model`       |
+| `ConvertModelFileType.RAW_ONNX`     | `"raw_onnx"`      | Intermediate onnx (fp16: `trt.onnx`; D-FINE int8: fp32 `model.onnx`)    | format=trt             | `./raw.onnx`              |
+| `ConvertModelFileType.CALIB_CACHE`  | `"calib_cache"`   | `trt_int8_calib.cache` (int8 scale table)                              | D-FINE + int8 only     | `./trt_int8_calib.cache`  |
+
+When `save_path` is omitted, the filename is resolved in this order:
+
+1. The name the server supplies in the response's `Content-Disposition` header — this is the artifact's real stored filename (e.g. `ptq.engine`, `triton_model.zip`), so it already reflects the convert format and precision.
+2. The **Default `save_path`** in the table above, used only when the server sends no usable filename.
+
+Pass an explicit `save_path` whenever you need a predictable location — it always takes precedence over the server's name.
+
+#### Input Arguments
+
+| Argument name     | Type/Options                                                   | Default                       | Description                                                          |
+| ----------------- | -------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------- |
+| convert_record_id | int                                                            | \*--                          | The convert record to download from                                  |
+| file_type         | ConvertModelFileType, "triton", "model", "raw_onnx", "calib_cache" | ConvertModelFileType.TRITON | Which artifact to download                                           |
+| save_path         | str                                                            | None                          | Local path to write the file; when omitted the server's filename is used (see above) |
+| timeout           | int                                                            | 3000                          | Maximum timeout of the request                                        |
+| permission        | str                                                            | ""                            | Sets the `X-Request-Source` header; pass the caller's permission source if required |
+| client            | DataverseClient                                                | None                          | Client instance; if omitted, `client_alias` must be given             |
+| client_alias      | str                                                            | None                          | Registered client alias; required when `client` is None               |
+
+`＊--`: required argument without default
+
+#### Return
+
+`tuple[bool, str]` — `(status, save_path)`. `status` is `False` if the download failed, and `save_path` is the path that was written to.
+
+<br>
+
 
 ### Create VQA Project
 
