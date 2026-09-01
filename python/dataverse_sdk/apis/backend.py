@@ -12,6 +12,7 @@ from requests import sessions
 from requests.adapters import HTTPAdapter, Retry
 
 from ..exceptions.client import DataverseExceptionBase
+from ..schemas.common import ConvertModelFileType
 from ..utils.utils import chunks
 
 logger = logging.getLogger(__name__)
@@ -375,15 +376,12 @@ class BackendAPI:
         self,
         convert_record_id: int,
         timeout: int = 3000,
-        triton_format: bool = True,
-        raw_onnx: bool = False,
+        file_type: ConvertModelFileType = ConvertModelFileType.TRITON,
         permission: str = "",
         **kwargs,
     ) -> requests.models.Response:
         headers = self.headers.copy()
-        kwargs["triton"] = triton_format
-        if raw_onnx:
-            kwargs["raw_onnx"] = raw_onnx
+        kwargs["file_type"] = ConvertModelFileType(file_type).value
         if permission:
             headers["X-Request-Source"] = permission
         resp = self.send_request(

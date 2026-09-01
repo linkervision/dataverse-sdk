@@ -49,10 +49,19 @@ from .schemas.client import (
     Sensor,
     UpdateQuestionClass,
 )
-from .schemas.common import AnnotationFormat, DatasetType, OntologyImageType, SensorType
+from .schemas.common import (
+    CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS,
+    AnnotationFormat,
+    ConvertModelFileType,
+    DatasetType,
+    ModelStructure,
+    OntologyImageType,
+    SensorType,
+)
 from .utils.utils import (
     download_file_from_response,
     download_file_from_url,
+    filename_from_response,
     get_filepaths,
 )
 
@@ -1398,9 +1407,8 @@ of this project OR has been added before"
     @staticmethod
     def get_convert_model_file(
         convert_record_id: int,
-        save_path: str = "./triton.zip",
-        triton_format: bool = True,
-        raw_onnx: bool = False,
+        save_path: Optional[str] = None,
+        file_type: ConvertModelFileType = ConvertModelFileType.TRITON,
         timeout: int = 3000,
         permission: str = "",
         client: Optional["DataverseClient"] = None,
@@ -1411,10 +1419,13 @@ of this project OR has been added before"
         Parameters
         ----------
         convert_record_id : int
-        save_path : str, optional
-            local path for saving the model file, by default './triton.zip'
-        triton_format: bool, default=True
-        raw_onnx: bool, default=False
+        save_path : Optional[str], optional
+            local path for saving the model file, by default None, which uses the
+            filename the server reports in Content-Disposition, falling back to
+            CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS when the server sends none
+        file_type: ConvertModelFileType, default=ConvertModelFileType.TRITON
+            which stored artifact to download: the triton bundle, the main model
+            artifact, the intermediate onnx, or the int8 calibration cache
         timeout : int, optional
             maximum timeout of the request, by default 3000
         client : Optional['DataverseClient'], optional
@@ -1427,25 +1438,38 @@ of this project OR has been added before"
             the first item means whether the download success or not
             the second item shows the save_path
         """
+        try:
+            file_type = ConvertModelFileType(file_type)
+        except ValueError as e:
+            raise APIValidationError(
+                f"Something wrong when getting the convert model file: {e}"
+            ) from e
+
+        target_save_path = save_path or CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS[file_type]
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
         try:
             resp = api.get_convert_model_file(
                 convert_record_id=convert_record_id,
-                triton_format=triton_format,
-                raw_onnx=raw_onnx,
+                file_type=file_type,
                 timeout=timeout,
                 permission=permission,
             )
-            download_file_from_response(response=resp, save_path=save_path)
-            return True, save_path
+            # Only consulted when the caller named no path: an explicit save_path
+            # always wins over the server's suggestion.
+            if not save_path:
+                server_filename = filename_from_response(resp)
+                if server_filename:
+                    target_save_path = f"./{server_filename}"
+            download_file_from_response(response=resp, save_path=target_save_path)
+            return True, target_save_path
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise
         except Exception:
             logging.exception("Failed to get the convert model file")
-            return False, save_path
+            return False, target_save_path
 
     def get_dataset(self, dataset_id: int, client_alias: Optional[str] = None):
         """Get dataset detail and status by id
@@ -1757,7 +1781,7 @@ of this project OR has been added before"
         input_classes: list[str],
         resolution_width: int,
         resolution_height: int,
-        model_structure: str,
+        model_structure: ModelStructure,
         weight_url: str,
         client: Optional["DataverseClient"] = None,
         client_alias: Optional[str] = None,

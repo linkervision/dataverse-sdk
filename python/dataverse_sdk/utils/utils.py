@@ -1,4 +1,5 @@
-from pathlib import Path
+from email.message import Message
+from pathlib import Path, PurePosixPath
 from typing import Optional, Set
 
 import requests
@@ -45,6 +46,31 @@ def download_file_from_response(response: requests.models.Response, save_path: s
             if chunk:
                 file.write(chunk)
                 file.flush()
+
+
+def filename_from_response(response: requests.models.Response) -> Optional[str]:
+    """Filename the server asked us to use, taken from the Content-Disposition header.
+
+    Returns None when the header is absent, carries no filename, or the filename is
+    unusable once reduced to a bare basename. Callers are expected to fall back to
+    their own default in that case.
+    """
+    header = response.headers.get("Content-Disposition")
+    if not header:
+        return None
+    # Message.get_filename handles the quoting and the RFC 2231 `filename*` form,
+    # and reads `inline` dispositions as well as `attachment` ones.
+    message = Message()
+    message["Content-Disposition"] = header
+    filename = message.get_filename()
+    if not filename:
+        return None
+    # The server controls this string and we are about to open() it: keep only the
+    # basename so it can never escape the target directory or turn absolute.
+    filename = PurePosixPath(filename.replace("\\", "/")).name
+    if filename in {"", ".", ".."}:
+        return None
+    return filename
 
 
 def download_file_from_url(url: str, save_path: str):
