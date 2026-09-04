@@ -99,6 +99,87 @@ class ModelStructure(str, Enum, metaclass=BaseEnumMeta):
     DFINE_X = "dfine-x"
 
 
+class ConvertFormat(str, Enum, metaclass=BaseEnumMeta):
+    """Target format a model is converted into."""
+
+    ONNX = "onnx"
+    TRT = "trt"
+
+
+class ConvertPrecision(str, Enum, metaclass=BaseEnumMeta):
+    """Numeric precision the converted model runs at."""
+
+    FP32 = "fp32"
+    FP16 = "fp16"
+    INT8 = "int8"
+
+
+class QuantizationMethod(str, Enum, metaclass=BaseEnumMeta):
+    """How an int8 model is quantized. Only meaningful with ConvertPrecision.INT8."""
+
+    PTQ = "ptq"
+    QAT_TRAIN = "qat_train"
+    QAT_DISTILL = "qat_distill"
+
+
+class DataSliceStatus(str, Enum, metaclass=BaseEnumMeta):
+    """DataSlice lifecycle: CREATING, then READY or CREATING_FAIL; *_UPDATING are transient."""
+
+    CREATING = "creating"
+    CREATING_FAIL = "creating_fail"
+    READY = "ready"
+    ANNOTATION_UPDATING = "annotation_updating"
+    IQA_UPDATING = "iqa_updating"
+    TAGGING_UPDATING = "tagging_updating"
+    DELETING = "deleting"
+
+
+class MLModelStatus(str, Enum, metaclass=BaseEnumMeta):
+    """ML model lifecycle: PROCESSING, then READY or DELETING."""
+
+    PROCESSING = "processing"
+    READY = "ready"
+    DELETING = "deleting"
+
+
+class ConvertRecordStatus(str, Enum, metaclass=BaseEnumMeta):
+    """Convert record lifecycle: PROCESSING, then READY, FAILED or DELETING."""
+
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+    DELETING = "deleting"
+
+
+CONVERT_RESOLUTIONS: frozenset[tuple[int, int]] = frozenset(
+    {
+        (640, 480),
+        (640, 640),
+        (1024, 576),
+        (1024, 768),
+        (1024, 1024),
+    }
+)
+
+DFINE_FORMAT_BY_PRECISION: dict[str, str] = {
+    ConvertPrecision.FP32.value: ConvertFormat.ONNX.value,
+    ConvertPrecision.FP16.value: ConvertFormat.TRT.value,
+    ConvertPrecision.INT8.value: ConvertFormat.TRT.value,
+}
+
+DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
+    {
+        ModelStructure.DFINE_N.value,
+        ModelStructure.DFINE_S.value,
+        ModelStructure.DFINE_M.value,
+        ModelStructure.DFINE_L.value,
+        ModelStructure.DFINE_X.value,
+    }
+)
+
+DFINE_QUANTIZATION_METHODS: frozenset[str] = frozenset({QuantizationMethod.PTQ.value})
+
+
 @dataclass
 class SensorCounts:
     camera: int = 0

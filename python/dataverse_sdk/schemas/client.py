@@ -7,7 +7,9 @@ from pydantic_core.core_schema import ValidationInfo
 from .common import (
     AnnotationFormat,
     AttributeType,
+    ConvertFormat,
     ConvertModelFileType,
+    ConvertPrecision,
     DatasetStatus,
     DatasetType,
     DataSource,
@@ -309,6 +311,46 @@ class Project(BaseModel):
         )
         return convert_record_data
 
+    def list_convert_records(
+        self,
+        model_id: Optional[int] = None,
+        name: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> list["ConvertRecord"]:
+        from ..client import DataverseClient
+
+        return DataverseClient.list_convert_records(
+            project_id=self.id,
+            model_id=model_id,
+            name=name,
+            status=status,
+            client_alias=self.client_alias,
+        )
+
+    def get_dataslice_by_name(self, dataslice_name: str) -> "Dataslice":
+        from ..client import DataverseClient
+
+        return DataverseClient.get_client(self.client_alias).get_dataslice_by_name(
+            project_id=self.id, dataslice_name=dataslice_name
+        )
+
+    def create_dataslice_from_dataset(
+        self,
+        dataset_id: int,
+        dataslice_name: str,
+        description: Optional[str] = None,
+    ) -> "Dataslice":
+        from ..client import DataverseClient
+
+        return DataverseClient.get_client(
+            self.client_alias
+        ).create_dataslice_from_dataset(
+            project_id=self.id,
+            dataset_id=dataset_id,
+            dataslice_name=dataslice_name,
+            description=description,
+        )
+
     def _validate_before_create_dataset(
         self,
         annotation_format: AnnotationFormat,
@@ -491,8 +533,20 @@ class Dataslice(BaseModel):
     type: str
     file_count: Optional[int] = None
     export_records: Optional[list] = None
+    # Datarow counts per type: {"image": n, "pcd": n, "frame": n, "sequence": n}.
+    metadata: Optional[dict] = None
 
     model_config = ConfigDict(extra="allow")
+
+    @property
+    def image_count(self) -> Optional[int]:
+        """Image datarow count, `None` for a listing, which carries no `metadata`."""
+        return (self.metadata or {}).get("image")
+
+    @property
+    def pcd_count(self) -> Optional[int]:
+        """Pcd datarow count, `None` for a listing, which carries no `metadata`."""
+        return (self.metadata or {}).get("pcd")
 
 
 class ConvertRecord(BaseModel):
@@ -503,7 +557,35 @@ class ConvertRecord(BaseModel):
     status: str
     trait: dict
 
+    # 0.0 while converting; None only when the backend omitted the field.
+    f1_score: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
+    map_5_95: Optional[float] = None
+
     model_config = ConfigDict(extra="allow")
+
+    @property
+    def model_type(self) -> Optional[str]:
+        """Format converted into, named after `convert_model`'s own argument."""
+        return self.configuration.get("format")
+
+    @property
+    def data_type(self) -> Optional[str]:
+        """Precision converted at, which `precision` is not -- that one is the metric."""
+        return self.configuration.get("precision")
+
+    @classmethod
+    def create(cls, record_data: dict, client_alias: str) -> "ConvertRecord":
+        """Build from a backend payload; `extra="allow"` carries unlisted fields through."""
+        return cls(
+            **{
+                **record_data,
+                "configuration": record_data.get("configuration") or {},
+                "trait": record_data.get("trait") or {},
+                "client_alias": client_alias,
+            }
+        )
 
     def get_label_file(
         self, save_path: str = "./labels.txt", timeout: int = 3000
@@ -520,7 +602,7 @@ class ConvertRecord(BaseModel):
     def get_onnx_model_file(
         self, save_path: str = "./model.onnx", timeout: int = 3000
     ) -> tuple[bool, str]:
-        if self.configuration["format"] != "onnx":
+        if self.model_type != ConvertFormat.ONNX:
             raise ValueError("The converted model format is not onnx")
         from ..client import DataverseClient
 
@@ -560,6 +642,9 @@ class MLModel(BaseModel):
     operation_records: list = []
     triton_model_name: str
     description: Optional[str] = None
+    configuration: dict = {}
+    # Typed as str, not MLModelStatus: an unknown status must not fail the whole parse.
+    status: Optional[str] = None
     # Typed as str, not ModelStructure: an unknown value must not fail the whole list_models parse.
     # Comparing against ModelStructure still works, since that enum subclasses str.
     model_structure: Optional[str] = None
@@ -590,15 +675,14 @@ class MLModel(BaseModel):
             if ontology_class.id in target_class_id
         ]
         return cls(
-            id=model_data["id"],
-            name=model_data["name"],
-            project=project,
-            classes=classes,
-            operation_records=model_data.get("model_records", []),
-            updated_at=model_data["updated_at"],
-            triton_model_name=model_data["triton_model_name"],
-            model_structure=model_data.get("model_structure"),
-            client_alias=client_alias,
+            **{
+                **model_data,
+                "project": project,
+                "classes": classes,
+                "configuration": model_data.get("configuration") or {},
+                "operation_records": model_data.get("model_records", []),
+                "client_alias": client_alias,
+            }
         )
 
     def get_convert_record(self, convert_record_id: int) -> ConvertRecord:
@@ -606,6 +690,53 @@ class MLModel(BaseModel):
 
         return DataverseClient.get_convert_record(
             convert_record_id=convert_record_id, client_alias=self.client_alias
+        )
+
+    def list_convert_records(
+        self, name: Optional[str] = None, status: Optional[str] = None
+    ) -> list[ConvertRecord]:
+        from ..client import DataverseClient
+
+        return DataverseClient.list_convert_records(
+            model_id=self.id,
+            name=name,
+            status=status,
+            client_alias=self.client_alias,
+        )
+
+    def get_convert_record_by_name(self, convert_name: str) -> ConvertRecord:
+        from ..client import DataverseClient
+
+        return DataverseClient.get_convert_record_by_name(
+            model_id=self.id,
+            convert_name=convert_name,
+            client_alias=self.client_alias,
+        )
+
+    def convert(
+        self,
+        name: str,
+        target_dataslice_id: int,
+        model_type: Union[ConvertFormat, str],
+        data_type: Union[ConvertPrecision, str],
+        **kwargs,
+    ) -> list[int]:
+        """Convert this model. See DataverseClient.convert_model for every argument."""
+        from ..client import DataverseClient
+
+        if self.model_structure:
+            kwargs.setdefault("model_structure", self.model_structure)
+        for field in ("resolution_width", "resolution_height"):
+            if self.configuration.get(field) is not None:
+                kwargs.setdefault(field, self.configuration[field])
+        return DataverseClient.convert_model(
+            model_id=self.id,
+            name=name,
+            target_dataslice_id=target_dataslice_id,
+            model_type=model_type,
+            data_type=data_type,
+            client_alias=self.client_alias,
+            **kwargs,
         )
 
     def create_custom_model(

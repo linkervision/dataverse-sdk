@@ -26,6 +26,7 @@ from .exceptions.client import (
 )
 from .schemas.api import (
     AttributeAPISchema,
+    ConvertModelAPISchema,
     CreateCustomModelAPISchema,
     DatasetAPISchema,
     OntologyAPISchema,
@@ -51,11 +52,17 @@ from .schemas.client import (
 )
 from .schemas.common import (
     CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS,
+    DFINE_FORMAT_BY_PRECISION,
+    DFINE_MODEL_STRUCTURES,
+    DFINE_QUANTIZATION_METHODS,
     AnnotationFormat,
+    ConvertFormat,
     ConvertModelFileType,
+    ConvertPrecision,
     DatasetType,
     ModelStructure,
     OntologyImageType,
+    QuantizationMethod,
     SensorType,
 )
 from .utils.utils import (
@@ -592,13 +599,131 @@ class DataverseClient:
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the dataslice: {e}")
         return Dataslice(
-            id=dataslice_data["id"],
-            name=dataslice_data["name"],
-            type=dataslice_data["type"],
-            annotation_type=dataslice_data["annotation_type"],
-            status=dataslice_data["status"],
-            project=Project(**dataslice_data["project"], client_alias=self.alias),
-            export_records=dataslice_data["export_records"],
+            **{
+                **dataslice_data,
+                "project": Project(
+                    **dataslice_data["project"], client_alias=client_alias
+                ),
+            }
+        )
+
+    def get_dataslice_by_name(
+        self,
+        project_id: int,
+        dataslice_name: str,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> Dataslice:
+        """Get a dataslice by its name.
+
+        Dataslice names are unique across the site, so the name alone identifies one;
+        `project_id` is what makes the lookup cheap.
+
+        Parameters
+        ----------
+        project_id : int
+        dataslice_name : str
+            matched exactly
+        client : Optional["DataverseClient"], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        Dataslice
+            carrying `id`, `status` and the datarow counts
+
+        Raises
+        ------
+        ValueError
+            if no dataslice of that name exists in the project
+        ClientConnectionError
+        """
+        if client_alias is None:
+            client_alias = self.alias
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        # `name=` is exact but older backends ignore it, so filter `search=` here.
+        candidates = api.list_dataslices(
+            project_id=project_id, search=dataslice_name, limit=1000
+        )
+        matched = [row for row in candidates if row.get("name") == dataslice_name]
+        if not matched:
+            raise ValueError(
+                f"No dataslice named {dataslice_name!r} in project {project_id}"
+            )
+        if len(matched) > 1:
+            raise ValueError(
+                f"{len(matched)} dataslices named {dataslice_name!r} in project "
+                f"{project_id}; pass the id to `get_dataslice` instead"
+            )
+        return self.get_dataslice(
+            dataslice_id=matched[0]["id"], client=client, client_alias=client_alias
+        )
+
+    def create_dataslice_from_dataset(
+        self,
+        project_id: int,
+        dataset_id: int,
+        dataslice_name: str,
+        description: Optional[str] = None,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> Dataslice:
+        """Turn a whole dataset into a dataslice. Asynchronous.
+
+        The equivalent of opening a dataset in Data Visualization and hitting
+        `Save Data Slice` without narrowing the selection. The new dataslice starts out
+        `creating` with no file count; poll `get_dataslice` until it turns `ready`.
+
+        Parameters
+        ----------
+        project_id : int
+        dataset_id : int
+            every datarow of this dataset goes into the dataslice
+        dataslice_name : str
+            must be unused site-wide -- dataslice names are globally unique
+        description : Optional[str]
+        client : Optional["DataverseClient"], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        Dataslice
+
+        Raises
+        ------
+        ClientConnectionError
+        """
+        if client_alias is None:
+            client_alias = self.alias
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        payload = {
+            "name": dataslice_name,
+            "project_id": project_id,
+            "search_body": {"project_id": project_id, "dataset_ids": [dataset_id]},
+        }
+        if description is not None:
+            payload["description"] = description
+        try:
+            created: dict = api.create_dataslice(**payload)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to create the dataslice: {e}")
+        if created.get("id") is not None:
+            return self.get_dataslice(
+                dataslice_id=created["id"], client=client, client_alias=client_alias
+            )
+        # Older backends do not return `id` here; names are unique site-wide.
+        return self.get_dataslice_by_name(
+            project_id=project_id,
+            dataslice_name=dataslice_name,
+            client=client,
+            client_alias=client_alias,
         )
 
     def export_dataslice(
@@ -1327,14 +1452,346 @@ of this project OR has been added before"
             raise
         except Exception as e:
             raise ClientConnectionError(f"Failed to get the model: {e}")
-        return ConvertRecord(
-            id=convert_record_id,
-            name=convert_record["name"],
-            configuration=convert_record.get("configuration", {}),
-            status=convert_record["status"],
-            trait=convert_record.get("trait", {}),
+        # Older backends do not return `id` here.
+        convert_record["id"] = convert_record.get("id") or convert_record_id
+        return ConvertRecord.create(convert_record, client_alias=client_alias)
+
+    @staticmethod
+    def list_convert_records(
+        project_id: Optional[int] = None,
+        model_id: Optional[int] = None,
+        name: Optional[str] = None,
+        status: Optional[str] = None,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> list[ConvertRecord]:
+        """List convert records, optionally narrowed by project, model, name or status.
+
+        Parameters
+        ----------
+        project_id : Optional[int]
+            only records whose source model belongs to this project
+        model_id : Optional[int]
+            only records converted from this model
+        name : Optional[str]
+            exact convert name; not unique on its own, see `get_convert_record_by_name`
+        status : Optional[str]
+            one of ConvertRecordStatus
+        client : Optional["DataverseClient"], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        list[ConvertRecord]
+
+        Raises
+        ------
+        ClientConnectionError
+        """
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        query = {
+            "source_model__project": project_id,
+            "source_model": model_id,
+            "name": name,
+            "status": status,
+        }
+        query = {key: value for key, value in query.items() if value is not None}
+        try:
+            records: list = api.list_convert_records(**query)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to list the convert records: {e}")
+
+        # Older backends return every record; re-filtering by project needs its model ids.
+        project_model_ids: Optional[set[int]] = None
+        if project_id is not None:
+            try:
+                # Any model type can own a convert record, so ask for all of them.
+                models: list = api.list_ml_models(
+                    project_id=project_id, type="project,uploaded,byom,trained"
+                )
+            except DataverseExceptionBase:
+                logging.exception("Got api error from Dataverse")
+                raise
+            except Exception as e:
+                raise ClientConnectionError(
+                    f"Failed to list the models of project {project_id}: {e}"
+                )
+            project_model_ids = {model["id"] for model in models}
+
+        def matches(row: dict) -> bool:
+            source_model = row.get("source_model")
+            return (
+                (name is None or row.get("name") == name)
+                and (status is None or row.get("status") == status)
+                and (model_id is None or source_model == model_id)
+                and (project_model_ids is None or source_model in project_model_ids)
+            )
+
+        return [
+            ConvertRecord.create(row, client_alias=client_alias)
+            for row in records
+            if matches(row)
+        ]
+
+    @staticmethod
+    def get_convert_record_by_name(
+        model_id: int,
+        convert_name: str,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> ConvertRecord:
+        """Get a convert record by its name under a given model.
+
+        A convert name is only unique per source model -- two models may each own a
+        record called "onnx-fp16" -- so the model has to be named alongside it.
+
+        Parameters
+        ----------
+        model_id : int
+        convert_name : str
+        client : Optional["DataverseClient"], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        ConvertRecord
+
+        Raises
+        ------
+        ValueError
+            if no record with that name exists under the model
+        ClientConnectionError
+        """
+        records = DataverseClient.list_convert_records(
+            model_id=model_id,
+            name=convert_name,
+            client=client,
             client_alias=client_alias,
         )
+        if not records:
+            raise ValueError(
+                f"No convert record named {convert_name!r} under model {model_id}"
+            )
+        return records[0]
+
+    @staticmethod
+    def convert_model(
+        model_id: int,
+        name: str,
+        target_dataslice_id: int,
+        model_type: Union[ConvertFormat, str],
+        data_type: Union[ConvertPrecision, str],
+        confidence_score: int = 10,
+        iou: int = 50,
+        topk: Optional[int] = None,
+        main_obj_low: int = 1024,
+        main_obj_high: int = 9216,
+        resolution_width: Optional[int] = None,
+        resolution_height: Optional[int] = None,
+        nms_threshold: Optional[int] = None,
+        nms_class_agnostic: Optional[bool] = None,
+        machine_type: Optional[str] = None,
+        quantize_dataslice_id: Optional[int] = None,
+        quantizations: Optional[list[Union[QuantizationMethod, str]]] = None,
+        model_structure: Optional[Union[ModelStructure, str]] = None,
+        client: Optional["DataverseClient"] = None,
+        client_alias: Optional[str] = None,
+    ) -> list[int]:
+        """Convert a trained model to ONNX or TensorRT. Asynchronous.
+
+        The call returns as soon as the convert records are created; use
+        `get_convert_record` to follow their status until it leaves "processing".
+
+        Parameters
+        ----------
+        model_id : int
+            the source model to convert
+        name : str
+            name for the convert record; must be unused under this model
+        target_dataslice_id : int
+            dataslice the converted model is evaluated on; `get_dataslice_by_name`
+            turns a name into one
+        model_type : Union[ConvertFormat, str]
+            "onnx" or "trt"
+        data_type : Union[ConvertPrecision, str]
+            "fp32", "fp16" or "int8"
+        confidence_score : int, 10-90, by default 10
+        iou : int, 1-99, by default 50
+        topk : Optional[int], 50-300
+            defaults to the model architecture's own default (300 for D-FINE, 100 for
+            YOLOv9) when omitted
+        main_obj_low : int, by default 1024
+        main_obj_high : int, by default 9216
+        resolution_width : Optional[int]
+            defaults to the source model's own resolution
+        resolution_height : Optional[int]
+            defaults to the source model's own resolution
+        nms_threshold : Optional[int], 10-90
+            required for NMS-based architectures, rejected for D-FINE
+        nms_class_agnostic : Optional[bool]
+            rejected for D-FINE
+        machine_type : Optional[str]
+        quantize_dataslice_id : Optional[int]
+            calibration dataslice, required when quantizations is given
+        quantizations : Optional[list[Union[QuantizationMethod, str]]]
+            exactly one method; the backend rejects more than one
+        model_structure : Optional[Union[ModelStructure, str]]
+            the source model's architecture, which decides the topk default and the
+            D-FINE rules. Pass it -- `MLModel.convert` does -- to skip the extra
+            request that would otherwise read it back from the model.
+        client : Optional["DataverseClient"], optional
+        client_alias : Optional[str], optional
+
+        Returns
+        -------
+        list[int]
+            ids of the created convert records, one per quantization method -- and the
+            backend takes only one method, so exactly one id today
+
+        Raises
+        ------
+        APIValidationError
+            if the arguments break a rule the backend would reject anyway
+        ClientConnectionError
+        """
+        api, client_alias = DataverseClient._get_api_client(
+            client=client, client_alias=client_alias
+        )
+        model_type = ConvertFormat(model_type).value
+        data_type = ConvertPrecision(data_type).value
+        model_structure = getattr(model_structure, "value", model_structure) or ""
+        quantizations = [
+            QuantizationMethod(method).value for method in (quantizations or [])
+        ]
+
+        if not model_structure or resolution_width is None or resolution_height is None:
+            try:
+                model_data: dict = api.get_ml_model(model_id=model_id)
+            except DataverseExceptionBase:
+                logging.exception("Got api error from Dataverse")
+                raise
+            except Exception as e:
+                raise ClientConnectionError(f"Failed to get the model: {e}")
+            model_configuration: dict = model_data.get("configuration") or {}
+            model_structure = model_structure or model_data.get("model_structure") or ""
+            if resolution_width is None:
+                resolution_width = model_configuration.get("resolution_width")
+            if resolution_height is None:
+                resolution_height = model_configuration.get("resolution_height")
+
+        if topk is None:
+            topk = 300 if model_structure in DFINE_MODEL_STRUCTURES else 100
+
+        configuration = {
+            "format": model_type,
+            "precision": data_type,
+            "confidence_threshold": confidence_score,
+            "iou": iou,
+            "topk": topk,
+            "main_obj_low": main_obj_low,
+            "main_obj_high": main_obj_high,
+            "resolution_width": resolution_width,
+            "resolution_height": resolution_height,
+            "machine_type": machine_type,
+            # D-FINE rejects the NMS keys being present at all, so leave them unset.
+            "nms_threshold": nms_threshold,
+            "nms_class_agnostic": nms_class_agnostic,
+        }
+        DataverseClient._validate_model_structure_rules(
+            configuration=configuration,
+            model_structure=model_structure,
+            quantizations=quantizations,
+        )
+
+        try:
+            payload = ConvertModelAPISchema(
+                name=name,
+                source_model=model_id,
+                target_dataslice=target_dataslice_id,
+                configuration=configuration,
+                quantizations=quantizations or None,
+                quantize_dataslice=quantize_dataslice_id,
+            ).model_dump(exclude_none=True)
+        except ValidationError as e:
+            raise APIValidationError(
+                f"Something wrong when composing the final convert data: {e}"
+            )
+
+        try:
+            response: dict = api.create_convert_model(**payload)
+        except DataverseExceptionBase:
+            logging.exception("Got api error from Dataverse")
+            raise
+        except Exception as e:
+            raise ClientConnectionError(f"Failed to convert the model: {e}")
+        record_ids: list[int] = response.get("record_ids") or []
+        if record_ids:
+            return record_ids
+        # Older backends return no ids; the name is unique under a model.
+        return [
+            record.id
+            for record in DataverseClient.list_convert_records(
+                model_id=model_id, name=name, client=client, client_alias=client_alias
+            )
+            if record.id is not None
+        ]
+
+    @staticmethod
+    def _validate_model_structure_rules(
+        configuration: dict, model_structure: str, quantizations: list[str]
+    ) -> None:
+        """Apply the convert rules that depend on the model's architecture family."""
+        errors: list[str] = []
+        precision = configuration["precision"]
+
+        if model_structure in DFINE_MODEL_STRUCTURES:
+            supplied_nms = [
+                field
+                for field in ("nms_threshold", "nms_class_agnostic")
+                if configuration.get(field) is not None
+            ]
+            if supplied_nms:
+                errors.append(
+                    f"{', '.join(supplied_nms)} do not apply to the NMS-free model "
+                    f"structure {model_structure}, use confidence_score and topk instead"
+                )
+            expected_format = DFINE_FORMAT_BY_PRECISION.get(precision)
+            if expected_format is None:
+                errors.append(
+                    f"data_type {precision} is not supported for model structure "
+                    f"{model_structure}"
+                )
+            elif configuration["format"] != expected_format:
+                errors.append(
+                    f"data_type {precision} exports as {expected_format} for model "
+                    f"structure {model_structure}, got model_type "
+                    f"{configuration['format']}"
+                )
+            unsupported = sorted(set(quantizations) - DFINE_QUANTIZATION_METHODS)
+            if unsupported:
+                errors.append(
+                    f"{', '.join(unsupported)} not supported for model structure "
+                    f"{model_structure}"
+                )
+            elif (precision == ConvertPrecision.INT8) is not bool(quantizations):
+                errors.append(
+                    f"model structure {model_structure} requires data_type int8 to be "
+                    f"paired with ['{QuantizationMethod.PTQ.value}'], and every other "
+                    "data_type to carry no quantization"
+                )
+        elif configuration.get("nms_threshold") is None:
+            errors.append(
+                "nms_threshold is required for model structure "
+                f"{model_structure or 'unknown'}"
+            )
+
+        if errors:
+            raise APIValidationError("; ".join(errors))
 
     @staticmethod
     def get_label_file(

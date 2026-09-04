@@ -7,6 +7,7 @@ from .constants import DataverseHost
 from .schemas.client import (
     Attribute,
     AttributeOption,
+    ConvertRecord,
     Dataset,
     Ontology,
     OntologyClass,
@@ -18,13 +19,19 @@ from .schemas.client import (
 from .schemas.common import (
     AnnotationFormat,
     AttributeType,
+    ConvertFormat,
     ConvertModelFileType,
+    ConvertPrecision,
+    ConvertRecordStatus,
+    DataSliceStatus,
     DatasetStatus,
     DatasetType,
     DataSource,
+    MLModelStatus,
     ModelStructure,
     OntologyImageType,
     OntologyPcdType,
+    QuantizationMethod,
     SensorType,
 )
 
@@ -50,6 +57,13 @@ __all__ = [
     "DataSource",
     "QuestionClass",
     "ConvertModelFileType",
+    "ConvertFormat",
+    "ConvertPrecision",
+    "ConvertRecordStatus",
+    "ConvertRecord",
+    "QuantizationMethod",
+    "DataSliceStatus",
+    "MLModelStatus",
     "ModelStructure",
 ]
 

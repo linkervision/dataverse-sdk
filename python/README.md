@@ -5,8 +5,10 @@ Use Dataverse-SDK for Python to help you to interact with the Dataverse platform
   - Get Project by project-id
   - Create Dataset from your AWS storage or local
   - Get Dataset by dataset-id
+  - Create Dataslice from a whole dataset, or look one up by name
   - List models for your selected project-id
   - Get and download your model
+  - Convert a model to ONNX/TensorRT and read the convert record's metrics
 
 [Package (PyPi)](https://pypi.org/project/dataverse-sdk/)    |   [Source code](https://github.com/linkervision/dataverse-sdk)
 
@@ -77,9 +79,14 @@ The following sections provide examples for the most common DataVerse tasks incl
 * [Create Dataset](#create-dataset)
 * [List Dataset](#list-and-get-dataset)
 * [List Dataslices](#list-and-get-dataslices)
+* [Get Dataslice by Name](#get-dataslice-by-name)
+* [Create Dataslice from Dataset](#create-dataslice-from-dataset)
 * [Export Dataslice](#export-dataslice-and-download)
 * [List Models](#list-models)
 * [Get and Download Model](#get-model)
+* [Get Convert Model File](#get-convert-model-file)
+* [Convert Model to ONNX/TRT](#convert-model-to-onnxtrt)
+* [Retrieve Convert Record](#retrieve-convert-record-and-its-metrics)
 * [Create VQA Project](#create-vqa-project)
 * [Edit VQA Ontology](#edit-vqa-ontology)
 * [Get Question List](#get-question-list)
@@ -172,9 +179,9 @@ project = client.create_project(name="Sample project", ontology=ontology, sensor
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| name        | str  | *--    | name of your project    |
-| ontology  | Ontology | *-- | the Ontology basemodel data of current project |
-| sensors  | list[Sensor] | *-- |  the list of Sensor basemodel data of your project  |
+| name        | str  | ＊--    | name of your project    |
+| ontology  | Ontology | ＊-- | the Ontology basemodel data of current project |
+| sensors  | list[Sensor] | ＊-- |  the list of Sensor basemodel data of your project  |
 | project_tag | ProjectTag | None |  your project tags  |
 | description  | str | None | your project description  |
 
@@ -418,6 +425,87 @@ dataslice_data = client.get_dataslice(dataslice_id=504)
 
 ```
 
+### Get Dataslice by Name
+
+Dataslice names are unique across the site, so a name identifies exactly one dataslice.
+
+```Python
+dataslice = client.get_dataslice_by_name(project_id=101, dataslice_name="my-dataslice")
+# OR from the project object
+project = client.get_project(project_id=101)
+dataslice = project.get_dataslice_by_name(dataslice_name="my-dataslice")
+
+dataslice.id
+dataslice.status      # DataSliceStatus
+dataslice.image_count
+```
+
+`DataSliceStatus`: `CREATING`, `CREATING_FAIL`, `READY`, `ANNOTATION_UPDATING`,
+`IQA_UPDATING`, `TAGGING_UPDATING`, `DELETING`.
+
+`image_count` and `pcd_count` read the per-type datarow counts in `dataslice.metadata`.
+Which of them carries a number follows the slice's own `type`:
+
+| `dataslice.type`     | `image_count` | `pcd_count` |
+| -------------------- | ------------- | ----------- |
+| `image`              | images        | `None`      |
+| `pcd`                | `None`        | pcds        |
+| `frame` / `sequence` | images        | pcds        |
+
+The last row is the fused camera-plus-lidar case, where both are counted and both can be
+non-zero. `None` means "this slice holds no datarow of that type", never zero.
+
+Only `get_dataslice` and `get_dataslice_by_name` return `metadata`; a dataslice from
+`list_dataslices` has none, so **both counts are `None` there**. Such a listing carries
+`file_count` instead — the slice's image and pcd datarows counted together.
+
+This is the only method that takes a name: everything downstream — `convert_model`
+included — takes ids, so this is how a name becomes one.
+
+Raises `ValueError` when the project holds no dataslice of that name.
+
+### Create Dataslice from Dataset
+
+`create_dataslice_from_dataset` turns a whole dataset into a dataslice — the equivalent of
+opening it in Data Visualization and hitting **Save Data Slice** without narrowing the
+selection. It is **asynchronous**: the returned dataslice starts out `creating` with no
+file count, and turns `ready` once the datarows are in.
+
+```Python
+dataslice = client.create_dataslice_from_dataset(
+    project_id=101,
+    dataset_id=5,
+    dataslice_name="whole-dataset-slice",
+)
+# OR from the project object
+dataslice = project.create_dataslice_from_dataset(
+    dataset_id=5, dataslice_name="whole-dataset-slice"
+)
+
+# Poll until it settles
+import time
+
+from dataverse_sdk import DataSliceStatus
+
+SETTLED = (DataSliceStatus.READY, DataSliceStatus.CREATING_FAIL)
+while dataslice.status not in SETTLED:
+    time.sleep(10)
+    dataslice = client.get_dataslice(dataslice_id=dataslice.id)
+print(dataslice.status, dataslice.image_count)  # "ready" 11
+```
+
+A convert record polls the same way through `get_convert_record`, with
+`ConvertRecordStatus.READY` and `ConvertRecordStatus.FAILED` as its settled states.
+
+| Argument name  | Type | Default | Description                                        |
+| -------------- | ---- | ------- | -------------------------------------------------- |
+| project_id     | int  | ＊--    | Project the dataset belongs to                     |
+| dataset_id     | int  | ＊--    | Every datarow of this dataset goes into the slice  |
+| dataslice_name | str  | ＊--    | Must be unused **site-wide**                       |
+| description    | str  | None    |                                                    |
+
+`＊--`: required argument without default
+
 ### Export Dataslice and Download
 ```Python
 # Trigger export and get export record id
@@ -442,6 +530,16 @@ models = client.list_models(project_id=1, client_alias=client.alias)
 project = client.get_project(project_id=1)
 models = project.list_models()
 ```
+
+Each model carries a `status`, which is what a listing is usually narrowed by:
+
+```Python
+from dataverse_sdk import MLModelStatus
+
+ready = [model for model in models if model.status == MLModelStatus.READY]
+```
+
+`MLModelStatus`: `PROCESSING`, `READY`, `DELETING`.
 
 #### Filtering by Model Type
 
@@ -474,7 +572,7 @@ models = client.list_models(
 
 | Argument name | Type/Options                                                      | Default             | Description              |
 | ------------- | ----------------------------------------------------------------- | ------------------- | ------------------------ |
-| project_id    | int                                                               | \*--                | The project ID           |
+| project_id    | int                                                               | ＊--                | The project ID           |
 | client_alias  | str                                                               | None                | The client alias         |
 | type          | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by |
 
@@ -544,7 +642,7 @@ Pass an explicit `save_path` whenever you need a predictable location — it alw
 
 | Argument name     | Type/Options                                                   | Default                       | Description                                                          |
 | ----------------- | -------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------- |
-| convert_record_id | int                                                            | \*--                          | The convert record to download from                                  |
+| convert_record_id | int                                                            | ＊--                          | The convert record to download from                                  |
 | file_type         | ConvertModelFileType, "triton", "model", "raw_onnx", "calib_cache" | ConvertModelFileType.TRITON | Which artifact to download                                           |
 | save_path         | str                                                            | None                          | Local path to write the file; when omitted the server's filename is used (see above) |
 | timeout           | int                                                            | 3000                          | Maximum timeout of the request                                        |
@@ -557,6 +655,170 @@ Pass an explicit `save_path` whenever you need a predictable location — it alw
 #### Return
 
 `tuple[bool, str]` — `(status, save_path)`. `status` is `False` if the download failed, and `save_path` is the path that was written to.
+
+<br>
+
+
+### Convert Model to ONNX/TRT
+
+`convert_model` starts a model conversion. It is **asynchronous**: the call returns the
+ids of the created convert records, and the conversion itself finishes later.
+
+```Python
+from dataverse_sdk import ConvertFormat, ConvertPrecision, QuantizationMethod
+
+# Method 1: Using client -- model 6418 is a YOLOv9, which is NMS-based
+record_ids = client.convert_model(
+    model_id=6418,
+    name="onnx-fp16",
+    target_dataslice_id=504,                # ids only; see Get Dataslice by Name
+    model_type=ConvertFormat.ONNX,
+    data_type=ConvertPrecision.FP16,
+    confidence_score=10,
+    nms_threshold=50,
+    client_alias=client.alias,
+)
+
+# Method 2: Using the model object -- model 7201 is a D-FINE, which is NMS-free
+model = client.get_model(model_id=7201, client_alias=client.alias)
+record_ids = model.convert(
+    name="trt-int8-ptq",
+    target_dataslice_id=504,
+    model_type=ConvertFormat.TRT,
+    data_type=ConvertPrecision.INT8,
+    quantizations=[QuantizationMethod.PTQ],
+    quantize_dataslice_id=508,
+)
+```
+
+#### Input Arguments
+
+| Argument name      | Type/Options                          | Default   | Description                                                                     |
+| ------------------ | ------------------------------------- | --------- | ------------------------------------------------------------------------------- |
+| model_id           | int                                   | ＊--      | The source model to convert                                                     |
+| name               | str                                   | ＊--      | Convert record name; must be unused **under this model**                        |
+| target_dataslice_id| int                                   | ＊--      | Dataslice the converted model is evaluated on                                   |
+| model_type         | ConvertFormat \| str                  | ＊--      | Target format                                                                   |
+| data_type          | ConvertPrecision \| str               | ＊--      | Numeric precision                                                               |
+| confidence_score   | int                                   | 10        | Confidence threshold, 10-90                                                     |
+| iou                | int                                   | 50        | IoU threshold, 1-99                                                             |
+| topk               | int                                   | None      | 50-300; 300 for D-FINE, 100 for every other structure                           |
+| main_obj_low       | int                                   | 1024      | Main object size lower bound                                                    |
+| main_obj_high      | int                                   | 9216      | Main object size upper bound                                                    |
+| resolution_width   | int                                   | None      | Defaults to the source model's own resolution                                   |
+| resolution_height  | int                                   | None      | Defaults to the source model's own resolution                                   |
+| nms_threshold      | int                                   | None      | 10-90; required for NMS-based architectures, **rejected for D-FINE**            |
+| nms_class_agnostic | bool                                  | None      | **Rejected for D-FINE**                                                         |
+| machine_type       | str                                   | None      |                                                                                 |
+| quantize_dataslice_id | int                                | None      | Calibration dataslice; required when `quantizations` is given                   |
+| quantizations      | list[QuantizationMethod \| str]       | None      | Exactly one method; only `PTQ` is supported for D-FINE                          |
+| model_structure    | ModelStructure \| str                 | None      | The source model's architecture; sets the topk default and the D-FINE rules. Read back from the model when omitted |
+
+`＊--`: required argument without default
+
+Every enum below is a `str` enum, so the member and its plain string are interchangeable:
+
+| Enum                 | Members                                          | Strings                                                                                     |
+| -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `ConvertFormat`      | `ONNX`, `TRT`                                    | `"onnx"`, `"trt"`                                                                           |
+| `ConvertPrecision`   | `FP32`, `FP16`, `INT8`                           | `"fp32"`, `"fp16"`, `"int8"`                                                                |
+| `QuantizationMethod` | `PTQ`, `QAT_TRAIN`, `QAT_DISTILL`                | `"ptq"`, `"qat_train"`, `"qat_distill"`                                                     |
+| `ModelStructure`     | `YOLOV9_C`, `YOLOV9_E`, `YOLOV9_S`               | `"yolov9-c"`, `"yolov9-e"`, `"yolov9-s"`                                                    |
+|                      | `DFINE_N`, `DFINE_S`, `DFINE_M`, `DFINE_L`, `DFINE_X` | `"dfine-n"`, `"dfine-s"`, `"dfine-m"`, `"dfine-l"`, `"dfine-x"`                        |
+
+`convert_model`, `get_convert_record`, `get_convert_record_by_name` and
+`list_convert_records` are static methods, so they need `client_alias` (or `client`)
+passed in; without either they raise `ValueError`. The dataslice methods above are
+instance methods and fall back to the client's own alias.
+
+`APIValidationError` and `ClientConnectionError` both come from
+`dataverse_sdk.exceptions.client`. Arguments are validated locally, so a bad call raises
+`APIValidationError` before the convert request is sent. Supported resolutions are
+`640x480`, `640x640`, `1024x576`, `1024x768` and `1024x1024`. D-FINE is NMS-free: it
+rejects the `nms_*` arguments, fixes the format per precision (`fp32` exports as onnx,
+`fp16` and `int8` as trt), and requires `int8` to be paired with exactly
+`[QuantizationMethod.PTQ]`.
+
+#### Return
+
+`list[int]` — ids of the created convert records, one per quantization method. The
+backend takes only one quantization method for now, so today the list always holds
+exactly one id.
+
+#### Keeping it to one request
+
+Both dataslices are given by id, so the only extra request left is the read-back of the
+source model — and passing `model_structure` **together with both resolutions** skips
+that too, which is what `model.convert()` does with the three it already holds. Chaining
+from objects you already have is therefore the cheapest form:
+
+```Python
+model = client.get_model(model_id=6418, client_alias=client.alias)
+dataslice = project.get_dataslice_by_name("my-eval-dataslice")
+
+record_ids = model.convert(
+    name="onnx-fp16",
+    target_dataslice_id=dataslice.id,
+    model_type=ConvertFormat.ONNX,
+    data_type=ConvertPrecision.FP16,
+    nms_threshold=50,
+)
+
+record = client.get_convert_record(convert_record_id=record_ids[0], client_alias=client.alias)
+record.status
+```
+
+<br>
+
+
+### Retrieve Convert Record and its Metrics
+
+A convert name is only unique **per source model** — two models may each own a record
+called `onnx-fp16` — so a lookup by name takes the model alongside it.
+
+```Python
+# By id
+record = client.get_convert_record(convert_record_id=2212, client_alias=client.alias)
+
+# By name, under a given model
+record = client.get_convert_record_by_name(
+    model_id=6418, convert_name="onnx-fp16", client_alias=client.alias
+)
+# OR from the model object
+model = client.get_model(model_id=6418, client_alias=client.alias)
+record = model.get_convert_record_by_name(convert_name="onnx-fp16")
+
+record.status      # ConvertRecordStatus
+record.id
+record.model_type  # "onnx" / "trt"      -- reads configuration["format"]
+record.data_type   # "fp32"/"fp16"/"int8" -- reads configuration["precision"]
+record.f1_score    # and .precision, .recall, .map_5_95
+```
+
+`record.configuration` carries every other convert setting. The four metrics read as
+`0.0` until the conversion finishes, and `None` when the server did not return them at all
+— mind that `record.precision` is one of them, and the precision the model was converted
+at is `record.data_type`.
+
+Looking a record up by name, filtering a listing, and reading the ids back from
+`convert_model` all need a Dataverse recent enough to serialise them; against an older
+site the SDK falls back to filtering the full listing itself.
+
+#### List Convert Records
+
+```Python
+# Every convert record in a project
+records = client.list_convert_records(project_id=1992, client_alias=client.alias)
+# OR
+records = project.list_convert_records()
+
+# Narrow by model / name / status
+records = client.list_convert_records(
+    model_id=6418, status="ready", client_alias=client.alias
+)
+# OR
+records = model.list_convert_records(status="ready")
+```
 
 <br>
 
@@ -583,8 +845,8 @@ project = client.create_vqa_project(name="vqa-project", sensor_name="camera1", o
 
 | Argument name      | Type/Options   | Default   | Description   |
 | :---                 |     :---    |     :---  |          :--- |
-| name        | str  | *--    | name of your project    |
-| sensor_name | str | *-- |  the camera sensor name  |
+| name        | str  | ＊--    | name of your project    |
+| sensor_name | str | ＊-- |  the camera sensor name  |
 | ontology_name | str |  *--  |  the ontology name |
 | question_answer|  list[QuestionClass] |  *--  |  your question/answer_type. `QuestionClass.answer_type` valid values: `boolean`, `option`, `number`, `text`  |
 | description  | str | None | your project description  |
