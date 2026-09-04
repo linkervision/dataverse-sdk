@@ -55,6 +55,7 @@ from .schemas.common import (
     DFINE_FORMAT_BY_PRECISION,
     DFINE_MODEL_STRUCTURES,
     DFINE_QUANTIZATION_METHODS,
+    NMS_CONVERT_PRECISIONS,
     AnnotationFormat,
     ConvertFormat,
     ConvertModelFileType,
@@ -1784,11 +1785,16 @@ of this project OR has been added before"
                     f"paired with ['{QuantizationMethod.PTQ.value}'], and every other "
                     "data_type to carry no quantization"
                 )
-        elif configuration.get("nms_threshold") is None:
-            errors.append(
-                "nms_threshold is required for model structure "
-                f"{model_structure or 'unknown'}"
-            )
+        else:
+            named = model_structure or "unknown"
+            if configuration.get("nms_threshold") is None:
+                errors.append(f"nms_threshold is required for model structure {named}")
+            if precision not in NMS_CONVERT_PRECISIONS:
+                errors.append(
+                    f"data_type {precision} is not supported for model structure "
+                    f"{named}, only support "
+                    f"{', '.join(sorted(NMS_CONVERT_PRECISIONS))}"
+                )
 
         if errors:
             raise APIValidationError("; ".join(errors))

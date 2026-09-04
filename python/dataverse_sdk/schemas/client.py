@@ -533,7 +533,7 @@ class Dataslice(BaseModel):
     type: str
     file_count: Optional[int] = None
     export_records: Optional[list] = None
-    # Datarow counts per type: {"image": n, "pcd": n, "frame": n, "sequence": n}.
+    # Datarow counts per type: {"image": int | None, "pcd": ..., "frame": ..., "sequence": ...}
     metadata: Optional[dict] = None
 
     model_config = ConfigDict(extra="allow")

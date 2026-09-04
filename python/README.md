@@ -699,7 +699,7 @@ record_ids = model.convert(
 | name               | str                                   | ＊--      | Convert record name; must be unused **under this model**                        |
 | target_dataslice_id| int                                   | ＊--      | Dataslice the converted model is evaluated on                                   |
 | model_type         | ConvertFormat \| str                  | ＊--      | Target format                                                                   |
-| data_type          | ConvertPrecision \| str               | ＊--      | Numeric precision                                                               |
+| data_type          | ConvertPrecision \| str               | ＊--      | Numeric precision; `fp32` is D-FINE only                                        |
 | confidence_score   | int                                   | 10        | Confidence threshold, 10-90                                                     |
 | iou                | int                                   | 50        | IoU threshold, 1-99                                                             |
 | topk               | int                                   | None      | 50-300; 300 for D-FINE, 100 for every other structure                           |
@@ -731,13 +731,19 @@ Every enum below is a `str` enum, so the member and its plain string are interch
 passed in; without either they raise `ValueError`. The dataslice methods above are
 instance methods and fall back to the client's own alias.
 
-`APIValidationError` and `ClientConnectionError` both come from
-`dataverse_sdk.exceptions.client`. Arguments are validated locally, so a bad call raises
-`APIValidationError` before the convert request is sent. Supported resolutions are
-`640x480`, `640x640`, `1024x576`, `1024x768` and `1024x1024`. D-FINE is NMS-free: it
-rejects the `nms_*` arguments, fixes the format per precision (`fp32` exports as onnx,
-`fp16` and `int8` as trt), and requires `int8` to be paired with exactly
-`[QuantizationMethod.PTQ]`.
+Supported resolutions are `640x480`, `640x640`, `1024x576`, `1024x768` and `1024x1024`; an unsupported one raises `APIValidationError` without sending the request.
+
+The rest of the rules depend on the source model's architecture:
+
+| `model_structure` | `data_type` | `model_type`    | `nms_threshold` | `quantizations`                   |
+| ----------------- | ----------- | --------------- | --------------- | --------------------------------- |
+| yolov9            | `fp16`      | `onnx` or `trt` | required        | none                              |
+| yolov9            | `int8`      | `trt`           | required        | `ptq`, `qat_train`, `qat_distill` |
+| D-FINE            | `fp32`      | `onnx`          | rejected        | none                              |
+| D-FINE            | `fp16`      | `trt`           | rejected        | none                              |
+| D-FINE            | `int8`      | `trt`           | rejected        | `ptq`                             |
+
+`nms_class_agnostic` follows `nms_threshold`. Every rule here is checked before the request is sent, except that yolov9's `int8` is limited to `trt` server-side.
 
 #### Return
 

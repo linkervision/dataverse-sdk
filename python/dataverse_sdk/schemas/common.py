@@ -179,6 +179,11 @@ DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
 
 DFINE_QUANTIZATION_METHODS: frozenset[str] = frozenset({QuantizationMethod.PTQ.value})
 
+# Only D-FINE converts at fp32; every other structure is limited to these two.
+NMS_CONVERT_PRECISIONS: frozenset[str] = frozenset(
+    {ConvertPrecision.FP16.value, ConvertPrecision.INT8.value}
+)
+
 
 @dataclass
 class SensorCounts:
