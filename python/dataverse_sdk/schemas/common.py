@@ -179,10 +179,13 @@ DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
 
 DFINE_QUANTIZATION_METHODS: frozenset[str] = frozenset({QuantizationMethod.PTQ.value})
 
-# Only D-FINE converts at fp32; every other structure is limited to these two.
-NMS_CONVERT_PRECISIONS: frozenset[str] = frozenset(
-    {ConvertPrecision.FP16.value, ConvertPrecision.INT8.value}
-)
+# What every other structure exports, per precision. Only D-FINE converts at fp32.
+NMS_FORMATS_BY_PRECISION: dict[str, frozenset[str]] = {
+    ConvertPrecision.FP16.value: frozenset(
+        {ConvertFormat.ONNX.value, ConvertFormat.TRT.value}
+    ),
+    ConvertPrecision.INT8.value: frozenset({ConvertFormat.TRT.value}),
+}
 
 
 @dataclass

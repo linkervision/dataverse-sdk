@@ -55,7 +55,7 @@ from .schemas.common import (
     DFINE_FORMAT_BY_PRECISION,
     DFINE_MODEL_STRUCTURES,
     DFINE_QUANTIZATION_METHODS,
-    NMS_CONVERT_PRECISIONS,
+    NMS_FORMATS_BY_PRECISION,
     AnnotationFormat,
     ConvertFormat,
     ConvertModelFileType,
@@ -1789,11 +1789,18 @@ of this project OR has been added before"
             named = model_structure or "unknown"
             if configuration.get("nms_threshold") is None:
                 errors.append(f"nms_threshold is required for model structure {named}")
-            if precision not in NMS_CONVERT_PRECISIONS:
+            supported_formats = NMS_FORMATS_BY_PRECISION.get(precision)
+            if supported_formats is None:
                 errors.append(
                     f"data_type {precision} is not supported for model structure "
                     f"{named}, only support "
-                    f"{', '.join(sorted(NMS_CONVERT_PRECISIONS))}"
+                    f"{', '.join(sorted(NMS_FORMATS_BY_PRECISION))}"
+                )
+            elif configuration["format"] not in supported_formats:
+                errors.append(
+                    f"data_type {precision} exports as "
+                    f"{' or '.join(sorted(supported_formats))} for model structure "
+                    f"{named}, got model_type {configuration['format']}"
                 )
 
         if errors:

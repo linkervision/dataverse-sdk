@@ -743,7 +743,7 @@ The rest of the rules depend on the source model's architecture:
 | D-FINE            | `fp16`      | `trt`           | rejected        | none                              |
 | D-FINE            | `int8`      | `trt`           | rejected        | `ptq`                             |
 
-`nms_class_agnostic` follows `nms_threshold`. Every rule here is checked before the request is sent, except that yolov9's `int8` is limited to `trt` server-side.
+`nms_class_agnostic` follows `nms_threshold`.
 
 #### Return
 
