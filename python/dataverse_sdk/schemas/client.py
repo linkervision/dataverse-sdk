@@ -640,7 +640,7 @@ class MLModel(BaseModel):
     project: Project
     classes: list
     operation_records: list = []
-    triton_model_name: str
+    triton_model_name: Optional[str] = None
     description: Optional[str] = None
     configuration: dict = {}
     # Typed as str, not MLModelStatus: an unknown status must not fail the whole parse.
