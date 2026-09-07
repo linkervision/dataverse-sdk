@@ -1,0 +1,2 @@
+# tools/ is not a package, so the sdist is the only artifact that can carry the scripts.
+recursive-include tools *.py
