@@ -540,12 +540,12 @@ class Dataslice(BaseModel):
 
     @property
     def image_count(self) -> Optional[int]:
-        """Image datarow count, `None` for a listing, which carries no `metadata`."""
+        """Image datarow count, `None` when the payload carried no `metadata`."""
         return (self.metadata or {}).get("image")
 
     @property
     def pcd_count(self) -> Optional[int]:
-        """Pcd datarow count, `None` for a listing, which carries no `metadata`."""
+        """PCD datarow count, `None` when the payload carried no `metadata`."""
         return (self.metadata or {}).get("pcd")
 
 
@@ -660,14 +660,7 @@ class MLModel(BaseModel):
         else:
             target_class_id = set(model_data.get("classes") or [])
 
-        from ..client import DataverseClient
-
-        if model_data["project"] is None:
-            project = DataverseClient.get_client_project(
-                project_id=model_data["project"]["id"], client_alias=client_alias
-            )
-        else:
-            project = model_data["project"]
+        project = model_data["project"]
         # get classes used in the model
         classes = [
             ontology_class

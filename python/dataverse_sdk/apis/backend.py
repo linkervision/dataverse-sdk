@@ -63,6 +63,7 @@ class BackendAPI:
         self.access_token = access_token
         self.email = email
         self.password = password
+        self._convert_model_config: Optional[dict] = None
         self.login(email=email, password=password)
 
     def get_host(self):
@@ -348,6 +349,18 @@ class BackendAPI:
             headers=self.headers,
         )
         return resp.json()
+
+    def get_convert_model_config(self) -> dict:
+        """Export options, e.g. {"dfine": {"int8": {"trt": {"supported_methods": ["ptq"]}}}}."""
+        if self._convert_model_config is None:
+            resp = self.send_request(
+                url=f"{self.host}/api/ml_models/convert-model-config/",
+                method="get",
+                headers=self.headers,
+            )
+            config = resp.json()
+            self._convert_model_config = config if isinstance(config, dict) else {}
+        return self._convert_model_config
 
     def get_convert_record(self, convert_record_id: int) -> dict:
         resp = self.send_request(

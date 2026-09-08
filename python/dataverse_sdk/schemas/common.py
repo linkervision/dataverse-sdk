@@ -161,12 +161,6 @@ CONVERT_RESOLUTIONS: frozenset[tuple[int, int]] = frozenset(
     }
 )
 
-DFINE_FORMAT_BY_PRECISION: dict[str, str] = {
-    ConvertPrecision.FP32.value: ConvertFormat.ONNX.value,
-    ConvertPrecision.FP16.value: ConvertFormat.TRT.value,
-    ConvertPrecision.INT8.value: ConvertFormat.TRT.value,
-}
-
 DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
     {
         ModelStructure.DFINE_N.value,
@@ -177,14 +171,17 @@ DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
     }
 )
 
-DFINE_QUANTIZATION_METHODS: frozenset[str] = frozenset({QuantizationMethod.PTQ.value})
+YOLOV9_MODEL_STRUCTURES: frozenset[str] = frozenset(
+    {
+        ModelStructure.YOLOV9_C.value,
+        ModelStructure.YOLOV9_E.value,
+        ModelStructure.YOLOV9_S.value,
+    }
+)
 
-# What every other structure exports, per precision. Only D-FINE converts at fp32.
-NMS_FORMATS_BY_PRECISION: dict[str, frozenset[str]] = {
-    ConvertPrecision.FP16.value: frozenset(
-        {ConvertFormat.ONNX.value, ConvertFormat.TRT.value}
-    ),
-    ConvertPrecision.INT8.value: frozenset({ConvertFormat.TRT.value}),
+MODEL_STRUCTURE_FAMILY_MAP: dict[str, frozenset[str]] = {
+    "yolov9": YOLOV9_MODEL_STRUCTURES,
+    "dfine": DFINE_MODEL_STRUCTURES,
 }
 
 

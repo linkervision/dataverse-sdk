@@ -195,7 +195,7 @@ class ConvertModelAPISchema(BaseModel):
     def quantization_needs_a_calibration_dataslice(self):
         if bool(self.quantizations) is not (self.quantize_dataslice is not None):
             raise ValueError(
-                "quantizations and quantize_dataslice have to be given together"
+                "quantizations and quantize_dataslice_id have to be given together"
             )
         if self.quantizations and len(self.quantizations) > 1:
             raise ValueError("only one quantization method is accepted")

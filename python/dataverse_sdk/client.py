@@ -52,10 +52,8 @@ from .schemas.client import (
 )
 from .schemas.common import (
     CONVERT_MODEL_FILE_DEFAULT_SAVE_PATHS,
-    DFINE_FORMAT_BY_PRECISION,
     DFINE_MODEL_STRUCTURES,
-    DFINE_QUANTIZATION_METHODS,
-    NMS_FORMATS_BY_PRECISION,
+    MODEL_STRUCTURE_FAMILY_MAP,
     AnnotationFormat,
     ConvertFormat,
     ConvertModelFileType,
@@ -1533,11 +1531,14 @@ of this project OR has been added before"
                 and (project_model_ids is None or source_model in project_model_ids)
             )
 
-        return [
-            ConvertRecord.create(row, client_alias=client_alias)
-            for row in records
-            if matches(row)
-        ]
+        try:
+            return [
+                ConvertRecord.create(row, client_alias=client_alias)
+                for row in records
+                if matches(row)
+            ]
+        except ValidationError as e:
+            raise APIValidationError(f"Unexpected convert record from the server: {e}")
 
     @staticmethod
     def get_convert_record_by_name(
@@ -1663,12 +1664,15 @@ of this project OR has been added before"
         api, client_alias = DataverseClient._get_api_client(
             client=client, client_alias=client_alias
         )
-        model_type = ConvertFormat(model_type).value
-        data_type = ConvertPrecision(data_type).value
+        try:
+            model_type = ConvertFormat(model_type).value
+            data_type = ConvertPrecision(data_type).value
+            quantizations = [
+                QuantizationMethod(method).value for method in (quantizations or [])
+            ]
+        except ValueError as e:
+            raise APIValidationError(str(e))
         model_structure = getattr(model_structure, "value", model_structure) or ""
-        quantizations = [
-            QuantizationMethod(method).value for method in (quantizations or [])
-        ]
 
         if not model_structure or resolution_width is None or resolution_height is None:
             try:
@@ -1703,10 +1707,19 @@ of this project OR has been added before"
             "nms_threshold": nms_threshold,
             "nms_class_agnostic": nms_class_agnostic,
         }
+
+        try:
+            convert_config = api.get_convert_model_config()
+        except Exception as e:
+            # The options are a nicety: a site that cannot answer still converts, and the
+            # server validates the combination either way.
+            logging.warning(f"Could not read the convert options: {e!r}")
+            convert_config = {}
         DataverseClient._validate_model_structure_rules(
             configuration=configuration,
             model_structure=model_structure,
             quantizations=quantizations,
+            convert_config=convert_config,
         )
 
         try:
@@ -1744,13 +1757,26 @@ of this project OR has been added before"
 
     @staticmethod
     def _validate_model_structure_rules(
-        configuration: dict, model_structure: str, quantizations: list[str]
+        configuration: dict,
+        model_structure: str,
+        quantizations: list[str],
+        convert_config: dict,
     ) -> None:
         """Apply the convert rules that depend on the model's architecture family."""
         errors: list[str] = []
         precision = configuration["precision"]
+        family = next(
+            (
+                name
+                for name, structures in MODEL_STRUCTURE_FAMILY_MAP.items()
+                if model_structure in structures
+            ),
+            None,
+        )
+        is_dfine = family == "dfine"
+        model_structure = model_structure or "(unknown)"
 
-        if model_structure in DFINE_MODEL_STRUCTURES:
+        if is_dfine:
             supplied_nms = [
                 field
                 for field in ("nms_threshold", "nms_class_agnostic")
@@ -1761,47 +1787,45 @@ of this project OR has been added before"
                     f"{', '.join(supplied_nms)} do not apply to the NMS-free model "
                     f"structure {model_structure}, use confidence_score and topk instead"
                 )
-            expected_format = DFINE_FORMAT_BY_PRECISION.get(precision)
-            if expected_format is None:
+            if (precision == ConvertPrecision.INT8) is not bool(quantizations):
+                errors.append(
+                    f"model structure {model_structure} requires data_type int8 to be paired "
+                    "with one quantization method, and every other data_type to carry "
+                    "none"
+                )
+        elif configuration.get("nms_threshold") is None:
+            errors.append(
+                f"nms_threshold is required for model structure {model_structure}"
+            )
+
+        # Skip the checks for an unknown structure rather than assume it behaves like yolov9.
+        family_config = convert_config.get(family) if family else None
+        if isinstance(family_config, dict) and family_config:
+            supported_formats = family_config.get(precision)
+            if not isinstance(supported_formats, dict) or not supported_formats:
                 errors.append(
                     f"data_type {precision} is not supported for model structure "
-                    f"{model_structure}"
-                )
-            elif configuration["format"] != expected_format:
-                errors.append(
-                    f"data_type {precision} exports as {expected_format} for model "
-                    f"structure {model_structure}, got model_type "
-                    f"{configuration['format']}"
-                )
-            unsupported = sorted(set(quantizations) - DFINE_QUANTIZATION_METHODS)
-            if unsupported:
-                errors.append(
-                    f"{', '.join(unsupported)} not supported for model structure "
-                    f"{model_structure}"
-                )
-            elif (precision == ConvertPrecision.INT8) is not bool(quantizations):
-                errors.append(
-                    f"model structure {model_structure} requires data_type int8 to be "
-                    f"paired with ['{QuantizationMethod.PTQ.value}'], and every other "
-                    "data_type to carry no quantization"
-                )
-        else:
-            named = model_structure or "unknown"
-            if configuration.get("nms_threshold") is None:
-                errors.append(f"nms_threshold is required for model structure {named}")
-            supported_formats = NMS_FORMATS_BY_PRECISION.get(precision)
-            if supported_formats is None:
-                errors.append(
-                    f"data_type {precision} is not supported for model structure "
-                    f"{named}, only support "
-                    f"{', '.join(sorted(NMS_FORMATS_BY_PRECISION))}"
+                    f"{model_structure}, only support {', '.join(sorted(family_config))}"
                 )
             elif configuration["format"] not in supported_formats:
                 errors.append(
                     f"data_type {precision} exports as "
                     f"{' or '.join(sorted(supported_formats))} for model structure "
-                    f"{named}, got model_type {configuration['format']}"
+                    f"{model_structure}, got model_type {configuration['format']}"
                 )
+            else:
+                details = supported_formats[configuration["format"]]
+                methods = set(
+                    (details.get("supported_methods") or [])
+                    if isinstance(details, dict)
+                    else []
+                )
+                unsupported = sorted(set(quantizations) - methods)
+                if unsupported:
+                    errors.append(
+                        f"{', '.join(unsupported)} not supported for model structure "
+                        f"{model_structure}, only support {', '.join(sorted(methods)) or 'none'}"
+                    )
 
         if errors:
             raise APIValidationError("; ".join(errors))

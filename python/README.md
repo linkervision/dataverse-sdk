@@ -455,9 +455,9 @@ Which of them carries a number follows the slice's own `type`:
 The last row is the fused camera-plus-lidar case, where both are counted and both can be
 non-zero. `None` means "this slice holds no datarow of that type", never zero.
 
-Only `get_dataslice` and `get_dataslice_by_name` return `metadata`; a dataslice from
-`list_dataslices` has none, so **both counts are `None` there**. Such a listing carries
-`file_count` instead — the slice's image and pcd datarows counted together.
+`get_dataslice` and `get_dataslice_by_name` return `metadata`; `list_dataslices` answers
+with plain dicts carrying only `id`, `name` and `file_count` — the slice's image and pcd
+datarows counted together.
 
 This is the only method that takes a name: everything downstream — `convert_model`
 included — takes ids, so this is how a name becomes one.
@@ -707,10 +707,10 @@ record_ids = model.convert(
 | main_obj_high      | int                                   | 9216      | Main object size upper bound                                                    |
 | resolution_width   | int                                   | None      | Defaults to the source model's own resolution                                   |
 | resolution_height  | int                                   | None      | Defaults to the source model's own resolution                                   |
-| nms_threshold      | int                                   | None      | 10-90; required for NMS-based architectures, **rejected for D-FINE**            |
+| nms_threshold      | int                                   | None      | 10-90; required for every structure except D-FINE                               |
 | nms_class_agnostic | bool                                  | None      | **Rejected for D-FINE**                                                         |
 | machine_type       | str                                   | None      |                                                                                 |
-| quantize_dataslice_id | int                                | None      | Calibration dataslice; required when `quantizations` is given                   |
+| quantize_dataslice_id | int                                | None      | Calibration dataslice; has to be given together with `quantizations`             |
 | quantizations      | list[QuantizationMethod \| str]       | None      | Exactly one method; only `PTQ` is supported for D-FINE                          |
 | model_structure    | ModelStructure \| str                 | None      | The source model's architecture; sets the topk default and the D-FINE rules. Read back from the model when omitted |
 
@@ -733,17 +733,17 @@ instance methods and fall back to the client's own alias.
 
 Supported resolutions are `640x480`, `640x640`, `1024x576`, `1024x768` and `1024x1024`; an unsupported one raises `APIValidationError` without sending the request.
 
-The rest of the rules depend on the source model's architecture:
+The server decides the rest, so these can change; at the time of writing:
 
-| `model_structure` | `data_type` | `model_type`    | `nms_threshold` | `quantizations`                   |
-| ----------------- | ----------- | --------------- | --------------- | --------------------------------- |
-| yolov9            | `fp16`      | `onnx` or `trt` | required        | none                              |
-| yolov9            | `int8`      | `trt`           | required        | `ptq`, `qat_train`, `qat_distill` |
-| D-FINE            | `fp32`      | `onnx`          | rejected        | none                              |
-| D-FINE            | `fp16`      | `trt`           | rejected        | none                              |
-| D-FINE            | `int8`      | `trt`           | rejected        | `ptq`                             |
+| `model_structure` | `data_type` | `model_type`    | `quantizations`                   |
+| ----------------- | ----------- | --------------- | --------------------------------- |
+| yolov9            | `fp16`      | `onnx` or `trt` | none                              |
+| yolov9            | `int8`      | `trt`           | `ptq`, `qat_train`, `qat_distill` |
+| D-FINE            | `fp32`      | `onnx`          | none                              |
+| D-FINE            | `fp16`      | `trt`           | none                              |
+| D-FINE            | `int8`      | `trt`           | `ptq`                             |
 
-`nms_class_agnostic` follows `nms_threshold`.
+D-FINE's `int8` must carry `ptq`; its `fp32` and `fp16` must carry no quantization at all.
 
 #### Return
 
