@@ -198,5 +198,5 @@ class ConvertModelAPISchema(BaseModel):
                 "quantizations and quantize_dataslice_id have to be given together"
             )
         if self.quantizations and len(self.quantizations) > 1:
-            raise ValueError("only one quantization method is accepted")
+            raise ValueError("only one quantization method is accepted for now")
         return self
