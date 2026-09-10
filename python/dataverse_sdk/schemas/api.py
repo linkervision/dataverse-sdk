@@ -1,14 +1,18 @@
 import re
 from typing import Optional, Union
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .client import AnnotationFormat, DatasetType, DataSource, QuestionClass
 from .common import (
+    CONVERT_RESOLUTIONS,
     AttributeType,
+    ConvertFormat,
+    ConvertPrecision,
     ModelStructure,
     OntologyImageType,
     OntologyPcdType,
+    QuantizationMethod,
     SensorType,
 )
 
@@ -147,3 +151,52 @@ class CreateCustomModelAPISchema(BaseModel):
     resolution_height: int
     model_structure: ModelStructure
     weight_url: str
+
+
+class ConvertConfigurationAPISchema(BaseModel):
+    format: ConvertFormat
+    precision: ConvertPrecision
+    confidence_threshold: int = Field(ge=10, le=90)
+    iou: int = Field(ge=1, le=99)
+    topk: int = Field(ge=50, le=300)
+    main_obj_low: int = Field(ge=0)
+    main_obj_high: int = Field(ge=0)
+    resolution_width: int
+    resolution_height: int
+    # `nms_threshold` and `nms_class_agnostic`: required by yolov9, rejected by D-FINE.
+    nms_threshold: Optional[int] = Field(default=None, ge=10, le=90)
+    nms_class_agnostic: Optional[bool] = None
+    machine_type: Optional[str] = None
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    @model_validator(mode="after")
+    def resolution_is_supported(self):
+        if (self.resolution_width, self.resolution_height) not in CONVERT_RESOLUTIONS:
+            supported = ", ".join(f"{w}x{h}" for w, h in sorted(CONVERT_RESOLUTIONS))
+            raise ValueError(
+                f"unsupported resolution {self.resolution_width}x"
+                f"{self.resolution_height}, only support {supported}"
+            )
+        return self
+
+
+class ConvertModelAPISchema(BaseModel):
+    name: str
+    source_model: int
+    target_dataslice: int
+    configuration: ConvertConfigurationAPISchema
+    quantize_dataslice: Optional[int] = None
+    quantizations: Optional[list[QuantizationMethod]] = None
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    @model_validator(mode="after")
+    def quantization_needs_a_calibration_dataslice(self):
+        if bool(self.quantizations) is not (self.quantize_dataslice is not None):
+            raise ValueError(
+                "quantizations and quantize_dataslice_id have to be given together"
+            )
+        if self.quantizations and len(self.quantizations) > 1:
+            raise ValueError("only one quantization method is accepted for now")
+        return self

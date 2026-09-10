@@ -63,6 +63,7 @@ class BackendAPI:
         self.access_token = access_token
         self.email = email
         self.password = password
+        self._convert_model_config: Optional[dict] = None
         self.login(email=email, password=password)
 
     def get_host(self):
@@ -276,6 +277,15 @@ class BackendAPI:
         )
         return resp.json()["results"]
 
+    def create_dataslice(self, **kwargs) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/dataslices/",
+            method="post",
+            headers=self.headers,
+            data=kwargs,
+        )
+        return resp.json()
+
     def get_dataslice(self, dataslice_id: int) -> list:
         resp = self.send_request(
             url=f"{self.host}/api/dataslices/{dataslice_id}/",
@@ -340,11 +350,40 @@ class BackendAPI:
         )
         return resp.json()
 
+    def get_convert_model_config(self) -> dict:
+        """Export options, e.g. {"dfine": {"int8": {"trt": {"supported_methods": ["ptq"]}}}}."""
+        if self._convert_model_config is None:
+            resp = self.send_request(
+                url=f"{self.host}/api/ml_models/convert-model-config/",
+                method="get",
+                headers=self.headers,
+            )
+            config = resp.json()
+            self._convert_model_config = config if isinstance(config, dict) else {}
+        return self._convert_model_config
+
     def get_convert_record(self, convert_record_id: int) -> dict:
         resp = self.send_request(
             url=f"{self.host}/api/convert_record/{convert_record_id}/",
             method="get",
             headers=self.headers,
+        )
+        return resp.json()
+
+    def list_convert_records(self, **kwargs) -> list:
+        resp = self.send_request(
+            url=f"{self.host}/api/convert_record/?{urlencode(kwargs)}",
+            method="get",
+            headers=self.headers,
+        )
+        return resp.json()["results"]
+
+    def create_convert_model(self, **kwargs) -> dict:
+        resp = self.send_request(
+            url=f"{self.host}/api/ml_models/convert/",
+            method="post",
+            headers=self.headers,
+            data=kwargs,
         )
         return resp.json()
 
