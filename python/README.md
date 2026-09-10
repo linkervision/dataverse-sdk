@@ -515,6 +515,12 @@ client.download_export_dataslice_data(dataslice_id=504, export_record_id=export_
 
 ```
 
+> **Note:** Direct export via `export_dataslice` is limited to 1,000 records. For
+> dataslices exceeding this limit, use
+> [`tools/export_dataslice_large.py`](tools/export_dataslice_large.py) instead
+> (see [Export Large Dataslice and download files](#export-large-dataslice-and-download-files)),
+> which exports the dataslice in batches.
+
 
 ### List Models
 
