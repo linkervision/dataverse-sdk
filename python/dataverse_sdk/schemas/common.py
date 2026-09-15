@@ -99,6 +99,92 @@ class ModelStructure(str, Enum, metaclass=BaseEnumMeta):
     DFINE_X = "dfine-x"
 
 
+class ConvertFormat(str, Enum, metaclass=BaseEnumMeta):
+    """Target format a model is converted into."""
+
+    ONNX = "onnx"
+    TRT = "trt"
+
+
+class ConvertPrecision(str, Enum, metaclass=BaseEnumMeta):
+    """Numeric precision the converted model runs at."""
+
+    FP32 = "fp32"
+    FP16 = "fp16"
+    INT8 = "int8"
+
+
+class QuantizationMethod(str, Enum, metaclass=BaseEnumMeta):
+    """How an int8 model is quantized. Only meaningful with ConvertPrecision.INT8."""
+
+    PTQ = "ptq"
+    QAT_TRAIN = "qat_train"
+    QAT_DISTILL = "qat_distill"
+
+
+class DataSliceStatus(str, Enum, metaclass=BaseEnumMeta):
+    """DataSlice lifecycle: CREATING, then READY or CREATING_FAIL; *_UPDATING are transient."""
+
+    CREATING = "creating"
+    CREATING_FAIL = "creating_fail"
+    READY = "ready"
+    ANNOTATION_UPDATING = "annotation_updating"
+    IQA_UPDATING = "iqa_updating"
+    TAGGING_UPDATING = "tagging_updating"
+    DELETING = "deleting"
+
+
+class MLModelStatus(str, Enum, metaclass=BaseEnumMeta):
+    """ML model lifecycle: PROCESSING, then READY or DELETING."""
+
+    PROCESSING = "processing"
+    READY = "ready"
+    DELETING = "deleting"
+
+
+class ConvertRecordStatus(str, Enum, metaclass=BaseEnumMeta):
+    """Convert record lifecycle: PROCESSING, then READY, FAILED or DELETING."""
+
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+    DELETING = "deleting"
+
+
+CONVERT_RESOLUTIONS: frozenset[tuple[int, int]] = frozenset(
+    {
+        (640, 480),
+        (640, 640),
+        (1024, 576),
+        (1024, 768),
+        (1024, 1024),
+    }
+)
+
+DFINE_MODEL_STRUCTURES: frozenset[str] = frozenset(
+    {
+        ModelStructure.DFINE_N.value,
+        ModelStructure.DFINE_S.value,
+        ModelStructure.DFINE_M.value,
+        ModelStructure.DFINE_L.value,
+        ModelStructure.DFINE_X.value,
+    }
+)
+
+YOLOV9_MODEL_STRUCTURES: frozenset[str] = frozenset(
+    {
+        ModelStructure.YOLOV9_C.value,
+        ModelStructure.YOLOV9_E.value,
+        ModelStructure.YOLOV9_S.value,
+    }
+)
+
+MODEL_STRUCTURE_FAMILY_MAP: dict[str, frozenset[str]] = {
+    "yolov9": YOLOV9_MODEL_STRUCTURES,
+    "dfine": DFINE_MODEL_STRUCTURES,
+}
+
+
 @dataclass
 class SensorCounts:
     camera: int = 0
