@@ -1641,7 +1641,8 @@ of this project OR has been added before"
         quantize_dataslice_id : Optional[int]
             calibration dataslice, required when quantizations is given
         quantizations : Optional[list[Union[QuantizationMethod, str]]]
-            exactly one method; the backend rejects more than one
+            exactly one method; the backend rejects more than one. Required when
+            data_type is int8, rejected for every other data_type
         model_structure : Optional[Union[ModelStructure, str]]
             the source model's architecture, which decides the topk default and the
             D-FINE rules. Pass it -- `MLModel.convert` does -- to skip the extra
@@ -1776,6 +1777,14 @@ of this project OR has been added before"
         is_dfine = family == "dfine"
         model_structure = model_structure or "(unknown)"
 
+        # Every known family: int8 carries one method, every other precision none.
+        if family and (precision == ConvertPrecision.INT8) is not bool(quantizations):
+            errors.append(
+                f"model structure {model_structure} requires data_type int8 to be paired "
+                "with one quantization method, and every other data_type to carry "
+                "none"
+            )
+
         if is_dfine:
             supplied_nms = [
                 field
@@ -1786,12 +1795,6 @@ of this project OR has been added before"
                 errors.append(
                     f"{', '.join(supplied_nms)} do not apply to the NMS-free model "
                     f"structure {model_structure}, use confidence_score and topk instead"
-                )
-            if (precision == ConvertPrecision.INT8) is not bool(quantizations):
-                errors.append(
-                    f"model structure {model_structure} requires data_type int8 to be paired "
-                    "with one quantization method, and every other data_type to carry "
-                    "none"
                 )
         elif configuration.get("nms_threshold") is None:
             errors.append(

@@ -717,7 +717,7 @@ record_ids = model.convert(
 | nms_class_agnostic | bool                                  | None      | **Rejected for D-FINE**                                                         |
 | machine_type       | str                                   | None      |                                                                                 |
 | quantize_dataslice_id | int                                | None      | Calibration dataslice; has to be given together with `quantizations`             |
-| quantizations      | list[QuantizationMethod \| str]       | None      | Exactly one method; only `PTQ` is supported for D-FINE                          |
+| quantizations      | list[QuantizationMethod \| str]       | None      | Exactly one method; **required for `int8`, rejected for every other `data_type`**; only `PTQ` is supported for D-FINE |
 | model_structure    | ModelStructure \| str                 | None      | The source model's architecture; sets the topk default and the D-FINE rules. Read back from the model when omitted |
 
 `＊--`: required argument without default
@@ -749,7 +749,11 @@ The server decides the rest, so these can change; at the time of writing:
 | D-FINE            | `fp16`      | `trt`           | none                              |
 | D-FINE            | `int8`      | `trt`           | `ptq`                             |
 
-D-FINE's `int8` must carry `ptq`; its `fp32` and `fp16` must carry no quantization at all.
+`int8` must carry exactly one quantization method and every other `data_type` must
+carry none -- that holds for both families, so a yolov9 `int8` convert without
+`quantizations` raises `APIValidationError` instead of reaching the backend. The
+method itself is what differs: D-FINE's `int8` only takes `ptq`, while yolov9 takes
+any of the three. A structure the SDK does not know is left to the server.
 
 #### Return
 
