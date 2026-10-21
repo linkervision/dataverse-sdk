@@ -26,7 +26,12 @@ class ExportVQA(ExportAnnotationBase):
     annotation_file = VLM_ANNOTATION_FILE
 
     @staticmethod
-    def convert(datarows: list[dict], annotation_name: str, question_id_map: dict) -> str:
+    def convert(
+        datarows: list[dict],
+        annotation_name: str,
+        question_id_map: dict,
+        written_files: set,
+    ) -> str:
         return convert_annotation(
             datarows=datarows,
             annotation_name=annotation_name,
@@ -86,6 +91,7 @@ class ExportVQA(ExportAnnotationBase):
         async with aiohttp.ClientSession() as session:
             current_batch = []
             datarows = []  # Keep track of all datarows for annotation
+            written_files = set()  # Basenames of images actually written to disk
             datarow_id_list = []
             total_datarows = sum(len(v) for v in sequence_frame_map.values())
             existing_files = set()
@@ -114,6 +120,7 @@ class ExportVQA(ExportAnnotationBase):
                             )
                             for result in results:
                                 if result:
+                                    written_files.add(os.path.basename(result[1]))
                                     yield result
                                     progress_bar.update(1)
                             current_batch = []
@@ -124,6 +131,7 @@ class ExportVQA(ExportAnnotationBase):
                     )
                     for result in results:
                         if result:
+                            written_files.add(os.path.basename(result[1]))
                             yield result
                             progress_bar.update(1)
 
@@ -132,6 +140,7 @@ class ExportVQA(ExportAnnotationBase):
                 datarows=datarows,
                 annotation_name=annotation_name,
                 question_id_map=question_id_map,
+                written_files=written_files,
             )
         )
         yield annot_bytes, os.path.join(ANNOT_PATH, self.annotation_file)
@@ -142,11 +151,17 @@ class ExportLLaVA(ExportVQA):
     annotation_file = LLAVA_ANNOTATION_FILE
 
     @staticmethod
-    def convert(datarows: list[dict], annotation_name: str, question_id_map: dict) -> str:
+    def convert(
+        datarows: list[dict],
+        annotation_name: str,
+        question_id_map: dict,
+        written_files: set,
+    ) -> str:
         return convert_llava_annotation(
             datarows=datarows,
             annotation_name=annotation_name,
             question_id_map=question_id_map,
+            written_files=written_files,
         )
 
 
@@ -187,13 +202,13 @@ def convert_vlm_answer(answer) -> str:
 
 
 def convert_llava_annotation(
-    datarows: list[dict], annotation_name: str, question_id_map: dict
+    datarows: list[dict], annotation_name: str, question_id_map: dict, written_files: set
 ) -> str:
     """Convert VLM datarows to LLaVA 1.5 items; each turn keeps the VLM question_id in `meta`."""
     llava_items = []
     for datarow in datarows:
         # The image failed to download, so the item has nothing to point at
-        if "unique_file_name" not in datarow:
+        if datarow.get("unique_file_name") not in written_files:
             logger.warning("Skip datarow %s: image not exported", datarow["id"])
             continue
         vlm_items = datarow.get("vlm_items") or {}
