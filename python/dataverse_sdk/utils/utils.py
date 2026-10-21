@@ -330,6 +330,7 @@ class CreateDatasetValidator:
 
         if cls.is_vlm_format_supported(config):
             supported_formats.append(AnnotationFormat.VLM)
+            supported_formats.append(AnnotationFormat.LLAVA)
 
         return supported_formats
 

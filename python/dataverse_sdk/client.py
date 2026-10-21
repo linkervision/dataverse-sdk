@@ -2481,7 +2481,7 @@ of this project OR has been added before"
             return ["images/", "annotations/labels.json"]
         elif annotation_format == AnnotationFormat.YOLO:
             return ["images/", "labels/", "classes.txt"]
-        elif annotation_format == AnnotationFormat.VLM:
+        elif annotation_format in (AnnotationFormat.VLM, AnnotationFormat.LLAVA):
             return ["images/", "annotations/"]
         elif annotation_format in (
             AnnotationFormat.VISION_AI,

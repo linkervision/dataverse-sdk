@@ -115,6 +115,13 @@ def make_parser():
         help="the dataset type (annotated_data / raw_data)",
     )
     parser.add_argument(
+        "--format",
+        default="vlm",
+        choices=["vlm", "llava"],
+        type=str,
+        help="the annotation format for annotated_data imports (ignored for raw_data)",
+    )
+    parser.add_argument(
         "--sequential",
         default=False,
         action="store_true",
@@ -147,7 +154,9 @@ if __name__ == "__main__":
     if not dataset_name:
         dataset_name = time.strftime("%Y-%m-%d_%H-%M-%S")
     if args.dataset_type == DatasetType.ANNOTATED_DATA:
-        annotation_format = AnnotationFormat.VLM
+        annotation_format = (
+            AnnotationFormat.LLAVA if args.format == "llava" else AnnotationFormat.VLM
+        )
     else:
         annotation_format = AnnotationFormat.IMAGE
     import_vqa_dataset_from_local(
