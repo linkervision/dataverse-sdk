@@ -13,3 +13,4 @@ class ExportFormat(str, Enum):
     TRAINING_FORMAT = "training_format"
     YOLO = "yolo"
     VLM = "vlm"
+    LLAVA = "llava"
