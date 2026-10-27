@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from collections.abc import AsyncGenerator
 from typing import Callable
@@ -13,11 +14,34 @@ from .constant import BATCH_SIZE, MAX_CONCURRENT_DOWNLOADS, ExportFormat
 from .exporter import Exporter
 from .utils import convert_to_bytes
 
+logger = logging.getLogger(__name__)
+
 VLM_ANNOTATION_FILE = "vlm_annotation.json"
+LLAVA_ANNOTATION_FILE = "llava_annotation.json"
+LLAVA_IMAGE_TOKEN = "<image>"
 
 
 @Exporter.register(format=ExportFormat.VLM)
 class ExportVQA(ExportAnnotationBase):
+    annotation_file = VLM_ANNOTATION_FILE
+
+    @staticmethod
+    def convert(
+        datarows: list[dict],
+        annotation_name: str,
+        question_id_map: dict,
+        written_files: set,
+    ) -> str:
+        return convert_annotation(
+            datarows=datarows,
+            annotation_name=annotation_name,
+            question_id_map=question_id_map,
+        )
+
+    @staticmethod
+    def should_export(datarow: dict, annotation_name: str, question_id_map: dict) -> bool:
+        return True
+
     async def download_batch(
         self,
         session: aiohttp.ClientSession,
@@ -71,6 +95,7 @@ class ExportVQA(ExportAnnotationBase):
         async with aiohttp.ClientSession() as session:
             current_batch = []
             datarows = []  # Keep track of all datarows for annotation
+            written_files = set()  # Basenames of images actually written to disk
             datarow_id_list = []
             total_datarows = sum(len(v) for v in sequence_frame_map.values())
             existing_files = set()
@@ -84,6 +109,8 @@ class ExportVQA(ExportAnnotationBase):
                     async for datarow in datarow_generator_func(
                         datarow_id_list[start_idx : start_idx + BATCH_SIZE]
                     ):
+                        if not self.should_export(datarow, annotation_name, question_id_map):
+                            continue
                         original_file_name = os.path.basename(datarow["original_url"])
                         unique_file_name = Exporter.get_unique_filename(
                             self, original_file_name, existing_files
@@ -99,6 +126,7 @@ class ExportVQA(ExportAnnotationBase):
                             )
                             for result in results:
                                 if result:
+                                    written_files.add(os.path.basename(result[1]))
                                     yield result
                                     progress_bar.update(1)
                             current_batch = []
@@ -109,17 +137,43 @@ class ExportVQA(ExportAnnotationBase):
                     )
                     for result in results:
                         if result:
+                            written_files.add(os.path.basename(result[1]))
                             yield result
                             progress_bar.update(1)
 
         annot_bytes = convert_to_bytes(
-            convert_annotation(
+            self.convert(
                 datarows=datarows,
                 annotation_name=annotation_name,
                 question_id_map=question_id_map,
+                written_files=written_files,
             )
         )
-        yield annot_bytes, os.path.join(ANNOT_PATH, VLM_ANNOTATION_FILE)
+        yield annot_bytes, os.path.join(ANNOT_PATH, self.annotation_file)
+
+
+@Exporter.register(format=ExportFormat.LLAVA)
+class ExportLLaVA(ExportVQA):
+    annotation_file = LLAVA_ANNOTATION_FILE
+
+    @staticmethod
+    def should_export(datarow: dict, annotation_name: str, question_id_map: dict) -> bool:
+        # LLaVA 1.5 needs a first question carrying <image>, so a frame without conversations is left out entirely
+        return bool(build_llava_turns(datarow, annotation_name, question_id_map))
+
+    @staticmethod
+    def convert(
+        datarows: list[dict],
+        annotation_name: str,
+        question_id_map: dict,
+        written_files: set,
+    ) -> str:
+        return convert_llava_annotation(
+            datarows=datarows,
+            annotation_name=annotation_name,
+            question_id_map=question_id_map,
+            written_files=written_files,
+        )
 
 
 def convert_annotation(
@@ -147,3 +201,63 @@ def convert_annotation(
         image_id_start += 1
 
     return json.dumps(annotation_list, ensure_ascii=False)
+
+
+def convert_vlm_answer(answer) -> str:
+    """Cast a VLM answer back to LLaVA text: boolean -> Yes/No, option list -> its values, number -> str."""
+    if isinstance(answer, bool):
+        return "Yes" if answer else "No"
+    if isinstance(answer, list):
+        return ", ".join(str(value) for value in answer)
+    return str(answer)
+
+
+def build_llava_turns(datarow: dict, annotation_name: str, question_id_map: dict) -> list[dict]:
+    """Build LLaVA human/gpt turns from a VLM datarow; the first kept question carries <image>."""
+    vlm_items = datarow.get("vlm_items") or {}
+    turns = []
+    for conversation in vlm_items.get("data", {}).get("conversations", []):
+        question_id = conversation["question_id"]
+        answer = conversation["answer"].get(annotation_name)
+        if answer is None:
+            continue
+        question = question_id_map.get(question_id)
+        if question is None:
+            logger.warning(
+                "Skip question_id %s of datarow %s: not in project ontology",
+                question_id,
+                datarow["id"],
+            )
+            continue
+        if not turns:
+            question = f"{LLAVA_IMAGE_TOKEN}\n{question}"
+        meta = {"question_id": question_id}
+        turns.append({"from": "human", "value": question, "meta": meta})
+        turns.append({"from": "gpt", "value": convert_vlm_answer(answer), "meta": meta})
+    return turns
+
+
+def convert_llava_annotation(
+    datarows: list[dict], annotation_name: str, question_id_map: dict, written_files: set
+) -> str:
+    """Convert VLM datarows to LLaVA 1.5 items; each turn keeps the VLM question_id in `meta`."""
+    llava_items = []
+    for datarow in datarows:
+        # The image failed to download, so the item has nothing to point at
+        if datarow.get("unique_file_name") not in written_files:
+            logger.warning("Skip datarow %s: image not exported", datarow["id"])
+            continue
+        turns = build_llava_turns(datarow, annotation_name, question_id_map)
+        if not turns:
+            logger.warning(
+                "Skip datarow %s: no conversation for annotation %s", datarow["id"], annotation_name
+            )
+            continue
+        llava_items.append(
+            {
+                "id": f"{len(llava_items):012d}",
+                "image": datarow["unique_file_name"],
+                "conversations": turns,
+            }
+        )
+    return json.dumps(llava_items, ensure_ascii=False)

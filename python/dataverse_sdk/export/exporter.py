@@ -7,7 +7,6 @@ from typing import Callable
 import aiofiles
 
 from ..apis.backend import AsyncBackendAPI
-from ..schemas.format import AnnotationFormat
 from .base import ExportAnnotationBase
 from .constant import BATCH_SIZE, MAX_CONCURRENT_DOWNLOADS, ExportFormat
 
@@ -62,7 +61,7 @@ class Exporter:
 
         project_id = dataslice["project"]["id"]
         question_id_map = {}
-        if export_format == AnnotationFormat.VLM:
+        if export_format in (ExportFormat.VLM, ExportFormat.LLAVA):
             project: dict = await self.curation_api.get_project(project_id=project_id)
             for question in project["ontology"]["classes"]:
                 question_id_map[question["rank"]] = question["extended_class"][
@@ -130,6 +129,7 @@ class Exporter:
     def register(cls, format: ExportFormat):
         def _wrap(export_annotation: ExportAnnotationBase):
             cls.export_annotation_m[format] = export_annotation()  # register instance
+            return export_annotation
 
         return _wrap
 
