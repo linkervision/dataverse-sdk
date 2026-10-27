@@ -41,6 +41,7 @@ class AnnotationFormat(str, Enum, metaclass=BaseEnumMeta):
     YOLO = "yolo"
     VIDEO = "video"
     VLM = "vlm"
+    LLAVA = "llava"
 
 
 class DatasetType(str, Enum, metaclass=BaseEnumMeta):
