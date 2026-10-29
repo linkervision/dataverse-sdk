@@ -38,10 +38,6 @@ class ExportVQA(ExportAnnotationBase):
             question_id_map=question_id_map,
         )
 
-    @staticmethod
-    def should_export(datarow: dict, annotation_name: str, question_id_map: dict) -> bool:
-        return True
-
     async def download_batch(
         self,
         session: aiohttp.ClientSession,
@@ -109,8 +105,6 @@ class ExportVQA(ExportAnnotationBase):
                     async for datarow in datarow_generator_func(
                         datarow_id_list[start_idx : start_idx + BATCH_SIZE]
                     ):
-                        if not self.should_export(datarow, annotation_name, question_id_map):
-                            continue
                         original_file_name = os.path.basename(datarow["original_url"])
                         unique_file_name = Exporter.get_unique_filename(
                             self, original_file_name, existing_files
@@ -155,11 +149,6 @@ class ExportVQA(ExportAnnotationBase):
 @Exporter.register(format=ExportFormat.LLAVA)
 class ExportLLaVA(ExportVQA):
     annotation_file = LLAVA_ANNOTATION_FILE
-
-    @staticmethod
-    def should_export(datarow: dict, annotation_name: str, question_id_map: dict) -> bool:
-        # LLaVA 1.5 needs a first question carrying <image>, so a frame without conversations is left out entirely
-        return bool(build_llava_turns(datarow, annotation_name, question_id_map))
 
     @staticmethod
     def convert(
@@ -247,17 +236,12 @@ def convert_llava_annotation(
         if datarow.get("unique_file_name") not in written_files:
             logger.warning("Skip datarow %s: image not exported", datarow["id"])
             continue
-        turns = build_llava_turns(datarow, annotation_name, question_id_map)
-        if not turns:
-            logger.warning(
-                "Skip datarow %s: no conversation for annotation %s", datarow["id"], annotation_name
-            )
-            continue
+        # An unannotated frame is still exported, with empty conversations
         llava_items.append(
             {
                 "id": f"{len(llava_items):012d}",
                 "image": datarow["unique_file_name"],
-                "conversations": turns,
+                "conversations": build_llava_turns(datarow, annotation_name, question_id_map),
             }
         )
     return json.dumps(llava_items, ensure_ascii=False)
