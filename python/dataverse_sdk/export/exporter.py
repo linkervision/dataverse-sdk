@@ -2,13 +2,19 @@ import asyncio
 import os
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Generator
-from typing import Callable
+from typing import Callable, Optional
+from urllib.parse import urlparse
 
 import aiofiles
 
 from ..apis.backend import AsyncBackendAPI
 from .base import ExportAnnotationBase
-from .constant import BATCH_SIZE, MAX_CONCURRENT_DOWNLOADS, ExportFormat
+from .constant import (
+    BATCH_SIZE,
+    MAX_CONCURRENT_DOWNLOADS,
+    VIDEO_SUPPORTED_FORMAT,
+    ExportFormat,
+)
 
 NONE_SEQUENCE_DATAROW_ID = -1
 
@@ -137,13 +143,16 @@ class Exporter:
     async def _gen(
         curation_api: AsyncBackendAPI,
     ) -> Callable[[list[int]], AsyncGenerator[dict]]:
+        # dataset_id -> frame rate used to split its videos, shared across calls
+        frame_rate_map: dict[int, Optional[float]] = {}
+
         async def f(datarow_id_list: list[int]):
             datarow_id_set: set[int] = set()
             for id_chunks in chunks(datarow_id_list, 1000):
                 gen: AsyncGenerator = curation_api.get_datarows(
                     id_set_list=id_chunks,
                     batch_size=BATCH_SIZE,
-                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url,type",
+                    fields="id,items,vlm_items,url,frame_id,image_width,image_height,sensor_name,original_url,type,dataset",
                 )
                 async for batched_datarow in gen:
                     for datarow in batched_datarow:
@@ -152,9 +161,54 @@ class Exporter:
                             # drop duplicate datarows
                             continue
                         datarow_id_set.add(dr_id)
+                        await Exporter._attach_video_frame_rate(
+                            curation_api=curation_api,
+                            datarow=datarow,
+                            frame_rate_map=frame_rate_map,
+                        )
                         yield datarow
 
         return f
+
+    @staticmethod
+    def is_video_frame(datarow: dict) -> bool:
+        original_url: str = datarow.get("original_url") or ""
+        return os.path.splitext(original_url)[-1].lower() in VIDEO_SUPPORTED_FORMAT
+
+    @staticmethod
+    async def _attach_video_frame_rate(
+        curation_api: AsyncBackendAPI,
+        datarow: dict,
+        frame_rate_map: dict[int, Optional[float]],
+    ) -> None:
+        """Attach the frame rate used to split the source video to the video frame datarow as `frame_rate`"""
+        if not Exporter.is_video_frame(datarow):
+            return
+        dataset_id: Optional[int] = datarow.get("dataset")
+        if dataset_id is not None and dataset_id not in frame_rate_map:
+            dataset: Optional[dict] = await curation_api.get_dataset(
+                dataset_id=dataset_id
+            )
+            frame_rate_map[dataset_id] = (dataset or {}).get("frame_rate")
+        datarow["frame_rate"] = frame_rate_map.get(dataset_id)
+
+    @staticmethod
+    def get_export_file_name(datarow: dict) -> str:
+        """Return the exported image file name of the datarow
+
+        Frames split from a video share the video as `original_url`, so they are named
+        `[VideoName]_frame[frame_id]_[frame_rate]fps.[ext]` instead, e.g. video1_frame000000000001_10fps.jpg
+        """
+        original_file_name: str = os.path.basename(datarow["original_url"])
+        if not Exporter.is_video_frame(datarow) or datarow.get("frame_id") is None:
+            return original_file_name
+
+        video_name: str = os.path.splitext(original_file_name)[0]
+        extension: str = os.path.splitext(urlparse(datarow["url"]).path)[-1]
+        file_name = f"{video_name}_frame{int(datarow['frame_id']):012d}"
+        if frame_rate := datarow.get("frame_rate"):
+            file_name += f"_{float(frame_rate):g}fps"
+        return f"{file_name}{extension}"
 
     def get_unique_filename(self, original_file_name, existing_files):
         base_name, extension = os.path.splitext(original_file_name)

@@ -33,7 +33,7 @@ class ExportYolo(ExportAnnotationBase):
         results = []
         for datarow in batch_datarows:
             url = datarow["url"]
-            file_name_without_format = datarow["unique_file_name"].split(".")[0]
+            file_name_without_format = os.path.splitext(datarow["unique_file_name"])[0]
             anno_name = f"{file_name_without_format}.txt"
             file_path = os.path.join("images", datarow["unique_file_name"])
             anno_path = os.path.join("labels", anno_name)
@@ -100,7 +100,7 @@ class ExportYolo(ExportAnnotationBase):
                     async for datarow in datarow_generator_func(
                         datarow_id_list[start_idx : start_idx + BATCH_SIZE]
                     ):
-                        original_file_name = os.path.basename(datarow["original_url"])
+                        original_file_name = Exporter.get_export_file_name(datarow)
                         unique_file_name = Exporter.get_unique_filename(
                             self, original_file_name, existing_files
                         )

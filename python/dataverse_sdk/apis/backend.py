@@ -721,6 +721,22 @@ class AsyncBackendAPI:
             data=payload_data,
         )
 
+    async def get_dataset(self, dataset_id: int) -> dict:
+        try:
+            resp = await self.client.get(
+                url=f"{self.host}/api/datasets/{dataset_id}/",
+                headers=self.headers,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            print(f"HTTP error: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            print(f"Request failed: {str(e)}")
+            return None
+
     async def get_project(self, project_id: str) -> dict:
         try:
             resp = await self.client.get(
