@@ -201,7 +201,9 @@ def convert_vlm_answer(answer) -> str:
     return str(answer)
 
 
-def build_llava_turns(datarow: dict, annotation_name: str, question_id_map: dict) -> list[dict]:
+def build_llava_turns(
+    datarow: dict, annotation_name: str, question_id_map: dict
+) -> list[dict]:
     """Build LLaVA human/gpt turns from a VLM datarow; the first kept question carries <image>."""
     vlm_items = datarow.get("vlm_items") or {}
     turns = []
@@ -227,7 +229,10 @@ def build_llava_turns(datarow: dict, annotation_name: str, question_id_map: dict
 
 
 def convert_llava_annotation(
-    datarows: list[dict], annotation_name: str, question_id_map: dict, written_files: set
+    datarows: list[dict],
+    annotation_name: str,
+    question_id_map: dict,
+    written_files: set,
 ) -> str:
     """Convert VLM datarows to LLaVA 1.5 items; each turn keeps the VLM question_id in `meta`."""
     llava_items = []
