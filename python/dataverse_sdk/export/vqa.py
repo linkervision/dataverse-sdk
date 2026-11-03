@@ -105,7 +105,7 @@ class ExportVQA(ExportAnnotationBase):
                     async for datarow in datarow_generator_func(
                         datarow_id_list[start_idx : start_idx + BATCH_SIZE]
                     ):
-                        original_file_name = os.path.basename(datarow["original_url"])
+                        original_file_name = Exporter.get_export_file_name(datarow)
                         unique_file_name = Exporter.get_unique_filename(
                             self, original_file_name, existing_files
                         )
