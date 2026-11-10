@@ -1331,7 +1331,7 @@ of this project OR has been added before"
             project basemodel, by default None
         type : Optional[Union[Literal["trained", "byom", "uploaded"], list[Literal["trained", "byom", "uploaded"]]]], by default ["trained", "byom"]
         include_disabled : bool, by default False
-            also list disabled models (``MLModel.enabled`` is False), e.g. a custom
+            also list disabled models (`MLModel.enabled` is False), e.g. a custom
             model whose upload failed. Older servers ignore it and list enabled models only.
 
         Returns

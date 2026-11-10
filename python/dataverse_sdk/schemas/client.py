@@ -650,6 +650,7 @@ class MLModel(BaseModel):
     configuration: dict = {}
     # Typed as str, not MLModelStatus: an unknown status must not fail the whole parse.
     status: Optional[str] = None
+    # get_model's payload has no `enabled`.
     enabled: bool = True
     # Typed as str, not ModelStructure: an unknown value must not fail the whole list_models parse.
     # Comparing against ModelStructure still works, since that enum subclasses str.

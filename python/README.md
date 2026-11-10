@@ -547,6 +547,8 @@ ready = [model for model in models if model.status == MLModelStatus.READY]
 
 `MLModelStatus`: `PROCESSING`, `READY`, `DELETING`.
 
+Disabled models (`model.enabled` is `False`, e.g. a custom model whose upload failed) are listed only with `include_disabled=True`.
+
 #### Filtering by Model Type
 
 You can filter models by type using strings or lists of strings. The SDK supports multiple model types:
