@@ -286,11 +286,16 @@ class Project(BaseModel):
                 list[Literal["trained", "byom", "uploaded"]],
             ]
         ] = ["trained", "byom"],
+        include_disabled: bool = False,
     ) -> list:
         from ..client import DataverseClient
 
         model_list: list = DataverseClient.list_models(
-            project_id=self.id, project=self, client_alias=self.client_alias, type=type
+            project_id=self.id,
+            project=self,
+            client_alias=self.client_alias,
+            type=type,
+            include_disabled=include_disabled,
         )
         return model_list
 
@@ -645,6 +650,7 @@ class MLModel(BaseModel):
     configuration: dict = {}
     # Typed as str, not MLModelStatus: an unknown status must not fail the whole parse.
     status: Optional[str] = None
+    enabled: bool = True
     # Typed as str, not ModelStructure: an unknown value must not fail the whole list_models parse.
     # Comparing against ModelStructure still works, since that enum subclasses str.
     model_structure: Optional[str] = None

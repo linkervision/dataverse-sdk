@@ -576,11 +576,12 @@ models = client.list_models(
 
 #### Input Arguments
 
-| Argument name | Type/Options                                                      | Default             | Description              |
-| ------------- | ----------------------------------------------------------------- | ------------------- | ------------------------ |
-| project_id    | int                                                               | ＊--                | The project ID           |
-| client_alias  | str                                                               | None                | The client alias         |
-| type          | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by |
+| Argument name    | Type/Options                                                      | Default             | Description                                  |
+| ---------------- | ----------------------------------------------------------------- | ------------------- | -------------------------------------------- |
+| project_id       | int                                                               | ＊--                | The project ID                               |
+| client_alias     | str                                                               | None                | The client alias                             |
+| type             | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by                     |
+| include_disabled | bool                                                              | False               | Also list disabled models, e.g. failed ones  |
 
 `＊--`: required argument without default
 
