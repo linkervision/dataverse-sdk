@@ -547,6 +547,8 @@ ready = [model for model in models if model.status == MLModelStatus.READY]
 
 `MLModelStatus`: `PROCESSING`, `READY`, `DELETING`.
 
+Disabled models (`model.enabled` is `False`, e.g. a custom model whose upload failed) are listed only with `include_disabled=True`.
+
 #### Filtering by Model Type
 
 You can filter models by type using strings or lists of strings. The SDK supports multiple model types:
@@ -576,11 +578,12 @@ models = client.list_models(
 
 #### Input Arguments
 
-| Argument name | Type/Options                                                      | Default             | Description              |
-| ------------- | ----------------------------------------------------------------- | ------------------- | ------------------------ |
-| project_id    | int                                                               | ＊--                | The project ID           |
-| client_alias  | str                                                               | None                | The client alias         |
-| type          | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by |
+| Argument name    | Type/Options                                                      | Default             | Description                                  |
+| ---------------- | ----------------------------------------------------------------- | ------------------- | -------------------------------------------- |
+| project_id       | int                                                               | ＊--                | The project ID                               |
+| client_alias     | str                                                               | None                | The client alias                             |
+| type             | "trained", "byom", "uploaded", list["trained", "byom", "uploaded] | ["trained", "byom"] | Model types to filter by                     |
+| include_disabled | bool                                                              | False               | Also list disabled models, e.g. failed ones  |
 
 `＊--`: required argument without default
 

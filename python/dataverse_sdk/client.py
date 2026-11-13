@@ -1317,6 +1317,7 @@ of this project OR has been added before"
                 list[Literal["trained", "byom", "uploaded"]],
             ]
         ] = ["trained", "byom"],
+        include_disabled: bool = False,
     ) -> list[MLModel]:
         """Get the model list by project id
 
@@ -1329,6 +1330,9 @@ of this project OR has been added before"
         project: Optional["Project"]
             project basemodel, by default None
         type : Optional[Union[Literal["trained", "byom", "uploaded"], list[Literal["trained", "byom", "uploaded"]]]], by default ["trained", "byom"]
+        include_disabled : bool, by default False
+            also list disabled models (`MLModel.enabled` is False), e.g. a custom
+            model whose upload failed. Older servers ignore it and list enabled models only.
 
         Returns
         -------
@@ -1346,7 +1350,9 @@ of this project OR has been added before"
         try:
             if isinstance(type, list):
                 type = ",".join(type)
-            model_list: list = api.list_ml_models(project_id=project_id, type=type)
+            model_list: list = api.list_ml_models(
+                project_id=project_id, type=type, include_disabled=include_disabled
+            )
         except DataverseExceptionBase:
             logging.exception("Got api error from Dataverse")
             raise

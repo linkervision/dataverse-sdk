@@ -331,10 +331,13 @@ class BackendAPI:
         self,
         project_id: int,
         type: str = "trained,byom",
+        include_disabled: bool = False,
         **kwargs,
     ) -> list:
         kwargs["project"] = project_id
         kwargs["type__in"] = type
+        if include_disabled:
+            kwargs["include_disabled"] = "true"
         resp = self.send_request(
             url=f"{self.host}/api/ml_models/?{urlencode(kwargs)}",
             method="get",
