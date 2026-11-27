@@ -766,9 +766,12 @@ class AsyncBackendAPI:
         if "offset" in kwargs or "limit" in kwargs:
             raise ValueError("Specifying offset or limit directly is not allowed.")
         kwargs["order_by"] = order_by
-        id_gt = 0
         if id_set_list:
-            for id_chunks in chunks(id_set_list, batch_size):
+            # fetch each id once, in numeric order even when ids are passed as str
+            unique_ids = sorted({int(id_) for id_ in id_set_list})
+            for id_chunks in chunks(unique_ids, batch_size):
+                # each chunk is its own id_set query, so paging restarts from 0
+                id_gt = 0
                 while True:
                     kwargs.update(
                         {
